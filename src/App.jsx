@@ -41,19 +41,19 @@ const SITUATIONS = [
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-/* ---------- formation view coordinates (percent of field, x/y) ---------- */
+/* ---------- formation view coordinates (percent of field, x = center, y = top of node) ---------- */
 const OFF_SPOTS = {
-  "WR (X)": [7, 46],
-  "LT": [31, 46], "LG": [39.5, 46], "C": [48, 46], "RG": [56.5, 46], "RT": [65, 46],
-  "TE": [73.5, 46],
-  "WR (Z)": [92, 52],
-  "QB": [48, 61], "FB": [48, 74], "RB": [48, 87],
+  "WR (X)": [7, 42],
+  "LT": [34, 42], "LG": [42, 42], "C": [50, 42], "RG": [58, 42], "RT": [66, 42],
+  "TE": [74, 42],
+  "WR (Z)": [93, 48],
+  "QB": [50, 56], "FB": [50, 70], "RB": [50, 84],
 };
 const DEF_SPOTS = {
-  "DE (L)": [24, 30], "DT (L)": [36, 30], "NG": [48, 30], "DT (R)": [60, 30], "DE (R)": [72, 30],
-  "SAM LB": [28, 53], "MIKE LB": [48, 53], "WILL LB": [68, 53],
-  "CB (L)": [8, 40], "CB (R)": [88, 40],
-  "SAFETY": [48, 79],
+  "DE (L)": [26, 26], "DT (L)": [38, 26], "NG": [50, 26], "DT (R)": [62, 26], "DE (R)": [74, 26],
+  "SAM LB": [30, 50], "MIKE LB": [50, 50], "WILL LB": [70, 50],
+  "CB (L)": [8, 36], "CB (R)": [92, 36],
+  "SAFETY": [50, 74],
 };
 
 const SEED = {
@@ -599,7 +599,7 @@ function FormationView({ data, onClose }) {
       </div>
       <div className="fv-stage">
         <div className="fv-field">
-          <div className="fv-los" style={{ top: side === "offense" ? "38%" : "21%" }}>
+          <div className="fv-los" style={{ top: side === "offense" ? "40%" : "24%" }}>
             <span>LOS</span>
           </div>
           {posList.map((pos) => {
@@ -1289,13 +1289,13 @@ function Styles() {
 .fv-field::after { left: 67%; }
 .fv-los { position: absolute; left: 0; right: 0; height: 3px; background: #F4D35E; opacity: .85; }
 .fv-los span { position: absolute; right: 8px; top: -20px; font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 2px; color: #F4D35E; }
-.fv-node { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 4px; width: 12%; min-width: 90px; }
+.fv-node { position: absolute; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; width: 7.6%; min-width: 84px; }
 .fv-pos { color: #fff; font-family: var(--disp); font-weight: 700; font-size: clamp(10px, 1.1vw, 16px); letter-spacing: 1.5px; text-transform: uppercase; padding: 1px 8px; white-space: nowrap; }
-.fv-card { background: #fff; border: 2px solid var(--ink); padding: 4px 10px 6px; display: flex; flex-direction: column; align-items: center; min-width: 80%; box-shadow: 0 3px 0 rgba(0,0,0,.35); }
+.fv-card { background: #fff; border: 2px solid var(--ink); padding: 4px 8px 6px; display: flex; flex-direction: column; align-items: center; width: 100%; box-shadow: 0 3px 0 rgba(0,0,0,.35); }
 .fv-card.open { background: transparent; border: 2px dashed rgba(255,255,255,.5); color: rgba(255,255,255,.7); font-family: var(--disp); font-weight: 700; letter-spacing: 2px; padding: 10px; font-size: clamp(11px, 1vw, 15px); }
 .fv-num { font-family: var(--disp); font-weight: 700; font-size: clamp(16px, 2vw, 30px); line-height: 1; color: var(--ink); }
-.fv-name { font-family: var(--disp); font-weight: 600; font-size: clamp(10px, 1vw, 15px); letter-spacing: 1px; text-transform: uppercase; text-align: center; line-height: 1.15; margin-top: 2px; }
-.fv-backup { color: rgba(255,255,255,.85); font-size: clamp(9px, .85vw, 13px); letter-spacing: .5px; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+.fv-name { font-family: var(--disp); font-weight: 600; font-size: clamp(10px, .95vw, 14px); letter-spacing: .5px; text-transform: uppercase; text-align: center; line-height: 1.15; margin-top: 2px; overflow-wrap: break-word; max-width: 100%; }
+.fv-backup { color: rgba(255,255,255,.85); font-size: clamp(9px, .8vw, 12px); letter-spacing: .3px; text-align: center; line-height: 1.2; max-width: 100%; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
 
 /* ---- tabs ---- */
 .tabs { display: flex; gap: 0; background: var(--ink); padding: 0 20px; overflow-x: auto; }
