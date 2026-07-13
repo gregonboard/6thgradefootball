@@ -9,6 +9,14 @@ import { useState, useEffect, useRef, useMemo } from "react";
 const OFF_POS = ["QB", "RB", "FB", "WR (X)", "WR (Z)", "TE", "LT", "LG", "C", "RG", "RT"];
 const DEF_POS = ["DE (L)", "DT (L)", "NG", "DT (R)", "DE (R)", "SAM LB", "MIKE LB", "WILL LB", "CB (L)", "CB (R)", "SAFETY"];
 const DRILL_CATS = ["Warmup", "Individual", "Group", "Team", "Special Teams", "Conditioning"];
+const GROUPS = ["All", "Offense", "Defense", "OL", "DL", "OL/DL", "QB", "RB", "WR/TE", "Skill (QB/RB/WR/TE)", "LB", "DB", "LB/DB", "Bigs + Backs", "WR vs DB", "Skill + LB/DB", "Special Teams"];
+const GROUP_TONES = {
+  Offense: "#C8102E", OL: "#C8102E", QB: "#C8102E", RB: "#C8102E", "WR/TE": "#C8102E",
+  "Skill (QB/RB/WR/TE)": "#C8102E", "Bigs + Backs": "#C8102E",
+  Defense: "#1F3A5F", DL: "#1F3A5F", LB: "#1F3A5F", DB: "#1F3A5F", "LB/DB": "#1F3A5F",
+  "Special Teams": "#0F6B4F",
+};
+const groupTone = (g) => GROUP_TONES[g] || "#15171B";
 const CAT_COLORS = {
   Warmup: "#B7791F",
   Individual: "#1F3A5F",
@@ -38,15 +46,101 @@ const SEED = {
     { id: uid(), name: "Sample Player", num: "7", offPos: "QB", defPos: "SAFETY" },
   ],
   drills: [
-    { id: uid(), name: "Dynamic Warmup + Stretch", cat: "Warmup", mins: 10, notes: "High knees, karaoke, lunges. Captains lead." },
-    { id: uid(), name: "Form Tackling Circuit", cat: "Individual", mins: 10, notes: "Angle, hawk roll, thud only. Heads out." },
-    { id: uid(), name: "Ball Security Gauntlet", cat: "Individual", mins: 10, notes: "High and tight, two hands in traffic." },
-    { id: uid(), name: "Inside Run (O vs D)", cat: "Group", mins: 15, notes: "Backs + line vs box. Script 10 reps each side." },
-    { id: uid(), name: "7-on-7 Skelly", cat: "Group", mins: 15, notes: "Script routes vs base coverage." },
-    { id: uid(), name: "Team Offense Script", cat: "Team", mins: 20, notes: "Run the game plan script. Huddle tempo." },
-    { id: uid(), name: "Team Defense vs Scout", cat: "Team", mins: 15, notes: "Scout runs opponent looks off cards." },
-    { id: uid(), name: "Kickoff / PAT Reps", cat: "Special Teams", mins: 10, notes: "Two full units, live lanes, no contact." },
-    { id: uid(), name: "Conditioning: 10 Perfect Plays", cat: "Conditioning", mins: 10, notes: "End on a good rep. Break it down." },
+    /* ---- WARMUP ---- */
+    { id: uid(), name: "Dynamic Warmup & Stretch", cat: "Warmup", group: "All", mins: 10, notes: "High knees, karaoke, lunges, leg swings. Captains lead, coaches walk the lines." },
+    { id: uid(), name: "Form Running Buildups", cat: "Warmup", group: "All", mins: 5, notes: "Two each at 10, 20, 30 yds building to 75%. Arm drive, knees up, run through the line." },
+    { id: uid(), name: "Agility Ladder Quick Feet", cat: "Warmup", group: "All", mins: 8, notes: "Two ladders, two lines. In-in-out-out, icky shuffle, single foot hops. Eyes up." },
+    { id: uid(), name: "Stance & Takeoff", cat: "Warmup", group: "All", mins: 5, notes: "Position stance, 5 yd burst on cadence. Kill the false step." },
+    { id: uid(), name: "Pat & Go", cat: "Warmup", group: "Skill (QB/RB/WR/TE)", mins: 8, notes: "Lines on both hashes, QBs throw 15 yd rails. Warm arms and hands, jog it back." },
+    { id: uid(), name: "5-10-5 Shuttles", cat: "Warmup", group: "All", mins: 5, notes: "Change of direction. Touch the line, stay low, no rounded turns." },
+
+    /* ---- TACKLING ---- */
+    { id: uid(), name: "Angle Tackle Fit", cat: "Individual", group: "Defense", mins: 10, notes: "Fit, wrap, drive five steps. Eyes up, head across the front. Thud, never to the ground." },
+    { id: uid(), name: "Hawk Roll Tackle", cat: "Individual", group: "Defense", mins: 10, notes: "Shoulder leverage tackle, wrap and roll. Mats or soft grass. Head out every rep." },
+    { id: uid(), name: "Open Field Tackle", cat: "Individual", group: "Defense", mins: 10, notes: "10 yd box, breakdown, near foot near shoulder. Thud finish, no lunging." },
+    { id: uid(), name: "Sideline Tackle", cat: "Individual", group: "Defense", mins: 8, notes: "Use the sideline as the 12th defender. Leverage inside-out, run him out or wrap." },
+    { id: uid(), name: "Pursuit Angles", cat: "Individual", group: "Defense", mins: 8, notes: "Coach points, sprint to the cutoff cone. Take the angle, never chase from behind." },
+    { id: uid(), name: "Tackle Ring Rolls", cat: "Individual", group: "Defense", mins: 8, notes: "Chase the rolling ring, wrap and roll through. Perfect for no-pads days." },
+
+    /* ---- BLOCK DESTRUCTION ---- */
+    { id: uid(), name: "Strike & Shed", cat: "Individual", group: "Defense", mins: 8, notes: "Six points to fit to full speed. Hands inside, thumbs up, extend, rip and replace." },
+    { id: uid(), name: "Rip & Swim Escapes", cat: "Individual", group: "DL", mins: 8, notes: "Vs bag holder. Violent get-off, tight rip through the hip. Swim stays low." },
+    { id: uid(), name: "Get-Off on Ball Movement", cat: "Individual", group: "DL", mins: 5, notes: "Move on the ball, not the voice. First step wins the rep." },
+
+    /* ---- OL ---- */
+    { id: uid(), name: "OL Stance & First Steps", cat: "Individual", group: "OL", mins: 8, notes: "Three point, flat back, no rocking. Drive, reach, and pull steps on cadence." },
+    { id: uid(), name: "Fit & Drive Boards", cat: "Individual", group: "OL", mins: 10, notes: "Fit on a partner, drive him down the board. Pad under pad, feet like pistons." },
+    { id: uid(), name: "Chutes & Duck Walks", cat: "Individual", group: "OL", mins: 6, notes: "Pad level day. Flat back under the chute, hands loaded." },
+    { id: uid(), name: "Pass Pro Kick & Mirror", cat: "Individual", group: "OL", mins: 10, notes: "Kick slide, stay square, mirror his numbers. Punch and reset, never lunge." },
+    { id: uid(), name: "Pull & Kickout", cat: "Individual", group: "OL", mins: 10, notes: "Guards pull flat down the line, kick out the end man. This is Power and Trap." },
+    { id: uid(), name: "Double Team Combo", cat: "Individual", group: "OL", mins: 10, notes: "Hip to hip, four hands on him, eyes on the backer. Climb late, not early." },
+    { id: uid(), name: "Down Block Angles", cat: "Individual", group: "OL", mins: 8, notes: "Wash him down the line, head playside. Do not get pushed upfield." },
+    { id: uid(), name: "Snap & Steps", cat: "Individual", group: "OL", mins: 6, notes: "Center and QB exchange while the whole line steps the play call." },
+    { id: uid(), name: "OL vs DL 1-on-1 Pass Rush", cat: "Group", group: "OL/DL", mins: 10, notes: "Cone box, best on best. Coach the win and the loss on every rep. Pairs with 7-on-7." },
+
+    /* ---- QB ---- */
+    { id: uid(), name: "QB Drops & Footwork", cat: "Individual", group: "QB", mins: 8, notes: "Three and five step drops off the snap. Two hands on the ball, eyes downfield." },
+    { id: uid(), name: "Handoff Mesh Circuit", cat: "Individual", group: "QB", mins: 8, notes: "Mesh with every back, both directions. Look it in, then carry out the fake." },
+    { id: uid(), name: "Boot & Play-Action Fakes", cat: "Individual", group: "QB", mins: 8, notes: "Sell it with eyes and shoulders. Snap the head around late on the boot." },
+    { id: uid(), name: "Throw on the Run", cat: "Individual", group: "QB", mins: 8, notes: "Sprint out both ways. Shoulders level, step at the target, no arm-only throws." },
+    { id: uid(), name: "Accuracy Targets", cat: "Individual", group: "QB", mins: 8, notes: "Nets or hands at 8, 12, 18 yds. Keep score, loser picks up cones." },
+
+    /* ---- RB ---- */
+    { id: uid(), name: "Ball Security Gauntlet", cat: "Individual", group: "RB", mins: 8, notes: "High and tight, five points of pressure, two hands in traffic. A drop restarts the line." },
+    { id: uid(), name: "Bags & Burst", cat: "Individual", group: "RB", mins: 8, notes: "Quick feet through the bags, plant, burst 10 yds. One cut, then north." },
+    { id: uid(), name: "Make-a-Miss in Space", cat: "Individual", group: "RB", mins: 8, notes: "One move max, jump cut or spin, then get vertical. Dancing loses yards." },
+    { id: uid(), name: "Blitz Pickup Fit", cat: "Individual", group: "RB", mins: 8, notes: "Scan inside out, wide base, fit low. Thud only, protect the QB." },
+    { id: uid(), name: "Finish Runs", cat: "Individual", group: "RB", mins: 6, notes: "Run through hand shields the last five yards. Fall forward, cover the ball." },
+
+    /* ---- WR / TE ---- */
+    { id: uid(), name: "Routes on Air", cat: "Individual", group: "Skill (QB/RB/WR/TE)", mins: 10, notes: "Full route tree with QBs, both hashes. Burst out of the break, tuck and get five upfield." },
+    { id: uid(), name: "Catch Circuit", cat: "Individual", group: "WR/TE", mins: 10, notes: "High point, over the shoulder, sideline toe tap, low ball. Eyes follow it into the tuck." },
+    { id: uid(), name: "Releases vs Press", cat: "Individual", group: "WR/TE", mins: 8, notes: "Foot fire, swipe the hands, stack on top. Air first, then a partner." },
+    { id: uid(), name: "Stalk Blocking", cat: "Individual", group: "WR/TE", mins: 8, notes: "Break down, mirror, hands inside the frame. Sweeps score when receivers block." },
+    { id: uid(), name: "Distraction Catches", cat: "Individual", group: "WR/TE", mins: 6, notes: "Tennis balls, waving hands, late looks. Train the eyes through traffic." },
+    { id: uid(), name: "TE Base & Arc Release", cat: "Individual", group: "WR/TE", mins: 8, notes: "Base block the end man, then arc release reps. Know both jobs cold." },
+
+    /* ---- LB / DB ---- */
+    { id: uid(), name: "Pedal & Break", cat: "Individual", group: "DB", mins: 8, notes: "Backpedal, T-step plant, drive on the point. No false steps, no standing up." },
+    { id: uid(), name: "W Drill", cat: "Individual", group: "DB", mins: 8, notes: "Pedal, break, pedal on the W cones. Hips down, eyes on the coach the whole way." },
+    { id: uid(), name: "LB Read Steps", cat: "Individual", group: "LB", mins: 8, notes: "High hat pass, low hat run. Downhill fill on run, wall off on pass." },
+    { id: uid(), name: "Scrape & Fill", cat: "Individual", group: "LB", mins: 8, notes: "Flow over the trash, square up in the gap, thud fit on the back." },
+    { id: uid(), name: "Man Coverage Mirror", cat: "Individual", group: "LB/DB", mins: 8, notes: "Shadow the receiver in a 5 yd lane. Stay in phase, hands off jerseys." },
+    { id: uid(), name: "Zone Drops & Landmarks", cat: "Individual", group: "LB/DB", mins: 8, notes: "Drop to curl, flat, and hook spots. Eyes on the QB, break on the throw." },
+    { id: uid(), name: "Turn & Find the Ball", cat: "Individual", group: "DB", mins: 8, notes: "Locate, yell BALL, high point at its highest, return up the sideline." },
+    { id: uid(), name: "Strip & Scoop Circuit", cat: "Individual", group: "Defense", mins: 8, notes: "First man wraps, second man punches. Scoop it clean and score." },
+
+    /* ---- GROUP PERIODS ---- */
+    { id: uid(), name: "Inside Run (O vs D)", cat: "Group", group: "Bigs + Backs", mins: 15, notes: "OL, DL, QB, RB, LB. Script 10 each side at thud. Pair with WR vs DB in the same period." },
+    { id: uid(), name: "WR vs DB 1-on-1s", cat: "Group", group: "WR vs DB", mins: 15, notes: "Press and off looks, QBs alternate. Runs opposite Inside Run every week." },
+    { id: uid(), name: "7-on-7 Skelly", cat: "Group", group: "Skill + LB/DB", mins: 15, notes: "Script routes vs base coverage. Linemen run 1-on-1 pass rush in the same period." },
+    { id: uid(), name: "Half-Line Run Fits", cat: "Group", group: "All", mins: 12, notes: "Split the field, double the reps. Thud tempo, coach one gap at a time." },
+    { id: uid(), name: "Perimeter Drill", cat: "Group", group: "All", mins: 12, notes: "Toss and sweep crew vs force players. Stalk blocks, corner sets the edge." },
+    { id: uid(), name: "Blitz Pickup Period", cat: "Group", group: "Offense", mins: 10, notes: "OL and RB vs scout pressure off cards. ID the Mike out loud every snap." },
+    { id: uid(), name: "Screen Period", cat: "Group", group: "Offense", mins: 10, notes: "Timing on bubble and RB screens. Linemen release flat, block level to level." },
+
+    /* ---- TEAM ---- */
+    { id: uid(), name: "Team Offense Script", cat: "Team", group: "Offense", mins: 20, notes: "Game plan script vs scout defense. Huddle tempo, clean breaks, no wasted reps." },
+    { id: uid(), name: "Team Defense vs Scout", cat: "Team", group: "Defense", mins: 15, notes: "Scout runs opponent cards. Align, key, fit, and every hat runs to the ball." },
+    { id: uid(), name: "Openers Rehearsal", cat: "Team", group: "Offense", mins: 10, notes: "First six plays of the game, twice each. Perfect alignment, perfect tempo." },
+    { id: uid(), name: "Situations: 3rd Down", cat: "Team", group: "All", mins: 10, notes: "3rd and short, medium, long. Offense converts, defense gets off the field." },
+    { id: uid(), name: "Red Zone & Goal Line", cat: "Team", group: "All", mins: 12, notes: "Condensed field, low pads, zero penalties. Defense mantra: nothing inside." },
+    { id: uid(), name: "2-Minute Drill", cat: "Team", group: "All", mins: 10, notes: "Live clock. Sideline throws, spike rules, use of timeouts. Poise wins." },
+    { id: uid(), name: "Sudden Change", cat: "Team", group: "All", mins: 8, notes: "Defense sprints on after a turnover call. Attitude and body language period." },
+    { id: uid(), name: "Mock Game Procedures", cat: "Team", group: "All", mins: 10, notes: "Cadence with noise, substitutions, penalty downs, timeout mechanics." },
+
+    /* ---- SPECIAL TEAMS ---- */
+    { id: uid(), name: "Kickoff Coverage Lanes", cat: "Special Teams", group: "Special Teams", mins: 10, notes: "Sprint your lane, squeeze to the ball, breakdown. No live tackling needed." },
+    { id: uid(), name: "Kick Return Setup", cat: "Special Teams", group: "Special Teams", mins: 10, notes: "Front line retreats, wall sets, returner catches and gets vertical." },
+    { id: uid(), name: "Punt Operation", cat: "Special Teams", group: "Special Teams", mins: 10, notes: "Snap to punt on time. Protect first, then release and cover." },
+    { id: uid(), name: "PAT & FG Operation", cat: "Special Teams", group: "Special Teams", mins: 8, notes: "Snap, hold, kick timing. Everyone knows block rules and fire calls." },
+    { id: uid(), name: "Hands Team & Onside", cat: "Special Teams", group: "Special Teams", mins: 8, notes: "High hop reactions, fair catch rules, fall on it and cradle." },
+
+    /* ---- CONDITIONING ---- */
+    { id: uid(), name: "10 Perfect Plays", cat: "Conditioning", group: "All", mins: 10, notes: "Ten flawless team plays to end practice. A jump or fumble starts it over." },
+    { id: uid(), name: "Gassers", cat: "Conditioning", group: "All", mins: 6, notes: "Sideline to sideline. Sprint through the line, finish together." },
+    { id: uid(), name: "Pursuit Chase", cat: "Conditioning", group: "Defense", mins: 8, notes: "Full pursuit to the sideline cone from every spot. Conditioning that looks like defense." },
+    { id: uid(), name: "Competition Relays", cat: "Conditioning", group: "All", mins: 8, notes: "Ball carry relays by position group. Winners pick the break-down chant." },
   ],
   practice: { date: "", start: "17:30", title: "Practice Plan", items: [] },
   plays: [
@@ -57,16 +151,22 @@ const SEED = {
   ],
   callSheet: {},
   wrist: { title: "REBELS", cols: 3, copies: 4, selected: null },
-  liveGame: null,
-  gameLog: [],
-  settings: { minSnaps: 10 },
+  libVersion: 2,
 };
 
 const STORAGE_KEY = "vh6-coach-data-v1";
 
 /* ---------- storage adapter ----------
-   Uses Claude's window.storage when running as a Claude artifact.
-   Falls back to localStorage when deployed on the web (Netlify etc). */
+   Priority: Claude artifact storage → Supabase (if configured) → localStorage.
+   To turn on Supabase sync, set window.SUPABASE_URL and window.SUPABASE_ANON_KEY
+   in index.html and run supabase-setup.sql in your project. */
+function supaCfg() {
+  if (typeof window === "undefined") return null;
+  return window.SUPABASE_URL && window.SUPABASE_ANON_KEY
+    ? { url: window.SUPABASE_URL, key: window.SUPABASE_ANON_KEY }
+    : null;
+}
+
 const store = {
   async get(key) {
     if (typeof window !== "undefined" && window.storage && window.storage.get) {
@@ -77,6 +177,16 @@ const store = {
         return null;
       }
     }
+    const supa = supaCfg();
+    if (supa) {
+      try {
+        const res = await fetch(`${supa.url}/rest/v1/app_state?key=eq.${encodeURIComponent(key)}&select=value`, {
+          headers: { apikey: supa.key, Authorization: `Bearer ${supa.key}` },
+        });
+        const rows = await res.json();
+        if (Array.isArray(rows) && rows[0]) return JSON.stringify(rows[0].value);
+      } catch (e) { /* fall through to localStorage */ }
+    }
     try { return window.localStorage.getItem(key); } catch (e) { return null; }
   },
   async set(key, value) {
@@ -85,9 +195,49 @@ const store = {
       if (!r) throw new Error("save failed");
       return;
     }
+    const supa = supaCfg();
+    if (supa) {
+      const res = await fetch(`${supa.url}/rest/v1/app_state?on_conflict=key`, {
+        method: "POST",
+        headers: {
+          apikey: supa.key,
+          Authorization: `Bearer ${supa.key}`,
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates",
+        },
+        body: JSON.stringify([{ key, value: JSON.parse(value) }]),
+      });
+      if (!res.ok) throw new Error("supabase save failed");
+      try { window.localStorage.setItem(key, value); } catch (e) {}
+      return;
+    }
     window.localStorage.setItem(key, value);
   },
 };
+
+/* ---------- data migration ---------- */
+function normalizeData(parsed) {
+  // Old flat practice items ({drillId, mins}) become periods with one station.
+  const rawItems = (parsed.practice && parsed.practice.items) || [];
+  const items = rawItems.map((it) =>
+    it.stations ? it : { id: it.id || uid(), mins: it.mins ?? null, stations: [{ id: uid(), drillId: it.drillId }] }
+  );
+  // Older drills get a default group.
+  let drills = (parsed.drills || []).map((d) => ({ group: "All", ...d }));
+  // Merge in new library drills the coach doesn't have yet (by name).
+  if ((parsed.libVersion || 1) < SEED.libVersion) {
+    const have = new Set(drills.map((d) => d.name.toLowerCase()));
+    drills = [...drills, ...SEED.drills.filter((d) => !have.has(d.name.toLowerCase()))];
+  }
+  return {
+    ...SEED,
+    ...parsed,
+    drills,
+    practice: { ...SEED.practice, ...(parsed.practice || {}), items },
+    wrist: { ...SEED.wrist, ...(parsed.wrist || {}) },
+    libVersion: SEED.libVersion,
+  };
+}
 
 /* ---------- time helpers ---------- */
 function fmtTime(mins) {
@@ -120,15 +270,7 @@ export default function App() {
       try {
         const raw = await store.get(STORAGE_KEY);
         if (raw) {
-          const parsed = JSON.parse(raw);
-          setData({
-            ...SEED,
-            ...parsed,
-            wrist: { ...SEED.wrist, ...(parsed.wrist || {}) },
-            settings: { ...SEED.settings, ...(parsed.settings || {}) },
-            gameLog: parsed.gameLog || [],
-            liveGame: parsed.liveGame || null,
-          });
+          setData(normalizeData(JSON.parse(raw)));
         } else {
           setData(SEED);
         }
@@ -170,7 +312,6 @@ export default function App() {
     { key: "playbook", label: "Playbook" },
     { key: "callsheet", label: "Call Sheet" },
     { key: "wrist", label: "Wristbands" },
-    { key: "gameday", label: "Game Day" },
   ];
 
   return (
@@ -207,7 +348,6 @@ export default function App() {
           {tab === "playbook" && <PlaybookTab data={data} up={up} />}
           {tab === "callsheet" && <CallSheetTab data={data} up={up} onPrint={() => setPrintTarget("callsheet")} />}
           {tab === "wrist" && <WristTab data={data} up={up} onPrint={() => setPrintTarget("wrist")} />}
-          {tab === "gameday" && <GameDayTab data={data} up={up} onPrintSheet={() => setPrintTarget("gameday")} />}
         </main>
       </div>
 
@@ -244,14 +384,7 @@ function BackupControls({ data, setData }) {
       try {
         const parsed = JSON.parse(reader.result);
         if (!parsed || !Array.isArray(parsed.players)) throw new Error("bad file");
-        setData({
-          ...SEED,
-          ...parsed,
-          wrist: { ...SEED.wrist, ...(parsed.wrist || {}) },
-          settings: { ...SEED.settings, ...(parsed.settings || {}) },
-          gameLog: parsed.gameLog || [],
-          liveGame: parsed.liveGame || null,
-        });
+        setData(normalizeData(parsed));
       } catch (err) {
         window.alert("That file doesn't look like a Sideline Command backup.");
       }
@@ -265,193 +398,6 @@ function BackupControls({ data, setData }) {
       <button className="mast-btn" onClick={exportJson} title="Download all data as a JSON file">Backup</button>
       <button className="mast-btn" onClick={() => fileRef.current && fileRef.current.click()} title="Restore from a backup file">Restore</button>
       <input ref={fileRef} type="file" accept="application/json,.json" style={{ display: "none" }} onChange={importJson} />
-    </div>
-  );
-}
-
-/* ============================================================
-   GAME DAY — live snap counter + season log
-   ============================================================ */
-function GameDayTab({ data, up, onPrintSheet }) {
-  const { liveGame, gameLog, players, settings } = data;
-  const [opp, setOpp] = useState("");
-  const [confirmEnd, setConfirmEnd] = useState(false);
-  const minSnaps = Number(settings.minSnaps) || 10;
-
-  const startGame = () => {
-    if (!opp.trim()) return;
-    up({
-      liveGame: {
-        id: uid(),
-        opponent: opp.trim(),
-        date: todayStr(),
-        quarter: 1,
-        us: 0,
-        them: 0,
-        snaps: {},
-        notes: "",
-      },
-    });
-    setOpp("");
-    setConfirmEnd(false);
-  };
-
-  const setG = (patch) => up({ liveGame: { ...liveGame, ...patch } });
-
-  const bump = (pid, delta) => {
-    const cur = liveGame.snaps[pid] || 0;
-    const next = Math.max(0, cur + delta);
-    setG({ snaps: { ...liveGame.snaps, [pid]: next } });
-  };
-
-  const endGame = () => {
-    const entry = {
-      id: liveGame.id,
-      opponent: liveGame.opponent,
-      date: liveGame.date,
-      us: Number(liveGame.us) || 0,
-      them: Number(liveGame.them) || 0,
-      notes: liveGame.notes || "",
-      snaps: liveGame.snaps,
-    };
-    up({ gameLog: [entry, ...gameLog], liveGame: null });
-    setConfirmEnd(false);
-  };
-
-  const removeGame = (id) => up({ gameLog: gameLog.filter((g) => g.id !== id) });
-  const setLogGame = (id, patch) => up({ gameLog: gameLog.map((g) => (g.id === id ? { ...g, ...patch } : g)) });
-
-  const wins = gameLog.filter((g) => g.us > g.them).length;
-  const losses = gameLog.filter((g) => g.us < g.them).length;
-  const ties = gameLog.filter((g) => g.us === g.them).length;
-
-  // Sort: fewest snaps first so the kids who need plays float to the top.
-  const sorted = liveGame
-    ? [...players].sort((a, b) => (liveGame.snaps[a.id] || 0) - (liveGame.snaps[b.id] || 0))
-    : [];
-  const underCount = liveGame ? players.filter((p) => (liveGame.snaps[p.id] || 0) < minSnaps).length : 0;
-
-  return (
-    <div className="two-col">
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Live Snap Counter</h2>
-          {liveGame && (
-            <span className={"snap-summary" + (underCount > 0 ? " under" : " good")}>
-              {underCount > 0 ? `${underCount} player${underCount === 1 ? "" : "s"} under ${minSnaps}` : `Everyone at ${minSnaps}+`}
-            </span>
-          )}
-        </div>
-
-        {!liveGame && (
-          <>
-            <div className="add-row">
-              <input placeholder="Opponent (e.g. Hoover)" value={opp} onChange={(e) => setOpp(e.target.value)} onKeyDown={(e) => e.key === "Enter" && startGame()} />
-              <button className="btn" onClick={startGame}>Start Game</button>
-            </div>
-            <div className="plan-meta">
-              <label>Min plays per player
-                <input type="number" min="1" style={{ width: 80 }} value={settings.minSnaps}
-                  onChange={(e) => up({ settings: { ...settings, minSnaps: Number(e.target.value) || 1 } })} />
-              </label>
-            </div>
-            <p className="hint">Start a game and tap +1 every time a kid takes a snap. Players with the fewest snaps rise to the top so nobody gets missed. Prefer paper? <button className="link-btn" onClick={onPrintSheet}>Print the tally sheet</button> instead.</p>
-          </>
-        )}
-
-        {liveGame && (
-          <>
-            <div className="score-strip">
-              <div className="score-team">
-                <span className="score-label">REBELS</span>
-                <div className="score-ctrl">
-                  <button onClick={() => setG({ us: Math.max(0, liveGame.us - 1) })}>−</button>
-                  <span className="score-num">{liveGame.us}</span>
-                  <button onClick={() => setG({ us: liveGame.us + 1 })}>+</button>
-                </div>
-              </div>
-              <div className="score-mid">
-                <span className="score-opp">vs {liveGame.opponent}</span>
-                <div className="qtr-chips">
-                  {[1, 2, 3, 4].map((q) => (
-                    <button key={q} className={"qtr" + (liveGame.quarter === q ? " active" : "")} onClick={() => setG({ quarter: q })}>Q{q}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="score-team">
-                <span className="score-label">THEM</span>
-                <div className="score-ctrl">
-                  <button onClick={() => setG({ them: Math.max(0, liveGame.them - 1) })}>−</button>
-                  <span className="score-num">{liveGame.them}</span>
-                  <button onClick={() => setG({ them: liveGame.them + 1 })}>+</button>
-                </div>
-              </div>
-            </div>
-
-            <div className="snap-list">
-              {sorted.map((p) => {
-                const n = liveGame.snaps[p.id] || 0;
-                const under = n < minSnaps;
-                return (
-                  <div key={p.id} className={"snap-row" + (under ? " under" : " good")}>
-                    <span className="snap-num-badge">{p.num || "–"}</span>
-                    <div className="snap-name">
-                      <b>{p.name}</b>
-                      <span className="snap-pos">{[p.offPos, p.defPos].filter(Boolean).join(" / ")}</span>
-                    </div>
-                    <div className="snap-meter">
-                      <div className="snap-meter-fill" style={{ width: `${Math.min(100, (n / minSnaps) * 100)}%` }} />
-                    </div>
-                    <span className="snap-count">{n}</span>
-                    <button className="snap-minus" onClick={() => bump(p.id, -1)} title="Undo a snap">−</button>
-                    <button className="snap-plus" onClick={() => bump(p.id, 1)}>+1</button>
-                  </div>
-                );
-              })}
-              {players.length === 0 && <div className="empty pad">Add players in Roster &amp; Depth first.</div>}
-            </div>
-
-            <div className="add-row" style={{ paddingBottom: 14 }}>
-              <input placeholder="Game notes (injuries, what worked, what to fix)" value={liveGame.notes} onChange={(e) => setG({ notes: e.target.value })} />
-              {!confirmEnd && <button className="btn ghost" onClick={() => setConfirmEnd(true)}>End Game</button>}
-              {confirmEnd && (
-                <>
-                  <button className="btn" onClick={endGame}>Save Final</button>
-                  <button className="btn ghost" onClick={() => setConfirmEnd(false)}>Keep Playing</button>
-                </>
-              )}
-            </div>
-          </>
-        )}
-      </section>
-
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Season</h2>
-          <span className="record-chip">{wins}–{losses}{ties > 0 ? `–${ties}` : ""}</span>
-        </div>
-        {gameLog.length === 0 && <div className="empty pad">Finished games land here with the final score, snap counts, and your notes.</div>}
-        {gameLog.map((g) => {
-          const result = g.us > g.them ? "W" : g.us < g.them ? "L" : "T";
-          return (
-            <div key={g.id} className="log-row">
-              <span className={"log-result " + result}>{result}</span>
-              <div className="log-main">
-                <b>vs {g.opponent}</b>
-                <span className="drill-notes">{g.date}{g.notes ? ` · ${g.notes}` : ""}</span>
-              </div>
-              <div className="log-score">
-                <input className="cell num" type="number" value={g.us} onChange={(e) => setLogGame(g.id, { us: Number(e.target.value) || 0 })} />
-                <span>–</span>
-                <input className="cell num" type="number" value={g.them} onChange={(e) => setLogGame(g.id, { them: Number(e.target.value) || 0 })} />
-              </div>
-              <div className="row-actions">
-                <button className="danger" onClick={() => removeGame(g.id)}>✕</button>
-              </div>
-            </div>
-          );
-        })}
-      </section>
     </div>
   );
 }
@@ -585,38 +531,70 @@ function RosterTab({ data, up, onPrint }) {
 }
 
 /* ============================================================
-   PRACTICE PLANNER
+   PRACTICE PLANNER — library with filters + multi-station periods
    ============================================================ */
 function PracticeTab({ data, up, onPrint }) {
-  const [d, setD] = useState({ name: "", cat: "Team", mins: 10, notes: "" });
+  const [d, setD] = useState({ name: "", cat: "Team", group: "All", mins: 10, notes: "" });
+  const [q, setQ] = useState("");
+  const [catFilter, setCatFilter] = useState("All");
+  const [groupFilter, setGroupFilter] = useState("All groups");
   const { practice, drills } = data;
 
   const addDrill = () => {
     if (!d.name.trim()) return;
-    up({ drills: [...drills, { id: uid(), name: d.name.trim(), cat: d.cat, mins: Number(d.mins) || 10, notes: d.notes.trim() }] });
-    setD({ name: "", cat: d.cat, mins: 10, notes: "" });
+    up({ drills: [...drills, { id: uid(), name: d.name.trim(), cat: d.cat, group: d.group, mins: Number(d.mins) || 10, notes: d.notes.trim() }] });
+    setD({ name: "", cat: d.cat, group: d.group, mins: 10, notes: "" });
   };
-  const removeDrill = (id) =>
-    up({
-      drills: drills.filter((x) => x.id !== id),
-      practice: { ...practice, items: practice.items.filter((it) => it.drillId !== id) },
-    });
+  const removeDrill = (id) => {
+    const items = practice.items
+      .map((per) => ({ ...per, stations: per.stations.filter((s) => s.drillId !== id) }))
+      .filter((per) => per.stations.length > 0);
+    up({ drills: drills.filter((x) => x.id !== id), practice: { ...practice, items } });
+  };
 
-  const addToPlan = (drillId) =>
-    up({ practice: { ...practice, items: [...practice.items, { id: uid(), drillId, mins: null }] } });
-  const removeItem = (id) =>
-    up({ practice: { ...practice, items: practice.items.filter((it) => it.id !== id) } });
-  const moveItem = (id, dir) => {
+  /* period ops */
+  const addPeriod = (drillId) =>
+    up({ practice: { ...practice, items: [...practice.items, { id: uid(), mins: null, stations: [{ id: uid(), drillId }] }] } });
+  const addStation = (periodId, drillId) => {
+    if (!drillId) return;
+    up({
+      practice: {
+        ...practice,
+        items: practice.items.map((per) =>
+          per.id === periodId ? { ...per, stations: [...per.stations, { id: uid(), drillId }] } : per
+        ),
+      },
+    });
+  };
+  const removeStation = (periodId, stationId) => {
+    const items = practice.items
+      .map((per) => (per.id === periodId ? { ...per, stations: per.stations.filter((s) => s.id !== stationId) } : per))
+      .filter((per) => per.stations.length > 0);
+    up({ practice: { ...practice, items } });
+  };
+  const removePeriod = (id) =>
+    up({ practice: { ...practice, items: practice.items.filter((per) => per.id !== id) } });
+  const movePeriod = (id, dir) => {
     const arr = [...practice.items];
-    const i = arr.findIndex((it) => it.id === id);
+    const i = arr.findIndex((per) => per.id === id);
     const j = i + dir;
     if (j < 0 || j >= arr.length) return;
     [arr[i], arr[j]] = [arr[j], arr[i]];
     up({ practice: { ...practice, items: arr } });
   };
-  const setItemMins = (id, mins) =>
-    up({ practice: { ...practice, items: practice.items.map((it) => (it.id === id ? { ...it, mins: mins === "" ? null : Number(mins) } : it)) } });
+  const setPeriodMins = (id, mins) =>
+    up({ practice: { ...practice, items: practice.items.map((per) => (per.id === id ? { ...per, mins: mins === "" ? null : Number(mins) } : per)) } });
   const setP = (patch) => up({ practice: { ...practice, ...patch } });
+  const clearPlan = () => up({ practice: { ...practice, items: [] } });
+
+  /* library filtering */
+  const needle = q.trim().toLowerCase();
+  const filtered = drills.filter((dr) => {
+    if (catFilter !== "All" && dr.cat !== catFilter) return false;
+    if (groupFilter !== "All groups" && dr.group !== groupFilter) return false;
+    if (needle && !(`${dr.name} ${dr.notes} ${dr.group}`.toLowerCase().includes(needle))) return false;
+    return true;
+  });
 
   const schedule = buildSchedule(practice, drills);
   const total = schedule.reduce((s, r) => s + r.mins, 0);
@@ -624,59 +602,95 @@ function PracticeTab({ data, up, onPrint }) {
   return (
     <div className="two-col">
       <section className="panel">
-        <div className="panel-head"><h2>Drill Library</h2></div>
+        <div className="panel-head">
+          <h2>Drill Library</h2>
+          <span className="hint" style={{ margin: 0 }}>{filtered.length} of {drills.length} drills</span>
+        </div>
+        <div className="lib-filters">
+          <input placeholder="Search drills…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <div className="cat-chip-row">
+            {["All", ...DRILL_CATS].map((c) => (
+              <button key={c} className={"filter-chip" + (catFilter === c ? " active" : "")}
+                style={catFilter === c && c !== "All" ? { background: CAT_COLORS[c], borderColor: CAT_COLORS[c] } : undefined}
+                onClick={() => setCatFilter(c)}>{c}</button>
+            ))}
+          </div>
+          <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
+            <option>All groups</option>
+            {GROUPS.map((g) => <option key={g}>{g}</option>)}
+          </select>
+        </div>
+        <div className="drill-list">
+          {filtered.map((dr) => (
+            <div key={dr.id} className="drill-card">
+              <span className="cat-chip" style={{ background: CAT_COLORS[dr.cat] }}>{dr.cat}</span>
+              <div className="drill-main">
+                <b>{dr.name} <span className="group-tag" style={{ color: groupTone(dr.group), borderColor: groupTone(dr.group) }}>{dr.group}</span></b>
+                {dr.notes && <span className="drill-notes">{dr.notes}</span>}
+              </div>
+              <span className="drill-mins">{dr.mins}m</span>
+              <button className="btn small" onClick={() => addPeriod(dr.id)}>Add →</button>
+              <button className="icon-btn danger" title="Delete drill" onClick={() => removeDrill(dr.id)}>✕</button>
+            </div>
+          ))}
+          {filtered.length === 0 && <div className="empty pad">No drills match. Clear the filters or add your own below.</div>}
+        </div>
         <div className="drill-form">
+          <b className="form-title">Add your own drill</b>
           <input placeholder="Drill name" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} />
           <div className="drill-form-row">
             <select value={d.cat} onChange={(e) => setD({ ...d, cat: e.target.value })}>
               {DRILL_CATS.map((c) => <option key={c}>{c}</option>)}
             </select>
+            <select value={d.group} onChange={(e) => setD({ ...d, group: e.target.value })}>
+              {GROUPS.map((g) => <option key={g}>{g}</option>)}
+            </select>
             <input type="number" min="1" style={{ width: 70 }} value={d.mins} onChange={(e) => setD({ ...d, mins: e.target.value })} />
             <span className="hint" style={{ margin: 0 }}>min</span>
           </div>
-          <input placeholder="Coaching notes / equipment (optional)" value={d.notes} onChange={(e) => setD({ ...d, notes: e.target.value })} />
+          <input placeholder="Coaching points / equipment (optional)" value={d.notes} onChange={(e) => setD({ ...d, notes: e.target.value })} />
           <button className="btn" onClick={addDrill}>Save Drill</button>
-        </div>
-        <div className="drill-list">
-          {drills.map((dr) => (
-            <div key={dr.id} className="drill-card">
-              <span className="cat-chip" style={{ background: CAT_COLORS[dr.cat] }}>{dr.cat}</span>
-              <div className="drill-main">
-                <b>{dr.name}</b>
-                {dr.notes && <span className="drill-notes">{dr.notes}</span>}
-              </div>
-              <span className="drill-mins">{dr.mins}m</span>
-              <button className="btn small" onClick={() => addToPlan(dr.id)}>Add →</button>
-              <button className="icon-btn danger" title="Delete drill" onClick={() => removeDrill(dr.id)}>✕</button>
-            </div>
-          ))}
         </div>
       </section>
 
       <section className="panel">
         <div className="panel-head">
           <h2>Today's Plan</h2>
-          <button className="btn" onClick={onPrint} disabled={practice.items.length === 0}>Print One-Pager</button>
+          <div style={{ display: "flex", gap: 8 }}>
+            {practice.items.length > 0 && <button className="btn ghost" onClick={clearPlan}>Clear</button>}
+            <button className="btn" onClick={onPrint} disabled={practice.items.length === 0}>Print One-Pager</button>
+          </div>
         </div>
         <div className="plan-meta">
           <label>Date <input placeholder={todayStr()} value={practice.date} onChange={(e) => setP({ date: e.target.value })} /></label>
           <label>Start <input type="time" value={practice.start} onChange={(e) => setP({ start: e.target.value })} /></label>
           <label>Title <input value={practice.title} onChange={(e) => setP({ title: e.target.value })} /></label>
         </div>
-        {schedule.length === 0 && <div className="empty pad">Add drills from the library. The schedule times itself automatically.</div>}
+        {schedule.length === 0 && <div className="empty pad">Add drills from the library. Each one becomes a timed period, and you can run stations side by side: hit "+ station" on a period to put the linemen on one drill and the skill guys on another in the same slot.</div>}
         {schedule.map((row) => (
-          <div key={row.id} className="plan-row">
+          <div key={row.id} className="plan-row period">
             <span className="plan-time">{row.timeLabel}</span>
-            <span className="cat-bar" style={{ background: CAT_COLORS[row.cat] }} />
             <div className="plan-main">
-              <b>{row.name}</b>
-              {row.notes && <span className="drill-notes">{row.notes}</span>}
+              {row.stations.map((st) => (
+                <div key={st.stationId} className="station-line">
+                  <span className="group-tag" style={{ color: groupTone(st.group), borderColor: groupTone(st.group) }}>{st.group}</span>
+                  <span className="cat-bar" style={{ background: CAT_COLORS[st.cat] }} />
+                  <b>{st.name}</b>
+                  {row.stations.length > 1 && (
+                    <button className="icon-btn danger station-x" title="Remove this station" onClick={() => removeStation(row.id, st.stationId)}>✕</button>
+                  )}
+                </div>
+              ))}
+              <select className="station-add" value="" onChange={(e) => { addStation(row.id, e.target.value); }}>
+                <option value="">+ station (runs at the same time)…</option>
+                {drills.map((dr) => <option key={dr.id} value={dr.id}>{dr.group}: {dr.name}</option>)}
+              </select>
             </div>
-            <input className="cell mins" type="number" min="1" value={row.rawMins ?? ""} placeholder={String(row.defaultMins)} onChange={(e) => setItemMins(row.id, e.target.value)} />
+            <input className="cell mins" type="number" min="1" value={row.rawMins ?? ""} placeholder={String(row.defaultMins)} onChange={(e) => setPeriodMins(row.id, e.target.value)} />
             <div className="row-actions">
-              <button onClick={() => moveItem(row.id, -1)}>↑</button>
-              <button onClick={() => moveItem(row.id, 1)}>↓</button>
-              <button className="danger" onClick={() => removeItem(row.id)}>✕</button>
+              <button onClick={() => movePeriod(row.id, -1)}>↑</button>
+              <button onClick={() => movePeriod(row.id, 1)}>↓</button>
+              <button className="danger" onClick={() => removePeriod(row.id)}>✕</button>
             </div>
           </div>
         ))}
@@ -691,13 +705,19 @@ function PracticeTab({ data, up, onPrint }) {
 function buildSchedule(practice, drills) {
   let t = parseStart(practice.start);
   return practice.items
-    .map((it) => {
-      const dr = drills.find((x) => x.id === it.drillId);
-      if (!dr) return null;
-      const mins = it.mins ?? dr.mins;
+    .map((per) => {
+      const stations = per.stations
+        .map((s) => {
+          const dr = drills.find((x) => x.id === s.drillId);
+          return dr ? { stationId: s.id, name: dr.name, cat: dr.cat, group: dr.group || "All", notes: dr.notes, defMins: dr.mins } : null;
+        })
+        .filter(Boolean);
+      if (stations.length === 0) return null;
+      const defaultMins = Math.max(...stations.map((s) => Number(s.defMins) || 10));
+      const mins = per.mins ?? defaultMins;
       const row = {
-        id: it.id, name: dr.name, cat: dr.cat, notes: dr.notes,
-        mins, rawMins: it.mins, defaultMins: dr.mins,
+        id: per.id, stations, mins,
+        rawMins: per.mins, defaultMins,
         timeLabel: `${fmtTime(t)} – ${fmtTime(t + mins)}`,
         start: fmtTime(t), end: fmtTime(t + mins),
       };
@@ -706,6 +726,7 @@ function buildSchedule(practice, drills) {
     })
     .filter(Boolean);
 }
+
 
 /* ============================================================
    PLAYBOOK
@@ -976,16 +997,23 @@ function PracticePrint({ data }) {
       </>} />
       <table className="p-table">
         <thead>
-          <tr><th style={{ width: "18%" }}>Time</th><th style={{ width: "26%" }}>Period</th><th style={{ width: "14%" }}>Group</th><th>Coaching Points</th><th style={{ width: "7%" }}>Min</th></tr>
+          <tr><th style={{ width: "17%" }}>Time</th><th>Period · Stations run at the same time</th><th style={{ width: "7%" }}>Min</th></tr>
         </thead>
         <tbody>
           {schedule.map((r) => (
             <tr key={r.id}>
-              <td className="mono">{r.start} – {r.end}</td>
-              <td><b>{r.name}</b></td>
-              <td><span className="p-cat" style={{ background: CAT_COLORS[r.cat] }}>{r.cat}</span></td>
-              <td>{r.notes}</td>
-              <td className="mono center">{r.mins}</td>
+              <td className="mono" style={{ verticalAlign: "top", paddingTop: 9 }}>{r.start} – {r.end}</td>
+              <td>
+                {r.stations.map((st) => (
+                  <div key={st.stationId} className="p-station">
+                    <span className="p-cat" style={{ background: CAT_COLORS[st.cat] }}>{st.cat}</span>
+                    <span className="p-group" style={{ color: groupTone(st.group), borderColor: groupTone(st.group) }}>{st.group}</span>
+                    <b>{st.name}</b>
+                    {st.notes && <span className="p-station-notes"> · {st.notes}</span>}
+                  </div>
+                ))}
+              </td>
+              <td className="mono center" style={{ verticalAlign: "top", paddingTop: 9 }}>{r.mins}</td>
             </tr>
           ))}
         </tbody>
@@ -1048,7 +1076,7 @@ function WristPrint({ data }) {
 }
 
 function GameDayPrint({ data }) {
-  const boxes = Math.max(10, Number(data.settings && data.settings.minSnaps) || 10);
+  const boxes = 12;
   return (
     <div className="sheet">
       <PrintHead title="Game Day Roster & Play Count" right={<>
@@ -1121,50 +1149,24 @@ function Styles() {
 .backup-controls { display: flex; gap: 6px; }
 .mast-btn { appearance: none; background: transparent; border: 1px solid #4A4D53; color: #B9BCC2; font-family: var(--disp); font-weight: 600; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; padding: 5px 10px; cursor: pointer; }
 .mast-btn:hover { border-color: #fff; color: #fff; }
-.link-btn { appearance: none; background: none; border: none; padding: 0; color: var(--red); font-size: 12px; text-decoration: underline; cursor: pointer; font-family: var(--body); }
 
-/* ---- game day: snap counter ---- */
-.snap-summary { font-family: var(--disp); font-weight: 700; font-size: 14px; letter-spacing: 1.2px; text-transform: uppercase; padding: 4px 10px; color: #fff; }
-.snap-summary.under { background: var(--red); }
-.snap-summary.good { background: #0F6B4F; }
-.score-strip { display: flex; align-items: stretch; justify-content: space-between; gap: 10px; padding: 14px 16px; border-bottom: 2px solid var(--ink); background: var(--ink); color: #fff; flex-wrap: wrap; }
-.score-team { display: grid; justify-items: center; gap: 4px; }
-.score-label { font-family: var(--disp); font-weight: 600; font-size: 11px; letter-spacing: 2px; color: #B9BCC2; }
-.score-ctrl { display: flex; align-items: center; gap: 8px; }
-.score-ctrl button { appearance: none; width: 34px; height: 34px; border: 1px solid #4A4D53; background: transparent; color: #fff; font-size: 18px; cursor: pointer; }
-.score-ctrl button:hover { border-color: #fff; }
-.score-num { font-family: var(--disp); font-weight: 700; font-size: 34px; min-width: 44px; text-align: center; }
-.score-mid { display: grid; justify-items: center; align-content: center; gap: 6px; }
-.score-opp { font-family: var(--disp); font-weight: 700; font-size: 16px; letter-spacing: 1.5px; text-transform: uppercase; }
-.qtr-chips { display: flex; gap: 4px; }
-.qtr { appearance: none; border: 1px solid #4A4D53; background: transparent; color: #B9BCC2; font-family: var(--disp); font-weight: 600; font-size: 12px; padding: 3px 9px; cursor: pointer; }
-.qtr.active { background: var(--red); border-color: var(--red); color: #fff; }
-.snap-list { max-height: 460px; overflow-y: auto; }
-.snap-row { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--line); }
-.snap-row.under { background: #FDF3F4; }
-.snap-num-badge { font-family: var(--mono); font-weight: 700; font-size: 13px; width: 30px; text-align: center; flex-shrink: 0; color: var(--ink); }
-.snap-name { flex: 1; min-width: 0; display: grid; }
-.snap-name b { font-size: 13px; }
-.snap-pos { color: var(--muted); font-size: 11px; }
-.snap-meter { width: 90px; height: 8px; background: var(--line); flex-shrink: 0; }
-.snap-row.good .snap-meter-fill { background: #0F6B4F; height: 100%; }
-.snap-row.under .snap-meter-fill { background: var(--red); height: 100%; }
-.snap-count { font-family: var(--disp); font-weight: 700; font-size: 20px; min-width: 30px; text-align: right; }
-.snap-minus { appearance: none; width: 32px; height: 36px; border: 1px solid var(--line); background: #fff; color: var(--muted); font-size: 16px; cursor: pointer; }
-.snap-plus { appearance: none; min-width: 56px; height: 36px; border: none; background: var(--red); color: #fff; font-family: var(--disp); font-weight: 700; font-size: 16px; letter-spacing: 1px; cursor: pointer; }
-.snap-plus:active { background: var(--red-dark); }
+/* ---- drill library filters ---- */
+.lib-filters { display: grid; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.cat-chip-row { display: flex; flex-wrap: wrap; gap: 5px; }
+.filter-chip { appearance: none; border: 1px solid var(--line); background: #fff; color: var(--muted); font-family: var(--disp); font-weight: 600; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; padding: 4px 9px; cursor: pointer; }
+.filter-chip:hover { border-color: var(--ink); color: var(--ink); }
+.filter-chip.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+.group-tag { display: inline-block; border: 1px solid; font-family: var(--disp); font-weight: 600; font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; padding: 1px 5px; margin-left: 6px; vertical-align: 1px; }
+.form-title { font-family: var(--disp); font-weight: 700; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase; }
 
-/* ---- season log ---- */
-.record-chip { font-family: var(--disp); font-weight: 700; font-size: 20px; letter-spacing: 1px; color: var(--red); }
-.log-row { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); }
-.log-result { font-family: var(--disp); font-weight: 700; font-size: 16px; color: #fff; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.log-result.W { background: #0F6B4F; }
-.log-result.L { background: var(--red); }
-.log-result.T { background: var(--muted); }
-.log-main { flex: 1; min-width: 0; display: grid; }
-.log-main b { font-size: 13px; }
-.log-score { display: flex; align-items: center; gap: 4px; }
-.log-score .cell.num { width: 48px; text-align: center; border: 1px solid var(--line); }
+/* ---- multi-station periods ---- */
+.plan-row.period { align-items: flex-start; }
+.plan-row.period .plan-time { padding-top: 5px; }
+.station-line { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+.station-line .cat-bar { width: 4px; height: 16px; align-self: center; }
+.station-line b { font-size: 13px; }
+.station-x { padding: 0 4px; }
+.station-add { margin-top: 4px; max-width: 280px; font-size: 12px; color: var(--muted); border-style: dashed; }
 
 /* ---- tabs ---- */
 .tabs { display: flex; gap: 0; background: var(--ink); padding: 0 20px; overflow-x: auto; }
@@ -1301,6 +1303,10 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .p-table td { font-size: 12px; padding: 7px 6px; }
 .p-table .center { text-align: center; }
 .p-cat { color: #fff; font-family: var(--disp); font-weight: 600; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; padding: 2px 6px; white-space: nowrap; }
+.p-station { padding: 3px 0; font-size: 12px; }
+.p-station .p-cat { margin-right: 6px; }
+.p-group { display: inline-block; border: 1px solid; font-family: var(--disp); font-weight: 600; font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase; padding: 0 5px; margin-right: 7px; }
+.p-station-notes { color: var(--muted); font-size: 11px; }
 .p-foot { display: flex; justify-content: space-between; margin-top: 16px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
 .p-foot.no-border { border-top: none; }
 
