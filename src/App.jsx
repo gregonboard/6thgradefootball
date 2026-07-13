@@ -41,6 +41,21 @@ const SITUATIONS = [
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
+/* ---------- formation view coordinates (percent of field, x/y) ---------- */
+const OFF_SPOTS = {
+  "WR (X)": [7, 46],
+  "LT": [31, 46], "LG": [39.5, 46], "C": [48, 46], "RG": [56.5, 46], "RT": [65, 46],
+  "TE": [73.5, 46],
+  "WR (Z)": [92, 52],
+  "QB": [48, 61], "FB": [48, 74], "RB": [48, 87],
+};
+const DEF_SPOTS = {
+  "DE (L)": [24, 30], "DT (L)": [36, 30], "NG": [48, 30], "DT (R)": [60, 30], "DE (R)": [72, 30],
+  "SAM LB": [28, 53], "MIKE LB": [48, 53], "WILL LB": [68, 53],
+  "CB (L)": [8, 40], "CB (R)": [88, 40],
+  "SAFETY": [48, 79],
+};
+
 const SEED = {
   players: [
     { id: uid(), name: "Sample Player", num: "7", offPos: "QB", defPos: "SAFETY" },
@@ -408,6 +423,7 @@ function BackupControls({ data, setData }) {
 function RosterTab({ data, up, onPrint }) {
   const [name, setName] = useState("");
   const [num, setNum] = useState("");
+  const [formationView, setFormationView] = useState(false);
 
   const add = () => {
     if (!name.trim()) return;
@@ -486,7 +502,10 @@ function RosterTab({ data, up, onPrint }) {
       </section>
 
       <section className="panel">
-        <div className="panel-head"><h2>Depth Chart</h2></div>
+        <div className="panel-head">
+          <h2>Depth Chart</h2>
+          <button className="btn" onClick={() => setFormationView(true)}>Formation View</button>
+        </div>
         <div className="depth-grid">
           <div>
             <div className="depth-title off-title">OFFENSE</div>
@@ -526,6 +545,87 @@ function RosterTab({ data, up, onPrint }) {
           </div>
         )}
       </section>
+
+      {formationView && <FormationView data={data} onClose={() => setFormationView(false)} />}
+    </div>
+  );
+}
+
+/* ============================================================
+   FORMATION VIEW — big screen depth chart
+   ============================================================ */
+function FormationView({ data, onClose }) {
+  const [side, setSide] = useState("offense");
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === " ") {
+        e.preventDefault();
+        setSide((s) => (s === "offense" ? "defense" : "offense"));
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const goFullscreen = () => {
+    const el = document.documentElement;
+    if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen();
+    else if (document.exitFullscreen) document.exitFullscreen();
+  };
+
+  const spots = side === "offense" ? OFF_SPOTS : DEF_SPOTS;
+  const posList = side === "offense" ? OFF_POS : DEF_POS;
+  const field = side === "offense" ? "offPos" : "defPos";
+  const tone = side === "offense" ? "var(--red)" : "var(--def-blue)";
+
+  return (
+    <div className="fv-layer">
+      <div className="fv-toolbar">
+        <div className="fv-brand">
+          <span className="p-mark" style={{ width: 30, height: 30, fontSize: 14 }}>VH</span>
+          <b>REBELS DEPTH CHART</b>
+        </div>
+        <div className="fv-switch">
+          <button className={"fv-side" + (side === "offense" ? " active off" : "")} onClick={() => setSide("offense")}>Offense</button>
+          <button className={"fv-side" + (side === "defense" ? " active def" : "")} onClick={() => setSide("defense")}>Defense</button>
+        </div>
+        <div className="fv-actions">
+          <span className="fv-hint">Space flips sides · Esc closes</span>
+          <button className="btn ghost dark" onClick={goFullscreen}>Fullscreen</button>
+          <button className="btn" onClick={onClose}>Close</button>
+        </div>
+      </div>
+      <div className="fv-stage">
+        <div className="fv-field">
+          <div className="fv-los" style={{ top: side === "offense" ? "38%" : "21%" }}>
+            <span>LOS</span>
+          </div>
+          {posList.map((pos) => {
+            const [x, y] = spots[pos] || [50, 50];
+            const stack = data.players.filter((p) => p[field] === pos);
+            const starter = stack[0];
+            const backups = stack.slice(1, 3);
+            return (
+              <div key={pos} className="fv-node" style={{ left: `${x}%`, top: `${y}%` }}>
+                <div className="fv-pos" style={{ background: tone }}>{pos}</div>
+                {starter ? (
+                  <div className="fv-card">
+                    <span className="fv-num">{starter.num ? `#${starter.num}` : ""}</span>
+                    <span className="fv-name">{starter.name}</span>
+                  </div>
+                ) : (
+                  <div className="fv-card open">OPEN</div>
+                )}
+                {backups.map((b) => (
+                  <div key={b.id} className="fv-backup">{b.num ? `#${b.num} ` : ""}{b.name}</div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1167,6 +1267,35 @@ function Styles() {
 .station-line b { font-size: 13px; }
 .station-x { padding: 0 4px; }
 .station-add { margin-top: 4px; max-width: 280px; font-size: 12px; color: var(--muted); border-style: dashed; }
+
+/* ---- formation view (big screen) ---- */
+.fv-layer { position: fixed; inset: 0; z-index: 60; background: #0C0E11; display: flex; flex-direction: column; }
+.fv-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 20px; background: var(--ink); color: #fff; flex-wrap: wrap; }
+.fv-brand { display: flex; align-items: center; gap: 10px; font-family: var(--disp); font-weight: 700; font-size: 16px; letter-spacing: 2px; }
+.fv-switch { display: flex; }
+.fv-side { appearance: none; border: 1px solid #4A4D53; background: transparent; color: #B9BCC2; font-family: var(--disp); font-weight: 700; font-size: 16px; letter-spacing: 1.5px; text-transform: uppercase; padding: 7px 18px; cursor: pointer; }
+.fv-side.active.off { background: var(--red); border-color: var(--red); color: #fff; }
+.fv-side.active.def { background: var(--def-blue); border-color: var(--def-blue); color: #fff; }
+.fv-actions { display: flex; align-items: center; gap: 10px; }
+.fv-hint { font-size: 11px; letter-spacing: 1px; color: #9DA1A8; text-transform: uppercase; }
+.btn.ghost.dark { color: #fff; border-color: #4A4D53; }
+.btn.ghost.dark:hover { background: #fff; color: var(--ink); }
+.fv-stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2vh 2vw; overflow: hidden; }
+.fv-field { position: relative; width: min(96vw, 168vh); aspect-ratio: 16 / 9; background:
+  repeating-linear-gradient(0deg, rgba(255,255,255,.06) 0, rgba(255,255,255,.06) 2px, transparent 2px, transparent 11.1%),
+  linear-gradient(180deg, #1E5A38 0%, #17492D 55%, #123B25 100%);
+  border: 3px solid rgba(255,255,255,.25); box-shadow: 0 0 80px rgba(0,0,0,.6) inset; }
+.fv-field::before, .fv-field::after { content: ""; position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,.10); left: 33%; }
+.fv-field::after { left: 67%; }
+.fv-los { position: absolute; left: 0; right: 0; height: 3px; background: #F4D35E; opacity: .85; }
+.fv-los span { position: absolute; right: 8px; top: -20px; font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 2px; color: #F4D35E; }
+.fv-node { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 4px; width: 12%; min-width: 90px; }
+.fv-pos { color: #fff; font-family: var(--disp); font-weight: 700; font-size: clamp(10px, 1.1vw, 16px); letter-spacing: 1.5px; text-transform: uppercase; padding: 1px 8px; white-space: nowrap; }
+.fv-card { background: #fff; border: 2px solid var(--ink); padding: 4px 10px 6px; display: flex; flex-direction: column; align-items: center; min-width: 80%; box-shadow: 0 3px 0 rgba(0,0,0,.35); }
+.fv-card.open { background: transparent; border: 2px dashed rgba(255,255,255,.5); color: rgba(255,255,255,.7); font-family: var(--disp); font-weight: 700; letter-spacing: 2px; padding: 10px; font-size: clamp(11px, 1vw, 15px); }
+.fv-num { font-family: var(--disp); font-weight: 700; font-size: clamp(16px, 2vw, 30px); line-height: 1; color: var(--ink); }
+.fv-name { font-family: var(--disp); font-weight: 600; font-size: clamp(10px, 1vw, 15px); letter-spacing: 1px; text-transform: uppercase; text-align: center; line-height: 1.15; margin-top: 2px; }
+.fv-backup { color: rgba(255,255,255,.85); font-size: clamp(9px, .85vw, 13px); letter-spacing: .5px; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
 
 /* ---- tabs ---- */
 .tabs { display: flex; gap: 0; background: var(--ink); padding: 0 20px; overflow-x: auto; }
