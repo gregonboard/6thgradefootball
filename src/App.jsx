@@ -37,7 +37,7 @@ function assignmentsFor(data, side, id) {
     const i = ids.indexOf(id);
     if (i >= 0) out.push({ pos, team: i + 1 });
   }
-  return out;
+  return out.sort((a, b) => a.team - b.team);
 }
 
 /* Migrate older saves (single offPos/defPos per player, variable depth lists)
@@ -213,6 +213,7 @@ const RAW_SEED = {
     { id: uid(), name: "Competition Relays", cat: "Conditioning", group: "All", mins: 8, notes: "Ball carry relays by position group. Winners pick the break-down chant." },
   ],
   practice: { date: "", start: "17:30", title: "Practice Plan", items: [] },
+  savedPlans: [],
   plays: [
     { id: uid(), num: 1, name: "Power Right", formation: "I-Form", type: "Run", note: "Base play. FB kickout." },
     { id: uid(), num: 2, name: "Power Left", formation: "I-Form", type: "Run", note: "" },
@@ -306,6 +307,7 @@ function normalizeData(parsed) {
     ...parsed,
     drills,
     practice: { ...SEED.practice, ...(parsed.practice || {}), items },
+    savedPlans: parsed.savedPlans || [],
     wrist: { ...SEED.wrist, ...(parsed.wrist || {}) },
     depth: parsed.depth || { off: {}, def: {} },
     depthVersion: parsed.depthVersion || 1,
@@ -458,6 +460,7 @@ function BackupControls({ data, setData }) {
       try {
         const parsed = JSON.parse(reader.result);
         if (!parsed || !Array.isArray(parsed.players)) throw new Error("bad file");
+        if (!window.confirm("Restore this backup? It replaces everything currently in the app.")) return;
         setData(normalizeData(parsed));
       } catch (err) {
         window.alert("That file doesn't look like a Sideline Command backup.");
@@ -495,6 +498,8 @@ function RosterTab({ data, up, onPrint }) {
     up({ players: data.players.map((p) => (p.id === id ? { ...p, ...patch } : p)) });
 
   const remove = (id) => {
+    const p = data.players.find((x) => x.id === id);
+    if (!window.confirm(`Remove ${p ? p.name : "this player"} from the roster? His depth chart spots open up.`)) return;
     const strip = (m) => Object.fromEntries(Object.entries(m || {}).map(([k, v]) => [k, v.map((x) => (x === id ? null : x))]));
     up({
       players: data.players.filter((p) => p.id !== id),
@@ -537,6 +542,10 @@ function RosterTab({ data, up, onPrint }) {
   };
   const offDoubles = doubleStarters("off", OFF_POS);
   const defDoubles = doubleStarters("def", DEF_POS);
+
+  const numCounts = {};
+  for (const p of data.players) if (p.num) numCounts[p.num] = (numCounts[p.num] || 0) + 1;
+  const dupNums = Object.keys(numCounts).filter((n) => numCounts[n] > 1);
 
   const byRoster = (side, id) =>
     assignmentsFor(data, side, id).map((a) => `${a.pos} ${a.team}`).join(" · ");
@@ -623,8 +632,9 @@ function RosterTab({ data, up, onPrint }) {
             </tbody>
           </table>
         </div>
-        {(offMissing.length > 0 || defMissing.length > 0 || offDoubles.length > 0 || defDoubles.length > 0) && data.players.length > 1 && (
+        {(offMissing.length > 0 || defMissing.length > 0 || offDoubles.length > 0 || defDoubles.length > 0 || dupNums.length > 0) && data.players.length > 1 && (
           <div className="warn">
+            {dupNums.length > 0 && <div><b>Duplicate jersey numbers:</b> {dupNums.map((n) => `#${n}`).join(", ")}</div>}
             {offMissing.length > 0 && <div><b>Offense needs a starter at:</b> {offMissing.join(", ")}</div>}
             {defMissing.length > 0 && <div><b>Defense needs a starter at:</b> {defMissing.join(", ")}</div>}
             {offDoubles.map((e) => (
@@ -737,6 +747,8 @@ function PracticeTab({ data, up, onPrint }) {
     setD({ name: "", cat: d.cat, group: d.group, mins: 10, notes: "" });
   };
   const removeDrill = (id) => {
+    const dr = drills.find((x) => x.id === id);
+    if (!window.confirm(`Delete drill${dr ? ` "${dr.name}"` : ""}? It comes out of today's plan too.`)) return;
     const items = practice.items
       .map((per) => ({ ...per, stations: per.stations.filter((s) => s.drillId !== id) }))
       .filter((per) => per.stations.length > 0);
@@ -776,7 +788,34 @@ function PracticeTab({ data, up, onPrint }) {
   const setPeriodMins = (id, mins) =>
     up({ practice: { ...practice, items: practice.items.map((per) => (per.id === id ? { ...per, mins: mins === "" ? null : Number(mins) } : per)) } });
   const setP = (patch) => up({ practice: { ...practice, ...patch } });
-  const clearPlan = () => up({ practice: { ...practice, items: [] } });
+  const clearPlan = () => {
+    if (!window.confirm("Clear today's plan? (Saved plans are untouched.)")) return;
+    up({ practice: { ...practice, items: [] } });
+  };
+
+  /* ---- saved plans library ---- */
+  const [planPick, setPlanPick] = useState("");
+  const savedPlans = data.savedPlans || [];
+  const savePlan = () => {
+    const suggested = (practice.title && practice.title !== "Practice Plan" ? practice.title : "") || practice.date || todayStr();
+    const nm = window.prompt("Name this plan:", suggested);
+    if (!nm) return;
+    const snap = JSON.parse(JSON.stringify(practice));
+    up({ savedPlans: [{ id: uid(), name: nm.trim(), savedAt: todayStr(), plan: snap }, ...savedPlans] });
+  };
+  const loadPlan = () => {
+    const sp = savedPlans.find((s) => s.id === planPick);
+    if (!sp) return;
+    if (practice.items.length > 0 && !window.confirm(`Load "${sp.name}"? It replaces today's plan.`)) return;
+    up({ practice: JSON.parse(JSON.stringify(sp.plan)) });
+  };
+  const deletePlan = () => {
+    const sp = savedPlans.find((s) => s.id === planPick);
+    if (!sp) return;
+    if (!window.confirm(`Delete saved plan "${sp.name}"?`)) return;
+    up({ savedPlans: savedPlans.filter((s) => s.id !== sp.id) });
+    setPlanPick("");
+  };
 
   /* library filtering */
   const needle = q.trim().toLowerCase();
@@ -847,11 +886,22 @@ function PracticeTab({ data, up, onPrint }) {
       <section className="panel">
         <div className="panel-head">
           <h2>Today's Plan</h2>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="btn ghost" onClick={savePlan} disabled={practice.items.length === 0}>Save Copy</button>
             {practice.items.length > 0 && <button className="btn ghost" onClick={clearPlan}>Clear</button>}
             <button className="btn" onClick={onPrint} disabled={practice.items.length === 0}>Print One-Pager</button>
           </div>
         </div>
+        {savedPlans.length > 0 && (
+          <div className="saved-plans">
+            <select value={planPick} onChange={(e) => setPlanPick(e.target.value)}>
+              <option value="">Saved plans ({savedPlans.length})…</option>
+              {savedPlans.map((s) => <option key={s.id} value={s.id}>{s.name} · saved {s.savedAt}</option>)}
+            </select>
+            <button className="btn small" onClick={loadPlan} disabled={!planPick}>Load</button>
+            <button className="icon-btn danger" title="Delete saved plan" onClick={deletePlan} disabled={!planPick}>✕</button>
+          </div>
+        )}
         <div className="plan-meta">
           <label>Date <input placeholder={todayStr()} value={practice.date} onChange={(e) => setP({ date: e.target.value })} /></label>
           <label>Start <input type="time" value={practice.start} onChange={(e) => setP({ start: e.target.value })} /></label>
@@ -874,7 +924,7 @@ function PracticeTab({ data, up, onPrint }) {
               ))}
               <select className="station-add" value="" onChange={(e) => { addStation(row.id, e.target.value); }}>
                 <option value="">+ station (runs at the same time)…</option>
-                {drills.map((dr) => <option key={dr.id} value={dr.id}>{dr.group}: {dr.name}</option>)}
+                {drills.filter((dr) => !row.stations.some((st) => st.drillId === dr.id)).map((dr) => <option key={dr.id} value={dr.id}>{dr.group}: {dr.name}</option>)}
               </select>
             </div>
             <input className="cell mins" type="number" min="1" value={row.rawMins ?? ""} placeholder={String(row.defaultMins)} onChange={(e) => setPeriodMins(row.id, e.target.value)} />
@@ -900,12 +950,12 @@ function buildSchedule(practice, drills) {
       const stations = per.stations
         .map((s) => {
           const dr = drills.find((x) => x.id === s.drillId);
-          return dr ? { stationId: s.id, name: dr.name, cat: dr.cat, group: dr.group || "All", notes: dr.notes, defMins: dr.mins } : null;
+          return dr ? { stationId: s.id, drillId: dr.id, name: dr.name, cat: dr.cat, group: dr.group || "All", notes: dr.notes, defMins: dr.mins } : null;
         })
         .filter(Boolean);
       if (stations.length === 0) return null;
       const defaultMins = Math.max(...stations.map((s) => Number(s.defMins) || 10));
-      const mins = per.mins ?? defaultMins;
+      const mins = per.mins != null && per.mins > 0 ? per.mins : defaultMins;
       const row = {
         id: per.id, stations, mins,
         rawMins: per.mins, defaultMins,
@@ -945,9 +995,12 @@ function PlaybookTab({ data, up }) {
     up({ plays: [...plays, { ...src, id: uid(), num: nextNum, name: flip(src.name) }] });
   };
   const remove = (id) => {
+    const p = plays.find((x) => x.id === id);
+    if (!window.confirm(`Delete play${p ? ` "${p.name}"` : ""}? It comes off the call sheet and wristbands too.`)) return;
     const cs = {};
     for (const k of Object.keys(data.callSheet || {})) cs[k] = (data.callSheet[k] || []).filter((pid) => pid !== id);
-    up({ plays: plays.filter((p) => p.id !== id), callSheet: cs });
+    const selected = data.wrist.selected === null ? null : data.wrist.selected.filter((pid) => pid !== id);
+    up({ plays: plays.filter((p) => p.id !== id), callSheet: cs, wrist: { ...data.wrist, selected } });
   };
 
   return (
@@ -972,7 +1025,9 @@ function PlaybookTab({ data, up }) {
           <tbody>
             {[...plays].sort((a, b) => a.num - b.num).map((p) => (
               <tr key={p.id}>
-                <td><input className="cell num" type="number" value={p.num} onChange={(e) => setPlay(p.id, { num: Number(e.target.value) })} /></td>
+                <td><input className="cell num" type="number" key={p.id + ":" + p.num} defaultValue={p.num}
+                  onBlur={(e) => { const n = Number(e.target.value); if (n && n !== p.num) setPlay(p.id, { num: n }); }}
+                  onKeyDown={(e) => e.key === "Enter" && e.target.blur()} /></td>
                 <td><input className="cell" value={p.name} onChange={(e) => setPlay(p.id, { name: e.target.value })} /></td>
                 <td><input className="cell" value={p.formation} onChange={(e) => setPlay(p.id, { formation: e.target.value })} /></td>
                 <td>
@@ -991,6 +1046,14 @@ function PlaybookTab({ data, up }) {
           </tbody>
         </table>
       </div>
+      {(() => {
+        const counts = {};
+        for (const p of plays) counts[p.num] = (counts[p.num] || 0) + 1;
+        const dups = Object.keys(counts).filter((n) => counts[n] > 1);
+        return dups.length > 0 ? (
+          <div className="warn"><b>Duplicate play numbers:</b> {dups.map((n) => `#${n}`).join(", ")}. Kids read numbers off the wristband, so every play needs its own.</div>
+        ) : null;
+      })()}
     </section>
   );
 }
@@ -1086,7 +1149,10 @@ function WristTab({ data, up, onPrint }) {
         <p className="hint">Cards print at 5" × 3", the standard triple-window youth wristband insert. Cut on the dashed lines and slide into the sleeve. Print one card per player who wears a band, plus spares.</p>
         <div className="check-head">
           <b>Plays on the band ({active.length})</b>
-          <button className="btn ghost small" onClick={() => setW({ selected: null })}>Select all</button>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button className="btn ghost small" onClick={() => setW({ selected: null })}>All</button>
+            <button className="btn ghost small" onClick={() => setW({ selected: [] })}>None</button>
+          </div>
         </div>
         <div className="check-list">
           {plays.map((p) => (
@@ -1340,6 +1406,11 @@ function Styles() {
 .backup-controls { display: flex; gap: 6px; }
 .mast-btn { appearance: none; background: transparent; border: 1px solid #4A4D53; color: #B9BCC2; font-family: var(--disp); font-weight: 600; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; padding: 5px 10px; cursor: pointer; }
 .mast-btn:hover { border-color: #fff; color: #fff; }
+
+/* ---- saved plans ---- */
+.saved-plans { display: flex; gap: 8px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); background: #F6F4EF; }
+.saved-plans select { flex: 1; min-width: 0; }
+.saved-plans .icon-btn:disabled, .saved-plans .btn:disabled { opacity: .45; cursor: default; }
 
 /* ---- drill library filters ---- */
 .lib-filters { display: grid; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
