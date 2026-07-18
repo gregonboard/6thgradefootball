@@ -17,6 +17,59 @@ const GROUP_TONES = {
   "Special Teams": "#0F6B4F",
 };
 const groupTone = (g) => GROUP_TONES[g] || "#15171B";
+
+/* ---------- depth chart model ----------
+   The depth chart is the source of truth. Each side has, per position,
+   exactly three team slots: data.depth.off["QB"] = [id1, id2, id3] (null = open).
+   A player can hold slots at multiple positions on the same side, so your
+   starting WR can also be the 2nd team QB. */
+function slotsFor(data, side, pos) {
+  const ids = ((data.depth && data.depth[side]) || {})[pos] || [null, null, null];
+  return [0, 1, 2].map((i) => data.players.find((p) => p.id === ids[i]) || null);
+}
+
+/* All slots a player holds on a side, e.g. [{pos:"WR (X)", team:1}, {pos:"QB", team:2}] */
+function assignmentsFor(data, side, id) {
+  const posList = side === "off" ? OFF_POS : DEF_POS;
+  const out = [];
+  for (const pos of posList) {
+    const ids = ((data.depth && data.depth[side]) || {})[pos] || [];
+    const i = ids.indexOf(id);
+    if (i >= 0) out.push({ pos, team: i + 1 });
+  }
+  return out;
+}
+
+/* Migrate older saves (single offPos/defPos per player, variable depth lists)
+   into the 3-slot model. Runs once, then depthVersion pins the format. */
+function migrateDepth(data) {
+  const three = (a) => [a[0] || null, a[1] || null, a[2] || null];
+  if ((data.depthVersion || 1) >= 2) {
+    const fix = (m, list) => {
+      const o = {};
+      for (const pos of list) o[pos] = three((m || {})[pos] || []);
+      return o;
+    };
+    return { ...data, depth: { off: fix(data.depth && data.depth.off, OFF_POS), def: fix(data.depth && data.depth.def, DEF_POS) } };
+  }
+  const build = (side, posList, field) => {
+    const out = {};
+    for (const pos of posList) {
+      const stored = ((data.depth && data.depth[side]) || {})[pos] || [];
+      const ordered = [];
+      for (const id of stored) {
+        const p = data.players.find((x) => x.id === id);
+        if (p && p[field] === pos && !ordered.includes(id)) ordered.push(id);
+      }
+      for (const p of data.players) {
+        if (p[field] === pos && !ordered.includes(p.id)) ordered.push(p.id);
+      }
+      out[pos] = three(ordered);
+    }
+    return out;
+  };
+  return { ...data, depth: { off: build("off", OFF_POS, "offPos"), def: build("def", DEF_POS, "defPos") }, depthVersion: 2 };
+}
 const CAT_COLORS = {
   Warmup: "#B7791F",
   Individual: "#1F3A5F",
@@ -43,11 +96,11 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 
 /* ---------- formation view coordinates (percent of field, x = center, y = top of node) ---------- */
 const OFF_SPOTS = {
-  "WR (X)": [7, 42],
+  "WR (X)": [8, 42],
   "LT": [34, 42], "LG": [42, 42], "C": [50, 42], "RG": [58, 42], "RT": [66, 42],
   "TE": [74, 42],
-  "WR (Z)": [93, 48],
-  "QB": [50, 56], "FB": [50, 70], "RB": [50, 84],
+  "WR (Z)": [92, 48],
+  "QB": [50, 55], "FB": [50, 68], "RB": [50, 81],
 };
 const DEF_SPOTS = {
   "DE (L)": [26, 26], "DT (L)": [38, 26], "NG": [50, 26], "DT (R)": [62, 26], "DE (R)": [74, 26],
@@ -56,7 +109,7 @@ const DEF_SPOTS = {
   "SAFETY": [50, 74],
 };
 
-const SEED = {
+const RAW_SEED = {
   players: [
     { id: uid(), name: "Sample Player", num: "7", offPos: "QB", defPos: "SAFETY" },
   ],
@@ -166,8 +219,10 @@ const SEED = {
   ],
   callSheet: {},
   wrist: { title: "REBELS", cols: 3, copies: 4, selected: null },
+  depth: { off: {}, def: {} },
   libVersion: 2,
 };
+const SEED = migrateDepth(RAW_SEED);
 
 const STORAGE_KEY = "vh6-coach-data-v1";
 
@@ -244,14 +299,16 @@ function normalizeData(parsed) {
     const have = new Set(drills.map((d) => d.name.toLowerCase()));
     drills = [...drills, ...SEED.drills.filter((d) => !have.has(d.name.toLowerCase()))];
   }
-  return {
+  return migrateDepth({
     ...SEED,
     ...parsed,
     drills,
     practice: { ...SEED.practice, ...(parsed.practice || {}), items },
     wrist: { ...SEED.wrist, ...(parsed.wrist || {}) },
+    depth: parsed.depth || { off: {}, def: {} },
+    depthVersion: parsed.depthVersion || 1,
     libVersion: SEED.libVersion,
-  };
+  });
 }
 
 /* ---------- time helpers ---------- */
@@ -418,22 +475,30 @@ function BackupControls({ data, setData }) {
 }
 
 /* ============================================================
-   ROSTER & DEPTH CHART
+   ROSTER & DEPTH CHART — 1st/2nd/3rd team slots per position
    ============================================================ */
 function RosterTab({ data, up, onPrint }) {
   const [name, setName] = useState("");
   const [num, setNum] = useState("");
   const [formationView, setFormationView] = useState(false);
+  const [depthSide, setDepthSide] = useState("off");
 
   const add = () => {
     if (!name.trim()) return;
-    up({ players: [...data.players, { id: uid(), name: name.trim(), num: num.trim(), offPos: "", defPos: "" }] });
+    up({ players: [...data.players, { id: uid(), name: name.trim(), num: num.trim() }] });
     setName("");
     setNum("");
   };
   const setPlayer = (id, patch) =>
     up({ players: data.players.map((p) => (p.id === id ? { ...p, ...patch } : p)) });
-  const remove = (id) => up({ players: data.players.filter((p) => p.id !== id) });
+
+  const remove = (id) => {
+    const strip = (m) => Object.fromEntries(Object.entries(m || {}).map(([k, v]) => [k, v.map((x) => (x === id ? null : x))]));
+    up({
+      players: data.players.filter((p) => p.id !== id),
+      depth: { off: strip(data.depth.off), def: strip(data.depth.def) },
+    });
+  };
   const move = (id, dir) => {
     const arr = [...data.players];
     const i = arr.findIndex((p) => p.id === id);
@@ -443,13 +508,36 @@ function RosterTab({ data, up, onPrint }) {
     up({ players: arr });
   };
 
-  const depth = (posList, field) =>
-    posList.map((pos) => ({ pos, players: data.players.filter((p) => p[field] === pos) }));
+  /* Put a player in a team slot. He's cleared from other slots at the SAME
+     position (can't be his own backup), but can hold slots at other positions. */
+  const setSlot = (side, pos, idx, playerId) => {
+    const depth = { off: { ...data.depth.off }, def: { ...data.depth.def } };
+    const slots = [...(depth[side][pos] || [null, null, null])];
+    if (playerId) for (let i = 0; i < 3; i++) if (slots[i] === playerId) slots[i] = null;
+    slots[idx] = playerId || null;
+    depth[side][pos] = slots;
+    up({ depth });
+  };
 
-  const offDepth = depth(OFF_POS, "offPos");
-  const defDepth = depth(DEF_POS, "defPos");
-  const offMissing = offDepth.filter((d) => d.players.length === 0).map((d) => d.pos);
-  const defMissing = defDepth.filter((d) => d.players.length === 0).map((d) => d.pos);
+  const posList = depthSide === "off" ? OFF_POS : DEF_POS;
+  const offMissing = OFF_POS.filter((pos) => !slotsFor(data, "off", pos)[0]);
+  const defMissing = DEF_POS.filter((pos) => !slotsFor(data, "def", pos)[0]);
+
+  /* A kid slotted 1st team at two positions on the same side can't be in
+     two places at once. Worth a flag, not a block. */
+  const doubleStarters = (side, list) => {
+    const seen = {};
+    for (const pos of list) {
+      const s = slotsFor(data, side, pos)[0];
+      if (s) (seen[s.id] = seen[s.id] || { p: s, at: [] }).at.push(pos);
+    }
+    return Object.values(seen).filter((e) => e.at.length > 1);
+  };
+  const offDoubles = doubleStarters("off", OFF_POS);
+  const defDoubles = doubleStarters("def", DEF_POS);
+
+  const byRoster = (side, id) =>
+    assignmentsFor(data, side, id).map((a) => `${a.pos} ${a.team}`).join(" · ");
 
   return (
     <div className="two-col">
@@ -463,7 +551,7 @@ function RosterTab({ data, up, onPrint }) {
           <input placeholder="#" style={{ width: 56 }} value={num} onChange={(e) => setNum(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
           <button className="btn" onClick={add}>Add Player</button>
         </div>
-        <p className="hint">Order matters: the first player listed at a position is 1st string. Use ↑ ↓ to set depth.</p>
+        <p className="hint">Names and numbers live here. Positions are set in the depth chart, where a kid can hold spots on multiple lines: 1st team receiver and 2nd team QB at the same time.</p>
         <div className="table-wrap">
           <table>
             <thead>
@@ -474,18 +562,8 @@ function RosterTab({ data, up, onPrint }) {
                 <tr key={p.id}>
                   <td><input className="cell num" value={p.num} onChange={(e) => setPlayer(p.id, { num: e.target.value })} /></td>
                   <td><input className="cell" value={p.name} onChange={(e) => setPlayer(p.id, { name: e.target.value })} /></td>
-                  <td>
-                    <select className="cell off" value={p.offPos} onChange={(e) => setPlayer(p.id, { offPos: e.target.value })}>
-                      <option value="">—</option>
-                      {OFF_POS.map((o) => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  </td>
-                  <td>
-                    <select className="cell def" value={p.defPos} onChange={(e) => setPlayer(p.id, { defPos: e.target.value })}>
-                      <option value="">—</option>
-                      {DEF_POS.map((o) => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  </td>
+                  <td className="assign off-assign">{byRoster("off", p.id) || <span className="unfilled">—</span>}</td>
+                  <td className="assign def-assign">{byRoster("def", p.id) || <span className="unfilled">—</span>}</td>
                   <td className="row-actions">
                     <button title="Move up" onClick={() => move(p.id, -1)}>↑</button>
                     <button title="Move down" onClick={() => move(p.id, 1)}>↓</button>
@@ -504,44 +582,55 @@ function RosterTab({ data, up, onPrint }) {
       <section className="panel">
         <div className="panel-head">
           <h2>Depth Chart</h2>
-          <button className="btn" onClick={() => setFormationView(true)}>Formation View</button>
-        </div>
-        <div className="depth-grid">
-          <div>
-            <div className="depth-title off-title">OFFENSE</div>
-            {offDepth.map((d) => (
-              <div key={d.pos} className="depth-row">
-                <span className="depth-pos off-pos">{d.pos}</span>
-                <span className="depth-names">
-                  {d.players.length ? d.players.map((p, i) => (
-                    <span key={p.id} className={"depth-name" + (i === 0 ? " first" : "")}>
-                      {p.num && <b>#{p.num}</b>} {p.name}
-                    </span>
-                  )) : <span className="unfilled">open</span>}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div>
-            <div className="depth-title def-title">DEFENSE</div>
-            {defDepth.map((d) => (
-              <div key={d.pos} className="depth-row">
-                <span className="depth-pos def-pos">{d.pos}</span>
-                <span className="depth-names">
-                  {d.players.length ? d.players.map((p, i) => (
-                    <span key={p.id} className={"depth-name" + (i === 0 ? " first" : "")}>
-                      {p.num && <b>#{p.num}</b>} {p.name}
-                    </span>
-                  )) : <span className="unfilled">open</span>}
-                </span>
-              </div>
-            ))}
+          <div style={{ display: "flex", gap: 8 }}>
+            <div className="side-switch">
+              <button className={"side-btn" + (depthSide === "off" ? " active off" : "")} onClick={() => setDepthSide("off")}>Offense</button>
+              <button className={"side-btn" + (depthSide === "def" ? " active def" : "")} onClick={() => setDepthSide("def")}>Defense</button>
+            </div>
+            <button className="btn" onClick={() => setFormationView(true)}>Formation View</button>
           </div>
         </div>
-        {(offMissing.length > 0 || defMissing.length > 0) && data.players.length > 1 && (
+        <div className="table-wrap">
+          <table className="slot-table">
+            <thead>
+              <tr><th>Position</th><th>1st Team</th><th>2nd Team</th><th>3rd Team</th></tr>
+            </thead>
+            <tbody>
+              {posList.map((pos) => {
+                const slots = slotsFor(data, depthSide, pos);
+                return (
+                  <tr key={pos}>
+                    <td><span className={"depth-pos " + (depthSide === "off" ? "off-pos" : "def-pos")}>{pos}</span></td>
+                    {[0, 1, 2].map((i) => (
+                      <td key={i}>
+                        <select
+                          className={"cell slot" + (i === 0 && !slots[i] ? " missing" : "")}
+                          value={slots[i] ? slots[i].id : ""}
+                          onChange={(e) => setSlot(depthSide, pos, i, e.target.value)}
+                        >
+                          <option value="">—</option>
+                          {data.players.map((p) => (
+                            <option key={p.id} value={p.id}>{p.num ? `#${p.num} ` : ""}{p.name}</option>
+                          ))}
+                        </select>
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {(offMissing.length > 0 || defMissing.length > 0 || offDoubles.length > 0 || defDoubles.length > 0) && data.players.length > 1 && (
           <div className="warn">
-            {offMissing.length > 0 && <div><b>Offense needs:</b> {offMissing.join(", ")}</div>}
-            {defMissing.length > 0 && <div><b>Defense needs:</b> {defMissing.join(", ")}</div>}
+            {offMissing.length > 0 && <div><b>Offense needs a starter at:</b> {offMissing.join(", ")}</div>}
+            {defMissing.length > 0 && <div><b>Defense needs a starter at:</b> {defMissing.join(", ")}</div>}
+            {offDoubles.map((e) => (
+              <div key={e.p.id}><b>Heads up:</b> {e.p.num ? `#${e.p.num} ` : ""}{e.p.name} is 1st team offense at {e.at.join(" and ")}</div>
+            ))}
+            {defDoubles.map((e) => (
+              <div key={e.p.id}><b>Heads up:</b> {e.p.num ? `#${e.p.num} ` : ""}{e.p.name} is 1st team defense at {e.at.join(" and ")}</div>
+            ))}
           </div>
         )}
       </section>
@@ -550,6 +639,7 @@ function RosterTab({ data, up, onPrint }) {
     </div>
   );
 }
+
 
 /* ============================================================
    FORMATION VIEW — big screen depth chart
@@ -577,7 +667,6 @@ function FormationView({ data, onClose }) {
 
   const spots = side === "offense" ? OFF_SPOTS : DEF_SPOTS;
   const posList = side === "offense" ? OFF_POS : DEF_POS;
-  const field = side === "offense" ? "offPos" : "defPos";
   const tone = side === "offense" ? "var(--red)" : "var(--def-blue)";
 
   return (
@@ -604,9 +693,9 @@ function FormationView({ data, onClose }) {
           </div>
           {posList.map((pos) => {
             const [x, y] = spots[pos] || [50, 50];
-            const stack = data.players.filter((p) => p[field] === pos);
-            const starter = stack[0];
-            const backups = stack.slice(1, 3);
+            const slots = slotsFor(data, side === "offense" ? "off" : "def", pos);
+            const starter = slots[0];
+            const backups = [slots[1], slots[2]].filter(Boolean);
             return (
               <div key={pos} className="fv-node" style={{ left: `${x}%`, top: `${y}%` }}>
                 <div className="fv-pos" style={{ background: tone }}>{pos}</div>
@@ -1199,8 +1288,8 @@ function GameDayPrint({ data }) {
             <tr key={p.id} className="gd-row">
               <td className="mono center"><b>{p.num}</b></td>
               <td>{p.name}</td>
-              <td>{p.offPos}</td>
-              <td>{p.defPos}</td>
+              <td>{assignmentsFor(data, "off", p.id).map((a) => `${a.pos} ${a.team}`).join(" · ")}</td>
+              <td>{assignmentsFor(data, "def", p.id).map((a) => `${a.pos} ${a.team}`).join(" · ")}</td>
               <td className="snap-cells">{Array.from({ length: boxes }, (_, i) => <span key={i} className="snap-box" />)}</td>
               <td />
             </tr>
@@ -1294,7 +1383,7 @@ function Styles() {
 .fv-card { background: #fff; border: 2px solid var(--ink); padding: 4px 8px 6px; display: flex; flex-direction: column; align-items: center; width: 100%; box-shadow: 0 3px 0 rgba(0,0,0,.35); }
 .fv-card.open { background: transparent; border: 2px dashed rgba(255,255,255,.5); color: rgba(255,255,255,.7); font-family: var(--disp); font-weight: 700; letter-spacing: 2px; padding: 10px; font-size: clamp(11px, 1vw, 15px); }
 .fv-num { font-family: var(--disp); font-weight: 700; font-size: clamp(16px, 2vw, 30px); line-height: 1; color: var(--ink); }
-.fv-name { font-family: var(--disp); font-weight: 600; font-size: clamp(10px, .95vw, 14px); letter-spacing: .5px; text-transform: uppercase; text-align: center; line-height: 1.15; margin-top: 2px; overflow-wrap: break-word; max-width: 100%; }
+.fv-name { font-family: var(--disp); font-weight: 600; font-size: clamp(10px, .95vw, 14px); letter-spacing: .5px; text-transform: uppercase; text-align: center; line-height: 1.15; margin-top: 2px; overflow-wrap: break-word; max-width: 100%; min-height: 2.3em; display: flex; align-items: center; justify-content: center; }
 .fv-backup { color: rgba(255,255,255,.85); font-size: clamp(9px, .8vw, 12px); letter-spacing: .3px; text-align: center; line-height: 1.2; max-width: 100%; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
 
 /* ---- tabs ---- */
@@ -1362,6 +1451,17 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .depth-name { color: var(--muted); }
 .depth-name.first { color: var(--ink); font-weight: 600; }
 .depth-name b { font-family: var(--mono); font-weight: 700; }
+.promote { appearance: none; background: none; border: 1px solid var(--line); cursor: pointer; font-size: 10px; padding: 0 4px; margin-left: 3px; color: var(--muted); vertical-align: 1px; }
+.promote:hover { border-color: var(--ink); color: var(--ink); }
+.side-switch { display: flex; }
+.side-btn { appearance: none; border: 1px solid var(--line); background: #fff; color: var(--muted); font-family: var(--disp); font-weight: 700; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 12px; cursor: pointer; }
+.side-btn.active.off { background: var(--red); border-color: var(--red); color: #fff; }
+.side-btn.active.def { background: var(--def-blue); border-color: var(--def-blue); color: #fff; }
+.slot-table select.slot { width: 100%; min-width: 110px; }
+.slot-table select.slot.missing { border: 1px dashed var(--red); background: #FDF3F4; }
+.assign { font-size: 11.5px; letter-spacing: .2px; }
+.assign.off-assign { color: var(--red); }
+.assign.def-assign { color: var(--def-blue); }
 .unfilled { color: #C4A24A; font-style: italic; font-size: 12px; }
 .warn { margin: 0 16px 16px; padding: 10px 12px; background: #FBF4E4; border: 1px solid #E4D3A1; font-size: 12.5px; display: grid; gap: 4px; }
 
