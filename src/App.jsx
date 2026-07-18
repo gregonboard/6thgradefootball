@@ -94,19 +94,21 @@ const SITUATIONS = [
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-/* ---------- formation view coordinates (percent of field, x = center, y = top of node) ---------- */
+/* ---------- formation view coordinates (percent of field, x = center, y = top of node) ----------
+   Vertical gaps are sized for a full 3-deep: tag + card + two backup lines
+   needs about 21% of field height per level of the backfield stack. */
 const OFF_SPOTS = {
-  "WR (X)": [8, 42],
-  "LT": [34, 42], "LG": [42, 42], "C": [50, 42], "RG": [58, 42], "RT": [66, 42],
-  "TE": [74, 42],
-  "WR (Z)": [92, 48],
-  "QB": [50, 55], "FB": [50, 68], "RB": [50, 81],
+  "WR (X)": [8, 16],
+  "LT": [34, 16], "LG": [42, 16], "C": [50, 16], "RG": [58, 16], "RT": [66, 16],
+  "TE": [74, 16],
+  "WR (Z)": [92, 22],
+  "QB": [50, 36.7], "FB": [50, 57.4], "RB": [50, 78],
 };
 const DEF_SPOTS = {
-  "DE (L)": [26, 26], "DT (L)": [38, 26], "NG": [50, 26], "DT (R)": [62, 26], "DE (R)": [74, 26],
-  "SAM LB": [30, 50], "MIKE LB": [50, 50], "WILL LB": [70, 50],
-  "CB (L)": [8, 36], "CB (R)": [92, 36],
-  "SAFETY": [50, 74],
+  "DE (L)": [26, 14], "DT (L)": [38, 14], "NG": [50, 14], "DT (R)": [62, 14], "DE (R)": [74, 14],
+  "SAM LB": [30, 42], "MIKE LB": [50, 42], "WILL LB": [70, 42],
+  "CB (L)": [8, 26], "CB (R)": [92, 26],
+  "SAFETY": [50, 70],
 };
 
 const RAW_SEED = {
@@ -688,7 +690,7 @@ function FormationView({ data, onClose }) {
       </div>
       <div className="fv-stage">
         <div className="fv-field">
-          <div className="fv-los" style={{ top: side === "offense" ? "40%" : "24%" }}>
+          <div className="fv-los" style={{ top: side === "offense" ? "14%" : "12%" }}>
             <span>LOS</span>
           </div>
           {posList.map((pos) => {
