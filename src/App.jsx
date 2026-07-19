@@ -6,7 +6,34 @@ import { useState, useEffect, useRef, useMemo } from "react";
    Call sheet · Wristband printer · Game day sheet
    ============================================================ */
 
-const OFF_POS = ["QB", "RB", "FB", "WR (X)", "WR (Z)", "TE", "LT", "LG", "C", "RG", "RT"];
+/* ---------- offensive formations ----------
+   Same idea as the defensive fronts: position names are shared wherever the
+   job is the same (QB, RB, FB, X, Z, TE, and all five linemen), so switching
+   formations keeps assignments. Formation-only spots (Slots, Wing, HB) hide
+   when the current formation doesn't use them and come back when you return. */
+const OL5 = ["LT", "LG", "C", "RG", "RT"];
+const OL_SPOTS = { "LT": [34, 16], "LG": [42, 16], "C": [50, 16], "RG": [58, 16], "RT": [66, 16] };
+const OFF_SCHEMES = {
+  "I-Form": {
+    positions: ["QB", "RB", "FB", "WR (X)", "WR (Z)", "TE", ...OL5],
+    spots: { ...OL_SPOTS, "WR (X)": [8, 16], "TE": [74, 16], "WR (Z)": [92, 22], "QB": [50, 36.7], "FB": [50, 57.4], "RB": [50, 78] },
+  },
+  "Singleback": {
+    positions: ["QB", "RB", "TE", "WR (X)", "WR (Z)", "Slot (Y)", ...OL5],
+    spots: { ...OL_SPOTS, "WR (X)": [6, 16], "TE": [74, 16], "Slot (Y)": [84, 22], "WR (Z)": [94, 16], "QB": [50, 36.7], "RB": [50, 57.4] },
+  },
+  "Spread": {
+    positions: ["QB", "RB", "WR (X)", "Slot (H)", "Slot (Y)", "WR (Z)", ...OL5],
+    spots: { ...OL_SPOTS, "WR (X)": [6, 16], "Slot (H)": [20, 22], "Slot (Y)": [80, 22], "WR (Z)": [94, 16], "QB": [50, 38], "RB": [36, 40] },
+  },
+  "Wing-T": {
+    positions: ["QB", "FB", "HB", "Wing", "TE", "WR (X)", ...OL5],
+    spots: { ...OL_SPOTS, "WR (X)": [8, 16], "TE": [74, 16], "Wing": [82, 28], "QB": [50, 36.7], "HB": [36, 57.4], "FB": [50, 57.4] },
+  },
+};
+const OFF_POS_ALL = [...new Set(Object.values(OFF_SCHEMES).flatMap((s) => s.positions))];
+const offScheme = (data) => (OFF_SCHEMES[data.offScheme] ? data.offScheme : "I-Form");
+const offPositions = (data) => OFF_SCHEMES[offScheme(data)].positions;
 
 /* ---------- defensive fronts ----------
    Position names are shared across fronts wherever the job is the same, so
@@ -74,7 +101,7 @@ function slotsFor(data, side, pos) {
 
 /* All slots a player holds on a side, e.g. [{pos:"WR (X)", team:1}, {pos:"QB", team:2}] */
 function assignmentsFor(data, side, id) {
-  const posList = side === "off" ? OFF_POS : defPositions(data);
+  const posList = side === "off" ? offPositions(data) : defPositions(data);
   const out = [];
   for (const pos of posList) {
     const ids = ((data.depth && data.depth[side]) || {})[pos] || [];
@@ -99,7 +126,7 @@ function migrateDepth(data) {
       for (const pos of list) o[pos] = three(src[pos] || []);
       return o;
     };
-    return { ...data, depth: { off: fix(data.depth && data.depth.off, OFF_POS), def: fix(data.depth && data.depth.def, DEF_POS_ALL, { SAFETY: "FS" }) } };
+    return { ...data, depth: { off: fix(data.depth && data.depth.off, OFF_POS_ALL), def: fix(data.depth && data.depth.def, DEF_POS_ALL, { SAFETY: "FS" }) } };
   }
   const build = (side, posList, field, legacyMap) => {
     const out = {};
@@ -118,7 +145,7 @@ function migrateDepth(data) {
     }
     return out;
   };
-  return { ...data, depth: { off: build("off", OFF_POS, "offPos"), def: build("def", DEF_POS_ALL, "defPos", { SAFETY: "FS" }) }, depthVersion: 2 };
+  return { ...data, depth: { off: build("off", OFF_POS_ALL, "offPos"), def: build("def", DEF_POS_ALL, "defPos", { SAFETY: "FS" }) }, depthVersion: 2 };
 }
 const CAT_COLORS = {
   Warmup: "#B7791F",
@@ -144,16 +171,6 @@ const SITUATIONS = [
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-/* ---------- formation view coordinates (percent of field, x = center, y = top of node) ----------
-   Vertical gaps are sized for a full 3-deep: tag + card + two backup lines
-   needs about 21% of field height per level of the backfield stack. */
-const OFF_SPOTS = {
-  "WR (X)": [8, 16],
-  "LT": [34, 16], "LG": [42, 16], "C": [50, 16], "RG": [58, 16], "RT": [66, 16],
-  "TE": [74, 16],
-  "WR (Z)": [92, 22],
-  "QB": [50, 36.7], "FB": [50, 57.4], "RB": [50, 78],
-};
 
 const RAW_SEED = {
   players: [
@@ -267,6 +284,7 @@ const RAW_SEED = {
   callSheet: {},
   wrist: { title: "REBELS", cols: 3, copies: 4, selected: null },
   depth: { off: {}, def: {} },
+  offScheme: "I-Form",
   defScheme: "5-3",
   libVersion: 2,
 };
@@ -571,8 +589,8 @@ function RosterTab({ data, up, onPrint }) {
     up({ depth });
   };
 
-  const posList = depthSide === "off" ? OFF_POS : defPositions(data);
-  const offMissing = OFF_POS.filter((pos) => !slotsFor(data, "off", pos)[0]);
+  const posList = depthSide === "off" ? offPositions(data) : defPositions(data);
+  const offMissing = offPositions(data).filter((pos) => !slotsFor(data, "off", pos)[0]);
   const defMissing = defPositions(data).filter((pos) => !slotsFor(data, "def", pos)[0]);
 
   /* A kid slotted 1st team at two positions on the same side can't be in
@@ -585,7 +603,7 @@ function RosterTab({ data, up, onPrint }) {
     }
     return Object.values(seen).filter((e) => e.at.length > 1);
   };
-  const offDoubles = doubleStarters("off", OFF_POS);
+  const offDoubles = doubleStarters("off", offPositions(data));
   const defDoubles = doubleStarters("def", defPositions(data));
 
   const numCounts = {};
@@ -643,6 +661,11 @@ function RosterTab({ data, up, onPrint }) {
               <button className={"side-btn" + (depthSide === "off" ? " active off" : "")} onClick={() => setDepthSide("off")}>Offense</button>
               <button className={"side-btn" + (depthSide === "def" ? " active def" : "")} onClick={() => setDepthSide("def")}>Defense</button>
             </div>
+            {depthSide === "off" && (
+              <select className="cell" value={offScheme(data)} onChange={(e) => up({ offScheme: e.target.value })}>
+                {Object.keys(OFF_SCHEMES).map((k) => <option key={k} value={k}>{k}</option>)}
+              </select>
+            )}
             {depthSide === "def" && (
               <select className="cell" value={defScheme(data)} onChange={(e) => up({ defScheme: e.target.value })}>
                 {Object.keys(DEF_SCHEMES).map((k) => <option key={k} value={k}>{k} front</option>)}
@@ -653,6 +676,9 @@ function RosterTab({ data, up, onPrint }) {
         </div>
         {depthSide === "def" && (
           <p className="hint">Switching fronts keeps every assignment. Positions the current front doesn't use (like SAM in a 5-2) are hidden and come right back when you switch back.</p>
+        )}
+        {depthSide === "off" && (
+          <p className="hint">Switching formations keeps every assignment. Positions the current formation doesn't use (like the Wing outside a Wing-T) are hidden and come right back when you switch back.</p>
         )}
         <div className="table-wrap">
           <table className="slot-table">
@@ -730,8 +756,8 @@ function FormationView({ data, up, onClose }) {
     else if (document.exitFullscreen) document.exitFullscreen();
   };
 
-  const spots = side === "offense" ? OFF_SPOTS : DEF_SCHEMES[defScheme(data)].spots;
-  const posList = side === "offense" ? OFF_POS : defPositions(data);
+  const spots = side === "offense" ? OFF_SCHEMES[offScheme(data)].spots : DEF_SCHEMES[defScheme(data)].spots;
+  const posList = side === "offense" ? offPositions(data) : defPositions(data);
   const tone = side === "offense" ? "var(--red)" : "var(--def-blue)";
 
   return (
@@ -744,6 +770,11 @@ function FormationView({ data, up, onClose }) {
         <div className="fv-switch">
           <button className={"fv-side" + (side === "offense" ? " active off" : "")} onClick={() => setSide("offense")}>Offense</button>
           <button className={"fv-side" + (side === "defense" ? " active def" : "")} onClick={() => setSide("defense")}>Defense</button>
+          {side === "offense" && (
+            <select className="fv-scheme" value={offScheme(data)} onChange={(e) => up({ offScheme: e.target.value })}>
+              {Object.keys(OFF_SCHEMES).map((k) => <option key={k} value={k}>{k}</option>)}
+            </select>
+          )}
           {side === "defense" && (
             <select className="fv-scheme" value={defScheme(data)} onChange={(e) => up({ defScheme: e.target.value })}>
               {Object.keys(DEF_SCHEMES).map((k) => <option key={k} value={k}>{k}</option>)}
