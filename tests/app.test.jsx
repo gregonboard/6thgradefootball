@@ -1,0 +1,203 @@
+import React from "react";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, waitFor, within, cleanup } from "@testing-library/react";
+import App, {
+  normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord,
+  LINE_CALLS, SEED, seedPackages, day1Plan, applyKillPairs,
+} from "../src/App.jsx";
+
+/* ---------- unit: vocabulary and doctrine ---------- */
+describe("vocabulary", () => {
+  it("renames Lasso to Longhorn and Snickers Lt to Skittles", () => {
+    expect(CONCEPTS.keep.words.Lt).toBe("Longhorn");
+    expect(CONCEPTS.slip.words).toEqual({ Rt: "Snickers", Lt: "Skittles" });
+    expect(callWord("keep", "Lt")).toBe("Longhorn");
+  });
+  it("keeps the line-call channel intact", () => {
+    expect(LINE_CALLS.owl).toBe("HAMMER");
+    expect(LINE_CALLS.slip).toBe("GATE");
+  });
+});
+
+/* ---------- unit: seeds ---------- */
+describe("seeds", () => {
+  it("seeds SAFARI and STAMPEDE packages", () => {
+    const pk = seedPackages();
+    expect(pk.map((p) => p.name)).toEqual(["SAFARI", "STAMPEDE"]);
+    expect(pk[0].steps.length).toBe(3);
+  });
+  it("seeds the Day 1 helmets plan with grouped stations", () => {
+    const plan = day1Plan(SEED.drills);
+    expect(plan.items.length).toBe(8);
+    const routesPeriod = plan.items[2];
+    expect(routesPeriod.stations.length).toBe(3); // QB/WR, OL, LB/RB in parallel
+    expect(SEED.savedPlans.some((s) => /day 1/i.test(s.name))).toBe(true);
+    expect(SEED.practice.items.length).toBe(8); // preloaded for tonight
+  });
+  it("pairs Rhino with the bubble as its kill on the seed", () => {
+    const rhino = SEED.plays.find((p) => p.concept === "power" && p.dir === "Rt");
+    const bubble = SEED.plays.find((p) => p.concept === "bubble" && p.dir === "Rt");
+    expect(rhino.killId).toBe(bubble.id);
+  });
+});
+
+/* ---------- unit: migration never destroys, always upgrades ---------- */
+describe("normalizeData migration", () => {
+  it("upgrades an old save: kills paired, packages seeded, names re-derived, plan appended", () => {
+    const old = JSON.parse(JSON.stringify({
+      players: [{ id: "p1", name: "Old Kid", num: "9" }],
+      plays: SEED.plays.map((p) => ({ ...p, killId: undefined, name: p.name.replace("Longhorn", "Lasso") })),
+      drills: [],
+      safariVersion: 2,
+      libVersion: 2,
+      practice: { date: "", start: "17:30", title: "Practice Plan", items: [] },
+    }));
+    const d = normalizeData(old);
+    expect(d.seasonWeek).toBe(1);
+    expect(d.packages.map((p) => p.name)).toContain("SAFARI");
+    const rhino = d.plays.find((p) => p.concept === "power" && p.dir === "Rt");
+    const bubble = d.plays.find((p) => p.concept === "bubble" && p.dir === "Rt");
+    expect(rhino.killId).toBe(bubble.id);
+    const keepLt = d.plays.find((p) => p.concept === "keep" && p.dir === "Lt");
+    expect(keepLt.name).toContain("Longhorn"); // derived names propagate the rename
+    expect(d.savedPlans.some((s) => /day 1/i.test(s.name))).toBe(true);
+    expect(d.players[0].name).toBe("Old Kid"); // user data untouched
+    expect(d.safariVersion).toBe(3);
+  });
+  it("does not double-seed on a second load", () => {
+    const once = normalizeData({ safariVersion: 2, plays: SEED.plays.map((p) => ({ ...p })) });
+    const twice = normalizeData(JSON.parse(JSON.stringify(once)));
+    expect(twice.savedPlans.filter((s) => /day 1/i.test(s.name)).length).toBe(1);
+    expect(twice.packages.length).toBe(once.packages.length);
+    expect(twice.plays.length).toBe(once.plays.length);
+  });
+});
+
+/* ---------- unit: practice groups ---------- */
+describe("practiceGroupsFor", () => {
+  const mk = () => ({
+    players: [
+      { id: "a", name: "Two Way Tank", num: "55" },
+      { id: "b", name: "Quarterback", num: "7" },
+      { id: "c", name: "Runner", num: "22" },
+      { id: "d", name: "New Kid", num: "3" },
+    ],
+    depth: {
+      off: { "LT": ["a", null, null], "QB": ["b", null, null], "RB": ["c", null, null] },
+      def: { "MIKE LB": ["a", null, null], "WILL LB": [null, "c", null] },
+    },
+    offScheme: "I-Form",
+    defScheme: "5-3",
+    pgOverrides: {},
+  });
+  it("maps positions to the three groups", () => {
+    expect(pgForPos("LT")).toBe("line");
+    expect(pgForPos("DE (R)")).toBe("line");
+    expect(pgForPos("MIKE LB")).toBe("backs");
+    expect(pgForPos("RB")).toBe("backs");
+    expect(pgForPos("QB")).toBe("skill");
+    expect(pgForPos("CB (L)")).toBe("skill");
+  });
+  it("homes a two-way kid with his best slot and flags him as multi", () => {
+    const { out, multi, unassigned } = practiceGroupsFor(mk());
+    expect(out.line.map((e) => e.p.id)).toEqual(["a"]); // 1st team LT beats 1st team MIKE (offense wins the tie)
+    expect(out.skill.map((e) => e.p.id)).toEqual(["b"]);
+    expect(out.backs.map((e) => e.p.id)).toEqual(["c"]); // RB + WILL LB both map to backs, one group
+    expect(multi.map((e) => e.p.id)).toEqual(["a"]);
+    expect(unassigned.map((p) => p.id)).toEqual(["d"]);
+  });
+  it("respects overrides for two-way and unassigned kids", () => {
+    const d = mk();
+    d.pgOverrides = { a: "backs", d: "line" };
+    const { out, unassigned } = practiceGroupsFor(d);
+    expect(out.backs.map((e) => e.p.id)).toContain("a");
+    expect(out.line.map((e) => e.p.id)).toContain("d");
+    expect(unassigned.length).toBe(0);
+  });
+});
+
+/* ---------- end to end: real clicks in jsdom ---------- */
+describe("app end-to-end", () => {
+  beforeEach(() => window.localStorage.clear());
+  afterEach(cleanup);
+
+  const load = async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByText("VESTAVIA HILLS REBELS")).toBeTruthy());
+  };
+  const setWeek = (w) => fireEvent.change(screen.getByLabelText("Season week"), { target: { value: String(w) } });
+
+  it("splits the roster into practice groups from one button", async () => {
+    await load();
+    fireEvent.click(screen.getByText("Practice Groups"));
+    expect(screen.getByText("QB / WR")).toBeTruthy();
+    expect(screen.getByText("Linemen")).toBeTruthy();
+    expect(screen.getByText("LB / RB")).toBeTruthy();
+    fireEvent.click(screen.getByText("Done"));
+    expect(screen.queryByText("QB / WR")).toBeNull();
+  });
+
+  it("locks packages before week 3 and runs SAFARI at week 3", async () => {
+    await load();
+    fireEvent.click(screen.getByText("Caller"));
+    expect(screen.getByText(/unlock at week 3/i)).toBeTruthy();
+    setWeek(3);
+    const safari = await screen.findByText("SAFARI");
+    fireEvent.click(safari);
+    expect(screen.getByText(/1 of 3/)).toBeTruthy();
+    fireEvent.click(screen.getByText("CALL IT")); // Rhino
+    expect(screen.getByText(/2 of 3/)).toBeTruthy();
+    fireEvent.click(screen.getByText("CALL IT")); // Rocket
+    fireEvent.click(screen.getByText("CALL IT")); // Owl, runner clears
+    expect(screen.queryByText("CALL IT")).toBeNull();
+    const last = screen.getByText("Last:", { exact: false });
+    expect(last.textContent).toContain("Owl");
+  });
+
+  it("hides later installs in the Play Lab at week 1 and gates the kill tool to week 4", async () => {
+    await load();
+    fireEvent.click(screen.getByText("Play Lab"));
+    expect(screen.getByText(/Show \d+ later installs/)).toBeTruthy();
+    const rowText = () => [...document.querySelectorAll(".play-name-cell")].map((el) => el.textContent);
+    const week1Rows = rowText();
+    expect(week1Rows.length).toBe(3); // Rhino, Lion, Sparrow only
+    expect(week1Rows.some((t) => /Rabbit/.test(t))).toBe(false); // trap installs week 3
+    setWeek(4);
+    await waitFor(() => expect(rowText().length).toBeGreaterThan(3));
+    expect(rowText().some((t) => /Rabbit/.test(t))).toBe(true);
+    fireEvent.click(document.querySelector(".play-name-cell").closest("tr"));
+    expect(await screen.findByText("Kill to:")).toBeTruthy();
+  });
+
+  it("offers a kill after calling a paired play at week 4", async () => {
+    await load();
+    setWeek(4);
+    fireEvent.click(screen.getByText("Caller"));
+    const rhinoBtns = await screen.findAllByRole("button", { name: /Rhino/ });
+    fireEvent.click(rhinoBtns[0]);
+    const kill = await screen.findByText(/KILL →/);
+    expect(kill.textContent).toContain("Reese's");
+    fireEvent.click(kill);
+    expect(screen.getByText("Last:", { exact: false }).textContent).toContain("Reese's");
+  });
+
+  it("locks Empty to the QUICK family in the builder", async () => {
+    await load();
+    fireEvent.click(screen.getByText("Play Lab"));
+    const formationSel = screen.getByDisplayValue("Doubles");
+    fireEvent.change(formationSel, { target: { value: "Empty" } });
+    const conceptSel = await screen.findByDisplayValue("Sparrow"); // auto-switched off Rhino
+    const opts = within(conceptSel).getAllByRole("option").map((o) => o.textContent);
+    expect(opts.some((t) => /Rhino/.test(t))).toBe(false);
+    expect(opts.some((t) => /Reese's/.test(t))).toBe(true);
+    expect(screen.getByText(/QUICK family only/)).toBeTruthy();
+  });
+
+  it("preloads tonight's Day 1 helmets plan in the practice planner", async () => {
+    await load();
+    fireEvent.click(screen.getByText("Practice Planner"));
+    expect(screen.getByDisplayValue(/Day 1 · Helmets/)).toBeTruthy();
+    expect(screen.getAllByText(/Formation Races/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Team Walk-Through Install/).length).toBeGreaterThanOrEqual(1);
+  });
+});

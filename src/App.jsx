@@ -111,6 +111,42 @@ function assignmentsFor(data, side, id) {
   return out.sort((a, b) => a.team - b.team);
 }
 
+/* ---------- practice groups ----------
+   One button splits the whole roster into the three coaching groups
+   (QB/WR skill, Linemen, LB/RB) from the depth chart, offense and
+   defense combined. Two-way kids and kids on two depth lines get a
+   default home (their best slot: 1st team beats 2nd, offense breaks
+   ties) plus chips to move them. Overrides persist in pgOverrides. */
+const PG_GROUPS = [["skill", "QB / WR"], ["line", "Linemen"], ["backs", "LB / RB"]];
+function pgForPos(pos) {
+  if (["LT", "LG", "C", "RG", "RT"].includes(pos) || /^(DE|DT|NG)/.test(pos)) return "line";
+  if (/LB/.test(pos) || ["RB", "FB", "HB"].includes(pos)) return "backs";
+  return "skill"; /* QB, receivers, slots, TE, Wing, corners, safeties */
+}
+function practiceGroupsFor(data) {
+  const overrides = data.pgOverrides || {};
+  const out = { skill: [], line: [], backs: [] };
+  const multi = [];
+  const unassigned = [];
+  for (const p of data.players) {
+    const asg = [
+      ...assignmentsFor(data, "off", p.id).map((a) => ({ ...a, side: "off" })),
+      ...assignmentsFor(data, "def", p.id).map((a) => ({ ...a, side: "def" })),
+    ];
+    if (asg.length === 0) {
+      if (overrides[p.id] && out[overrides[p.id]]) out[overrides[p.id]].push({ p, groups: [], home: overrides[p.id] });
+      else unassigned.push(p);
+      continue;
+    }
+    const groups = [...new Set(asg.map((a) => pgForPos(a.pos)))];
+    const best = [...asg].sort((a, b) => a.team - b.team || (a.side === "off" ? -1 : 1))[0];
+    const home = out[overrides[p.id]] ? overrides[p.id] : pgForPos(best.pos);
+    out[home].push({ p, groups, home });
+    if (groups.length > 1) multi.push({ p, groups, home });
+  }
+  return { out, multi, unassigned };
+}
+
 /* Migrate older saves (single offPos/defPos per player, variable depth lists)
    into the 3-slot model. Depth is kept for the union of all fronts' positions,
    and the old single-high "SAFETY" becomes "FS". */
@@ -170,6 +206,370 @@ const SITUATIONS = [
 ];
 
 const uid = () => Math.random().toString(36).slice(2, 10);
+
+
+/* ============================================================
+   SAFARI PLAY ENGINE
+   Formation x Concept x Direction = a generated play diagram.
+   ============================================================ */
+
+/* Base formation geometry (Rt-strong). Lt variants are mirrored with
+   paired labels swapped (X<->Z, LT<->RT, LG<->RG). H and Y travel. */
+const PLAY_FORMS = {
+  "Doubles": { X: [6, 23], H: [18, 25], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [88, 25], QB: [50, 30], RB: [43, 30] },
+  "Trips":   { X: [6, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [76, 26], Z: [90, 24], QB: [50, 30], RB: [43, 30] },
+  "Empty":   { X: [6, 23], H: [15, 25], RB: [24, 26], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [88, 25], QB: [50, 30] },
+  "Tank":    { X: [8, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [73, 26], Z: [86, 24], QB: [50, 30], RB: [50, 35] },
+  "Bunch":   { X: [6, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [72, 27], Z: [77, 24], QB: [50, 30], RB: [43, 30] },
+  "Stack":   { X: [8, 23], H: [9, 27], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Z: [88, 23], Y: [87, 27], QB: [50, 30], RB: [43, 30] },
+  "Nasty":   { X: [26, 24], H: [32, 26], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [74, 25], QB: [50, 30], RB: [43, 30] },
+};
+const PLAY_FORM_NAMES = ["Doubles", "Doubles Lt", "Trips Rt", "Trips Lt", "Bunch Rt", "Bunch Lt", "Stack", "Nasty Rt", "Nasty Lt", "Empty", "Tank Rt", "Tank Lt"];
+
+function formSpots(formName) {
+  const lt = / Lt$/.test(formName);
+  const base = PLAY_FORMS[formName.replace(/ (Rt|Lt)$/, "")] || PLAY_FORMS["Doubles"];
+  if (!lt) return base;
+  const swap = { X: "Z", Z: "X", LT: "RT", RT: "LT", LG: "RG", RG: "LG" };
+  const out = {};
+  for (const [k, [x, y]] of Object.entries(base)) out[swap[k] || k] = [100 - x, y];
+  return out;
+}
+
+/* ---- diagram generators ----
+   Elements: block (line+cap), route (arrow), carry (thick red arrow),
+   motion (dashed), fake (grey), throw (dotted). All points [x, y]. */
+function genPlayElements(conceptKey, spots, dir, tags = []) {
+  const s = dir === "Lt" ? -1 : 1;
+  const el = {};
+  const add = (L, kind, pts) => { if (spots[L]) (el[L] = el[L] || []).push({ kind, pts }); };
+  const at = (L) => spots[L];
+  const has = (L) => !!spots[L];
+  const guards = ["LG", "RG"].filter(has);
+  const backG = guards.find((g) => (at(g)[0] - 50) * s < 0);
+  const backT = ["LT", "RT"].filter(has).find((t) => (at(t)[0] - 50) * s < 0);
+  const edge = 50 + s * 26;
+
+  const blockAll = (skip = []) => {
+    for (const L of ["LT", "LG", "C", "RG", "RT"]) if (has(L) && !skip.includes(L)) add(L, "block", [at(L), [at(L)[0] - s * 2, at(L)[1] - 4]]);
+    for (const L of ["X", "Z"]) if (has(L) && !skip.includes(L)) add(L, "block", [at(L), [at(L)[0], at(L)[1] - 4]]);
+    if (has("Y") && !skip.includes("Y")) add("Y", "block", [at("Y"), [at("Y")[0] - s * 2, at("Y")[1] - 4]]);
+  };
+  const jetMotion = (thenFake = true) => {
+    if (!has("H")) return;
+    const [hx, hy] = at("H");
+    const across = hx < 50 ? [[hx, hy], [42, 29], [56, 29]] : [[hx, hy], [58, 29], [44, 29]];
+    add("H", "motion", across);
+    if (thenFake) {
+      const last = across[across.length - 1];
+      add("H", "fake", [last, [last[0] + (across[0][0] < 50 ? 26 : -26), last[1] - 2]]);
+    }
+  };
+  const qbFake = () => has("QB") && add("QB", "fake", [at("QB"), [at("QB")[0] - 3, at("QB")[1]]]);
+  const rbLeak = () => has("RB") && add("RB", "route", [at("RB"), [at("RB")[0] - 8, at("RB")[1] - 3], [at("RB")[0] - 14, at("RB")[1] - 8]]);
+  const olPass = () => { for (const L of ["LT", "LG", "C", "RG", "RT"]) if (has(L)) add(L, "block", [at(L), [at(L)[0], at(L)[1] - 3]]); };
+  const throwTo = (L, i = 1) => { if (has("QB") && el[L]) { const r = el[L].find((e) => e.kind === "route" || e.kind === "carry"); if (r) add("QB", "throw", [at("QB"), r.pts[Math.min(i, r.pts.length - 1)]]); } };
+
+  /* mirrored route helper: dx is drawn for a LEFT-side player, flipped for right */
+  const rt = (L, rel) => {
+    if (!has(L)) return;
+    const [x, y] = at(L);
+    const m = x <= 50 ? 1 : -1;
+    add(L, "route", [[x, y], ...rel.map(([dx, dy]) => [x + dx * m, y + dy])]);
+  };
+
+  switch (conceptKey) {
+    case "power":
+      blockAll([backG]);
+      add(backG, "carry_path", null);
+      el[backG] = [{ kind: "route", pts: [at(backG), [50, 27], [50 + s * 14, 26], [50 + s * 20, 20], [50 + s * 22, 12]] }];
+      jetMotion();
+      qbFake();
+      if (has("RB")) add("RB", "carry", [at("RB"), [50 + s * 4, 29], [50 + s * 17, 22], [50 + s * 19, 8]]);
+      break;
+    case "trap":
+      blockAll([backG]);
+      el[backG] = [{ kind: "route", pts: [at(backG), [50, 26], [50 + s * 4, 20], [50 + s * 7, 16]] }];
+      if (has("RB")) add("RB", "carry", [at("RB"), [50 + s * 1, 27], [50 + s * 3, 8]]);
+      qbFake();
+      break;
+    case "jet":
+      blockAll(["Y", "Z", "X"]);
+      if (has("Y")) add("Y", "block", [at("Y"), [at("Y")[0] + s * 5, at("Y")[1] - 7], [at("Y")[0] + s * 7, at("Y")[1] - 12]]);
+      if (has(s > 0 ? "Z" : "X")) { const L = s > 0 ? "Z" : "X"; add(L, "block", [at(L), [at(L)[0] - s * 5, at(L)[1] - 5]]); }
+      if (has(s > 0 ? "X" : "Z")) { const L = s > 0 ? "X" : "Z"; add(L, "block", [at(L), [at(L)[0], at(L)[1] - 4]]); }
+      if (has("H")) {
+        const [hx, hy] = at("H");
+        add("H", "motion", hx * s < 50 * s ? [[hx, hy], [44, 29], [52, 29]] : [[hx, hy], [56, 29], [50, 29]]);
+        add("H", "carry", [[52, 29], [edge, 25], [edge + s * 8, 18], [edge + s * 10, 8]]);
+      }
+      if (has("RB")) add("RB", "fake", [at("RB"), [50 - s * 6, 27], [50 - s * 10, 22]]);
+      break;
+    case "keep":
+      blockAll();
+      jetMotion(false);
+      if (has("H")) add("H", "fake", [[52, 29], [edge, 26]]);
+      if (has("QB")) add("QB", "carry", [at("QB"), [50 + s * 10, 28], [50 + s * 22, 23], [50 + s * 26, 10]]);
+      if (has("RB")) add("RB", "block", [at("RB"), [50 + s * 12, 27]]);
+      break;
+    case "counter":
+      blockAll([backG, backT]);
+      el[backG] = [{ kind: "route", pts: [at(backG), [50, 27], [50 + s * 14, 25], [50 + s * 18, 19]] }];
+      if (backT) el[backT] = [{ kind: "route", pts: [at(backT), [48, 29], [50 + s * 11, 26], [50 + s * 13, 12]] }];
+      if (has("RB")) add("RB", "carry", [at("RB"), [50 - s * 4, 32], [50 + s * 8, 27], [50 + s * 15, 20], [50 + s * 16, 8]]);
+      qbFake();
+      break;
+    case "sneak":
+      blockAll();
+      if (has("QB")) add("QB", "carry", [at("QB"), [50, 24], [50, 16]]);
+      break;
+    case "sparrow":
+      olPass();
+      rt("X", [[0, -9], [1.5, -7]]);
+      rt("Z", [[0, -9], [1.5, -7]]);
+      rt("H", [[1, -6], [8, -7]]);
+      rt("Y", [[0, -8], [3, -7]]);
+      rbLeak();
+      throwTo(s > 0 ? "Z" : "X");
+      break;
+    case "robin":
+      olPass();
+      rt("X", [[2, -5], [10, -12]]);
+      rt("Z", [[2, -5], [10, -12]]);
+      rt("H", [[-6, -5], [-12, -7]]);
+      rt("Y", [[6, -4], [12, -5]]);
+      rbLeak();
+      throwTo(s > 0 ? "Y" : "H");
+      break;
+    case "hawk":
+      olPass();
+      rt("X", [[0, -10], [2, -8]]);
+      rt("Z", [[0, -10], [2, -8]]);
+      rt("H", [[-6, -5], [-11, -6]]);
+      rt("Y", [[4, -10], [12, -17]]);
+      rbLeak();
+      throwTo(s > 0 ? "Z" : "X");
+      break;
+    case "owl":
+      blockAll(["Y"]);
+      jetMotion();
+      qbFake();
+      if (has("Y")) add("Y", "carry", [at("Y"), [at("Y")[0] - 1, at("Y")[1] - 11], [at("Y")[0] - 2, 4]]);
+      if (has("RB")) add("RB", "fake", [at("RB"), [50 + s * 5, 28], [50 + s * 10, 24]]);
+      throwTo("Y");
+      break;
+    case "falcon":
+      olPass();
+      rt("X", [[0, -19]]);
+      rt("Z", [[0, -19]]);
+      rt("H", [[4, -13], [6, -21]]);
+      rt("Y", [[-2, -12], [-4, -19]]);
+      if (has("RB")) add("RB", "route", [at("RB"), [at("RB")[0] + 3, at("RB")[1] - 6], [at("RB")[0] + 3, at("RB")[1] - 10]]);
+      break;
+    case "eagle":
+      olPass();
+      rt("X", [[0, -11], [8, -19]]);
+      rt("Z", [[0, -19]]);
+      if (has("Y")) add("Y", "route", [at("Y"), [at("Y")[0] - 8, at("Y")[1] - 6], [at("Y")[0] - 28, at("Y")[1] - 8]]);
+      if (has("H")) add("H", "block", [at("H"), [at("H")[0], at("H")[1] - 3]]);
+      if (has("RB")) add("RB", "block", [at("RB"), [at("RB")[0], at("RB")[1] - 3]]);
+      qbFake();
+      throwTo(s > 0 ? "Z" : "X");
+      break;
+    case "bubble": {
+      olPass();
+      const T = s > 0 ? "Z" : "X";
+      const B = s > 0 ? "X" : "Z";
+      if (has(T)) add(T, "route", [at(T), [at(T)[0] + s * 4, at(T)[1] + 3], [at(T)[0] + s * 9, at(T)[1] + 1]]);
+      if (has(B)) add(B, "block", [at(B), [at(B)[0], at(B)[1] - 4]]);
+      if (has("Y")) add("Y", "block", [at("Y"), [at("Y")[0] + s * 3, at("Y")[1] - 5]]);
+      jetMotion();
+      if (has("RB")) add("RB", "fake", [at("RB"), [50 + s * 4, 28]]);
+      throwTo(T, 2);
+      break;
+    }
+    case "slip":
+      for (const L of ["LT", "LG"]) if (has(L)) add(L, "block", [at(L), [at(L)[0], at(L)[1] - 3]]);
+      for (const L of ["C", "RG", "RT"]) if (has(L)) { add(L, "block", [at(L), [at(L)[0], at(L)[1] - 2]]); add(L, "fake", [[at(L)[0], at(L)[1] - 2], [at(L)[0] + s * 5, at(L)[1] - 7]]); }
+      for (const L of ["X", "Z"]) if (has(L)) add(L, "fake", [at(L), [at(L)[0], at(L)[1] - 16]]);
+      if (has("Y")) add("Y", "fake", [at("Y"), [at("Y")[0], at("Y")[1] - 12]]);
+      if (has("QB")) add("QB", "fake", [at("QB"), [at("QB")[0] - s * 3, at("QB")[1] + 4]]);
+      if (has("RB")) add("RB", "route", [at("RB"), [at("RB")[0] + s * 5, at("RB")[1] + 2], [50 + s * 12, 27], [50 + s * 16, 22]]);
+      throwTo("RB", 2);
+      break;
+    case "reverse": {
+      /* Rewind Rt: full Rocket fake LEFT, backside WR brings it back RIGHT */
+      blockAll(["X", "Z"]);
+      if (has("H")) {
+        const [hx, hy] = at("H");
+        add("H", "motion", hx * -s < 50 * -s ? [[hx, hy], [44, 29], [52, 29]] : [[hx, hy], [56, 29], [50, 29]]);
+        add("H", "fake", [[50, 29], [50 - s * 22, 26]]);
+      }
+      const R = s > 0 ? "X" : "Z";
+      const F = s > 0 ? "Z" : "X";
+      if (has(R)) add(R, "carry", [at(R), [at(R)[0] + s * 10, at(R)[1] + 6], [46, 32], [50 + s * 16, 29], [edge + s * 6, 22], [edge + s * 8, 8]]);
+      if (has(F)) add(F, "block", [at(F), [at(F)[0] - s * 4, at(F)[1] - 5]]);
+      if (has("Y")) add("Y", "block", [at("Y"), [at("Y")[0] + s * 4, at("Y")[1] - 7]]);
+      if (has("RB")) add("RB", "fake", [at("RB"), [50 - s * 8, 27]]);
+      qbFake();
+      break;
+    }
+    case "blank":
+      break;
+    default:
+      break;
+  }
+
+  /* ---- tags: composable modifiers ---- */
+  if (tags.includes("Jet") && has("H") && !["jet", "keep", "reverse"].includes(conceptKey)) {
+    const [hx, hy] = at("H");
+    const toRight = hx <= 50;
+    el["H"] = [
+      { kind: "motion", pts: toRight ? [[hx, hy], [44, 29], [56, 29]] : [[hx, hy], [56, 29], [44, 29]] },
+      { kind: "fake", pts: toRight ? [[56, 29], [80, 27]] : [[44, 29], [20, 27]] },
+    ];
+  }
+  if (tags.includes("Orbit") && has("RB")) {
+    const [rx, ry] = at("RB");
+    const m = rx <= 50 ? 1 : -1;
+    el["RB"] = [
+      { kind: "motion", pts: [[rx, ry], [50, ry + 4], [50 + m * 10, ry + 3], [50 + m * 16, ry - 1]] },
+      { kind: "fake", pts: [[50 + m * 16, ry - 1], [50 + m * 27, ry - 4]] },
+    ];
+  }
+  if (tags.includes("Zip") && has("Z")) {
+    const [zx, zy] = at("Z");
+    const m = zx <= 50 ? 1 : -1;
+    const dx = m * 13;
+    const cur = el["Z"] || [];
+    el["Z"] = [
+      { kind: "motion", pts: [[zx, zy], [zx + dx, zy + 1]] },
+      ...cur.map((e) => ({ ...e, pts: e.pts.map(([x, y]) => [x + dx, y + 1]) })),
+    ];
+  }
+  if (tags.includes("Now") && has("H")) {
+    /* RPO bubble attached: H bubbles his side instead of jet motion, QB reads */
+    const [hx, hy] = at("H");
+    const m = hx <= 50 ? -1 : 1;
+    el["H"] = [{ kind: "route", pts: [[hx, hy], [hx + m * 4, hy + 3], [hx + m * 10, hy + 1]] }];
+    if (has("QB")) add("QB", "throw", [at("QB"), [hx + m * 8, hy + 2]]);
+  }
+  if (tags.includes("Wheel") && has("RB")) {
+    const [rx, ry] = at("RB");
+    el["RB"] = [{ kind: "route", pts: [[rx, ry], [rx - s * 10, ry + 2], [rx - s * 20, ry - 4], [rx - s * 22, ry - 16]] }];
+  }
+  if (tags.includes("Peek") && has("Y")) {
+    /* Owl alive on a run call: Y slips to the seam, QB throws only if the backers bite */
+    const [yx, yy] = at("Y");
+    const bend = yx <= 50 ? 3 : -3;
+    el["Y"] = [{ kind: "route", pts: [[yx, yy], [yx, yy - 4], [yx + bend, yy - 14]] }];
+    if (has("QB")) add("QB", "throw", [at("QB"), [yx + bend * 0.7, yy - 11]]);
+  }
+  if (tags.includes("Max")) {
+    if (has("H") && !tags.includes("Now")) el["H"] = [{ kind: "block", pts: [at("H"), [at("H")[0], at("H")[1] - 3]] }];
+    if (has("RB") && !tags.includes("Wheel")) el["RB"] = [{ kind: "block", pts: [at("RB"), [at("RB")[0], at("RB")[1] - 3]] }];
+  }
+  return el;
+}
+
+/* ---- the dictionary ---- */
+const CONCEPTS = {
+  power:   { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Rhino", Lt: "Lion" }, carrier: "RB", signal: "Fist to the nose like a horn, then point", how: "Playside blocks down, backside guard pulls and leads. RB downhill off the edge of the double team. Jet motion dresses it up.", read: "None. This is the hammer." },
+  trap:    { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Rabbit", Lt: "Lynx" }, carrier: "RB", signal: "Two-finger bunny hops, then point", how: "Quick hitter. Backside guard traps the first man past center. No motion: this is the changeup that punishes upfield tackles.", read: "None. Hits before they blink." },
+  jet:     { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Rocket", Lt: "Laser" }, carrier: "H", signal: "Arm launches off the palm, then point", how: "H at full speed off motion. Playside reaches, Y arcs to the safety, backside cuts off.", read: "None. Speed to the edge." },
+  keep:    { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Rustler", Lt: "Longhorn" }, carrier: "QB", signal: "Swing the lasso overhead, then point", how: "Identical picture to the jet. QB keeps behind the chase with the RB leading.", read: "Pre-called. The defense pays for chasing Rocket." },
+  counter: { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Renegade", Lt: "Lizard" }, carrier: "RB", signal: "Cross the forearms, then point", how: "Backside guard kicks, backside tackle wraps, RB jabs away then hits behind them. Week 6 install, once they fear Rhino.", read: "None. Patience, then burst." },
+  sneak:   { fam: "Run",    dirs: [""],         words: { "": "Sub" }, carrier: "QB", signal: "Flat hand dives under", how: "QB sneak behind the big center. Short yardage answer.", read: "None." },
+  sparrow: { fam: "Pass",   dirs: [""],         words: { "": "Sparrow" }, carrier: "WR", signal: "Pinch fingers, small bird", how: "Hitches outside, quick outs from the slots, Y sticks at 5. Ball out now.", read: "Pick the widest cushion before the snap and throw it on rhythm." },
+  robin:   { fam: "Pass",   dirs: [""],         words: { "": "Robin" }, carrier: "WR", signal: "Flap the elbows", how: "Slants outside, arrows to the flats. The 6th grade money concept.", read: "Flat first. Covered means the slant is open behind it." },
+  hawk:    { fam: "Pass",   dirs: [""],         words: { "": "Hawk" }, carrier: "WR", signal: "One arm soars", how: "Curls at 8 outside, flats underneath, Y to the corner.", read: "Watch the man over the slot: chases the flat, throw the curl; sits, throw the flat." },
+  owl:     { fam: "Pass",   dirs: [""],         words: { "": "Owl" }, carrier: "Y", signal: "Circles over the eyes", how: "Everyone sells Rhino. Y slips into the seam behind the linebackers. QB fakes and pops it over their heads.", read: "Fake, find Y, throw it now. The most unfair play we own." },
+  falcon:  { fam: "Pass",   dirs: [""],         words: { "": "Falcon" }, carrier: "WR", signal: "Both arms soar", how: "Four verticals, slots bend to the seams, RB checks down.", read: "Coach picks the target before the snap." },
+  eagle:   { fam: "Pass",   dirs: [""],         words: { "": "Eagle Max" }, carrier: "WR", signal: "Full wingspan flex", how: "The shot. Post and go outside, Y drags underneath, H and RB stay in to protect seven strong.", read: "One look deep for two seconds, then take the drag." },
+  bubble:  { fam: "Screen", dirs: ["Rt", "Lt"], words: { Rt: "Reese's", Lt: "Laffy" }, carrier: "WR", signal: "Rub the belly, then point", how: "Called-side outside WR bubbles behind the jet fake, Y and the backside crack down.", read: "Catch and throw now. Free yards when they chase the jet." },
+  slip:    { fam: "Screen", dirs: ["Rt", "Lt"], words: { Rt: "Snickers", Lt: "Skittles" }, carrier: "RB", signal: "Take a big bite, then point", how: "QB drifts, the line lets the rush through and releases, RB slips out behind it.", read: "Let the rush come, then dump it over their heads." },
+  reverse: { fam: "Special", dirs: ["Rt", "Lt"], words: { Rt: "Rewind", Lt: "Loop" }, carrier: "WR", signal: "Spin a finger backward, then point", how: "Full Rocket fake one way, backside WR takes it back the other way behind everyone chasing. Once a game, when they start flying to the jet.", read: "None. Sell the fake, hand it deep." },
+  blank:   { fam: "Special", dirs: [""],         words: { "": "Custom" }, carrier: null, signal: "Your call", how: "A blank canvas. Use Customize to draw every path yourself.", read: "Your design." },
+};
+/* ---- line calls: the O-line's own channel, spoken first ---- */
+const LINE_CALLS = { power: "HAMMER", owl: "HAMMER", trap: "TRAP", counter: "WRAP", jet: "REACH", keep: "REACH", reverse: "REACH", sneak: "SURGE", sparrow: "QUICK", robin: "QUICK", bubble: "QUICK", hawk: "WALL", falcon: "WALL", eagle: "WALL", slip: "GATE" };
+const LINE_WORDS = ["HAMMER", "TRAP", "WRAP", "REACH", "SURGE", "QUICK", "WALL", "GATE"];
+const lineCallFor = (p) => (p && (p.lineCall || LINE_CALLS[p.concept])) || "";
+
+const callWord = (c, dir, tags = []) => {
+  const base = CONCEPTS[c] ? CONCEPTS[c].words[dir || ""] || CONCEPTS[c].words.Rt : "";
+  return tags.length ? `${base} ${tags.join(" ")}` : base;
+};
+const playCarrier = (p) => {
+  const c = CONCEPTS[p.concept];
+  if (!c) return null;
+  if (p.concept === "bubble") return p.dir === "Lt" ? "X" : "Z";
+  if (p.concept === "reverse") return p.dir === "Lt" ? "Z" : "X";
+  if ((p.tags || []).includes("Now")) return c.carrier + " / H";
+  if ((p.tags || []).includes("Peek")) return c.carrier + " / Y";
+  return c.carrier;
+};
+
+/* ---- kid-language jobs: what each position does on every concept ---- */
+const ASSIGNMENTS = {
+  power:   { OL: "Playside blocks down. Backside guard pulls and leads through the hole. Backside tackle hinges.", QB: "Open playside, hand it deep, fake the keep after.", RB: "Downhill off Y's hip. Follow the pulling guard.", H: "Jet motion full speed. Sell it like you have the ball.", Y: "Block down hard. You are the edge of the wall.", XZ: "Block the man over you." },
+  trap:    { OL: "Center and playside block down. Backside guard traps the first man past center.", QB: "Quick handoff, then fake a rollout.", RB: "One step, hit the A gap NOW. It will be open.", H: "Stay wide, block your man.", Y: "Climb to the linebacker.", XZ: "Block the man over you." },
+  jet:     { OL: "Everybody reach playside and run.", QB: "Catch, flip it to H at full speed, fake the keep.", RB: "Fake the power away. Sell it.", H: "Motion full speed, take the flip, outrun everyone.", Y: "Arc release, go find the safety.", XZ: "Playside cracks down. Backside blocks his man." },
+  keep:    { OL: "Reach playside just like Rocket.", QB: "Fake the flip, tuck it, follow the RB around the edge.", RB: "Lead through the edge, block the first color you see.", H: "Motion full speed, fake it, keep sprinting.", Y: "Arc to the safety.", XZ: "Block the man over you." },
+  counter: { OL: "Playside blocks down. Backside guard kicks, backside tackle wraps and leads.", QB: "Open away first, then hand it back.", RB: "Jab step away, be patient, then hit it behind the wrappers.", H: "Jet motion away. Sell it.", Y: "Block down hard.", XZ: "Block the man over you." },
+  sneak:   { OL: "Fire out low. One yard war.", QB: "Snap and surge behind the center. Two hands on the ball.", RB: "Push the pile.", H: "Get big, wall off.", Y: "Get big, wall off.", XZ: "Block the man over you." },
+  sparrow: { OL: "Set and punch. Ball is out fast.", QB: "Pick the widest cushion before the snap. Catch, throw, done.", RB: "Check the rush, leak to the flat.", H: "Quick out at 4.", Y: "Stick at 5, sit in the window.", XZ: "Hitch at 5. Turn around, show your numbers." },
+  robin:   { OL: "Set and punch. Ball out quick.", QB: "Flat first. If he jumps it, the slant is behind him.", RB: "Check, leak to the flat.", H: "Arrow to the flat right now.", Y: "Flat.", XZ: "Slant. Three steps, cut across his face." },
+  hawk:    { OL: "Real pass set. Stay square.", QB: "Man over the slot chases the flat: throw curl. He sits: throw flat.", RB: "Check, leak.", H: "Flat.", Y: "Corner at 8.", XZ: "Push to 8, snap around. Curl." },
+  owl:     { OL: "Block Rhino. Make it look exactly the same.", QB: "Fake Rhino big, pop it to Y over their heads.", RB: "Fake Rhino, run angry without the ball.", H: "Jet motion, sell it.", Y: "Sell the block one count, slip behind the linebackers, eyes up fast.", XZ: "Block like it's a run." },
+  falcon:  { OL: "Best pass set of the day. Give him time.", QB: "Coach picks the target before the snap. Trust it.", RB: "Checkdown at 5.", H: "Seam.", Y: "Seam.", XZ: "Go. Run through his shoulder." },
+  eagle:   { OL: "Max protect. Nobody touches him.", QB: "One look deep for two counts, then take the drag.", RB: "Block first. Always.", H: "Stay in and block. You are the bodyguard.", Y: "Drag at 10. Be the answer.", XZ: "X runs the post. Z runs the go." },
+  bubble:  { OL: "Set and punch. Do not go downfield.", QB: "Catch and throw it NOW.", RB: "Fake.", H: "Jet motion, sell it.", Y: "Crack the first defender inside.", XZ: "Called side bubbles back and out. Other side blocks his man." },
+  slip:    { OL: "Block one count, let them through, release flat.", QB: "Drift back, let them come, dump it over their heads.", RB: "Let the rush go by, slip out behind them, eyes up fast.", H: "Run your man off deep.", Y: "Run him off.", XZ: "Run them off deep." },
+  reverse: { OL: "Reach like Rocket, then wall off.", QB: "Fake to H, hand it deep to the reverse man.", RB: "Fake away.", H: "Full Rocket fake. Best acting on the team.", Y: "Arc, find the safety.", XZ: "Backside man comes around deep, takes it, and sprints. Called side blocks down." },
+  blank:   { OL: "Coach draws it. Know your line on the picture.", QB: "Coach draws it. Know your path.", RB: "Coach draws it. Know your path.", H: "Coach draws it. Know your path.", Y: "Coach draws it. Know your path.", XZ: "Coach draws it. Know your path." },
+};
+const JOB_GROUPS = [["OL", "O-Line"], ["QB", "Quarterback"], ["RB", "Running Back"], ["H", "H (Slot)"], ["Y", "Y (Tight End)"], ["XZ", "X and Z (Outside)"]];
+const jobKeyFor = (label) => (["LT", "LG", "C", "RG", "RT"].includes(label) ? "OL" : label === "X" || label === "Z" ? "XZ" : label);
+
+/* ---- seeded Safari playbook ---- */
+function mkSeedPlay(num, formation, concept, dir, core, week, tags) {
+  return {
+    id: uid(), num, formation, concept, dir: dir || "", tags: tags || [], core: !!core, week,
+    name: `${formation} · ${callWord(concept, dir, tags || [])}`,
+    type: CONCEPTS[concept].fam === "Screen" ? "Screen" : CONCEPTS[concept].fam,
+    note: "",
+  };
+}
+function safariSeedPlaysV2() {
+  const mk = mkSeedPlay;
+  return [
+    mk(25, "Bunch Rt", "robin", "", false, 5), mk(26, "Bunch Lt", "robin", "", false, 5),
+    mk(27, "Nasty Rt", "power", "Rt", false, 5), mk(28, "Nasty Lt", "power", "Lt", false, 5),
+    mk(29, "Stack", "falcon", "", false, 5),
+    mk(30, "Doubles", "keep", "Rt", false, 5, ["Orbit"]),
+  ];
+}
+function safariSeedPlays() {
+  const mk = mkSeedPlay;
+  return [
+    mk(1, "Doubles", "power", "Rt", true, 1), mk(2, "Doubles", "power", "Lt", true, 1),
+    mk(3, "Doubles", "jet", "Rt", true, 2), mk(4, "Doubles", "jet", "Lt", true, 2),
+    mk(5, "Doubles", "keep", "Rt", true, 2), mk(6, "Doubles", "keep", "Lt", true, 2),
+    mk(7, "Doubles", "owl", "", true, 2),
+    mk(8, "Doubles", "bubble", "Rt", true, 3), mk(9, "Doubles", "bubble", "Lt", true, 3),
+    mk(10, "Doubles", "sparrow", "", true, 1),
+    mk(11, "Doubles", "robin", "", false, 3),
+    mk(12, "Trips Rt", "hawk", "", false, 3), mk(13, "Trips Lt", "hawk", "", false, 3),
+    mk(14, "Doubles", "trap", "Rt", false, 3), mk(15, "Doubles", "trap", "Lt", false, 3),
+    mk(16, "Doubles", "falcon", "", false, 4),
+    mk(17, "Doubles", "eagle", "", false, 4),
+    mk(18, "Doubles", "slip", "Rt", false, 4), mk(19, "Doubles", "slip", "Lt", false, 4),
+    mk(20, "Tank Rt", "power", "Rt", false, 4), mk(21, "Tank Lt", "power", "Lt", false, 4),
+    mk(22, "Tank Rt", "sneak", "", false, 4),
+    mk(23, "Doubles", "counter", "Rt", false, 6), mk(24, "Doubles", "counter", "Lt", false, 6),
+  ];
+}
 
 
 const RAW_SEED = {
@@ -272,23 +672,67 @@ const RAW_SEED = {
     { id: uid(), name: "Gassers", cat: "Conditioning", group: "All", mins: 6, notes: "Sideline to sideline. Sprint through the line, finish together." },
     { id: uid(), name: "Pursuit Chase", cat: "Conditioning", group: "Defense", mins: 8, notes: "Full pursuit to the sideline cone from every spot. Conditioning that looks like defense." },
     { id: uid(), name: "Competition Relays", cat: "Conditioning", group: "All", mins: 8, notes: "Ball carry relays by position group. Winners pick the break-down chant." },
+    /* ---- TEAM INSTALL (helmets-friendly) ---- */
+    { id: uid(), name: "Formation Races (Sprint-Align-Look)", cat: "Team", group: "Offense", mins: 12, notes: "Coach calls it, kids SPRINT to alignment, set, eyes to the sideline. Doubles first, then Trips Rt/Lt. Race the clock, celebrate perfect stances." },
+    { id: uid(), name: "Team Walk-Through Install", cat: "Team", group: "Offense", mins: 15, notes: "Rhino, Lion, and Sparrow on air at walk speed, then jog speed. Line steps only, no contact. Every kid says his job out loud before the snap." },
   ],
   practice: { date: "", start: "17:30", title: "Practice Plan", items: [] },
   savedPlans: [],
-  plays: [
-    { id: uid(), num: 1, name: "Power Right", formation: "I-Form", type: "Run", note: "Base play. FB kickout." },
-    { id: uid(), num: 2, name: "Power Left", formation: "I-Form", type: "Run", note: "" },
-    { id: uid(), num: 3, name: "Toss Sweep Rt", formation: "I-Form", type: "Run", note: "Get RB to the edge." },
-    { id: uid(), num: 4, name: "Waggle Pass", formation: "I-Form", type: "Pass", note: "TE drag, WR corner." },
-  ],
+  plays: [...safariSeedPlays(), ...safariSeedPlaysV2()],
+  callLog: [],
+  gameLabel: "",
+  script: [],
+  scriptPos: 0,
+  safariVersion: 2,
   callSheet: {},
   wrist: { title: "REBELS", cols: 3, copies: 4, selected: null },
   depth: { off: {}, def: {} },
   offScheme: "I-Form",
   defScheme: "5-3",
-  libVersion: 2,
+  libVersion: 3,
+  seasonWeek: 1,
+  pgOverrides: {},
+  packages: [],
 };
 const SEED = migrateDepth(RAW_SEED);
+
+/* ---- packages: one word, three snaps, all off the same picture ---- */
+function seedPackages() {
+  return [
+    { id: uid(), name: "SAFARI", steps: [{ concept: "power", dir: "Rt" }, { concept: "jet", dir: "Rt" }, { concept: "owl", dir: "" }] },
+    { id: uid(), name: "STAMPEDE", steps: [{ concept: "power", dir: "Rt" }, { concept: "power", dir: "Lt" }, { concept: "keep", dir: "Rt" }] },
+  ];
+}
+/* ---- kill pairs: Rhino kills to the bubble when the box is heavy ---- */
+function applyKillPairs(plays) {
+  const find = (c, d) => plays.find((p) => p.concept === c && (p.dir || "") === d);
+  const pair = (a, b) => { if (a && b && !a.killId) a.killId = b.id; };
+  pair(find("power", "Rt"), find("bubble", "Rt"));
+  pair(find("power", "Lt"), find("bubble", "Lt"));
+  return plays;
+}
+/* ---- Day 1 helmets plan: routes and throws by group, formations in team ---- */
+function day1Plan(drills) {
+  const idOf = (name) => { const d = drills.find((x) => x.name.toLowerCase() === name.toLowerCase()); return d ? d.id : null; };
+  const per = (mins, names) => ({ id: uid(), mins, stations: names.map(idOf).filter(Boolean).map((drillId) => ({ id: uid(), drillId })) });
+  const items = [
+    per(10, ["Dynamic Warmup & Stretch"]),
+    per(6, ["Stance & Takeoff"]),
+    per(12, ["Routes on Air", "OL Stance & First Steps", "LB Read Steps"]),
+    per(12, ["Catch Circuit", "Accuracy Targets", "Down Block Angles", "Handoff Mesh Circuit"]),
+    per(8, ["Pat & Go", "Snap & Steps"]),
+    per(12, ["Formation Races (Sprint-Align-Look)"]),
+    per(15, ["Team Walk-Through Install"]),
+    per(5, ["Gassers"]),
+  ].filter((p) => p.stations.length > 0);
+  return { date: "", start: "17:30", title: "Day 1 · Helmets: Routes + Formations", items };
+}
+SEED.packages = seedPackages();
+applyKillPairs(SEED.plays);
+SEED.safariVersion = 3;
+SEED.savedPlans = [{ id: uid(), name: "Day 1 · Helmets (Routes + Formations)", savedAt: "library", plan: day1Plan(SEED.drills) }];
+SEED.practice = { ...SEED.practice, ...day1Plan(SEED.drills) };
+SEED.day1Seeded = true;
 
 const STORAGE_KEY = "vh6-coach-data-v1";
 
@@ -365,12 +809,49 @@ function normalizeData(parsed) {
     const have = new Set(drills.map((d) => d.name.toLowerCase()));
     drills = [...drills, ...SEED.drills.filter((d) => !have.has(d.name.toLowerCase()))];
   }
+  // Append the Safari playbook once for existing saves, numbered after their plays.
+  let plays = parsed.plays || [];
+  if (!(parsed.safariVersion >= 1)) {
+    const base = plays.reduce((m, p) => Math.max(m, Number(p.num) || 0), 0);
+    plays = [...plays, ...safariSeedPlays().map((p) => ({ ...p, id: uid(), num: p.num - 0 + base }))];
+  }
+  if (!(parsed.safariVersion >= 2)) {
+    const have = new Set(plays.map((p) => p.name));
+    const base2 = plays.reduce((m, p) => Math.max(m, Number(p.num) || 0), 0);
+    let n = 0;
+    plays = [...plays, ...safariSeedPlaysV2().filter((p) => !have.has(p.name)).map((p) => ({ ...p, id: uid(), num: base2 + (++n) }))];
+  }
+  // v3: kill pairs on the base answer (Rhino kills to the bubble when the box is heavy).
+  if (!(parsed.safariVersion >= 3)) {
+    plays = applyKillPairs(plays.map((p) => ({ ...p })));
+  }
+  // Concept play names are derived, so vocabulary updates flow through automatically.
+  plays = plays.map((p) =>
+    p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
+      ? { ...p, name: `${p.formation} · ${callWord(p.concept, p.dir, p.tags || [])}` }
+      : p
+  );
+  // Seed the Day 1 helmets plan once for existing programs.
+  let savedPlans = parsed.savedPlans || [];
+  if (!parsed.day1Seeded && !savedPlans.some((s) => /day 1/i.test(s.name || ""))) {
+    savedPlans = [{ id: uid(), name: "Day 1 · Helmets (Routes + Formations)", savedAt: "library", plan: day1Plan(drills) }, ...savedPlans];
+  }
   return migrateDepth({
     ...SEED,
     ...parsed,
     drills,
+    plays,
+    callLog: parsed.callLog || [],
+    gameLabel: parsed.gameLabel || "",
+    script: parsed.script || [],
+    scriptPos: parsed.scriptPos || 0,
+    safariVersion: 3,
+    seasonWeek: parsed.seasonWeek || 1,
+    pgOverrides: parsed.pgOverrides || {},
+    packages: parsed.packages && parsed.packages.length ? parsed.packages : seedPackages(),
+    day1Seeded: true,
     practice: { ...SEED.practice, ...(parsed.practice || {}), items },
-    savedPlans: parsed.savedPlans || [],
+    savedPlans,
     wrist: { ...SEED.wrist, ...(parsed.wrist || {}) },
     depth: parsed.depth || { off: {}, def: {} },
     depthVersion: parsed.depthVersion || 1,
@@ -448,7 +929,8 @@ export default function App() {
   const TABS = [
     { key: "roster", label: "Roster & Depth" },
     { key: "practice", label: "Practice Planner" },
-    { key: "playbook", label: "Playbook" },
+    { key: "playbook", label: "Play Lab" },
+    { key: "caller", label: "Caller" },
     { key: "callsheet", label: "Call Sheet" },
     { key: "wrist", label: "Wristbands" },
   ];
@@ -466,6 +948,12 @@ export default function App() {
             </div>
           </div>
           <div className="mast-right">
+            <label className="week-dial" title="One dial runs the whole app. Every tab defaults to only what the team has installed so far. Turn it up as you install.">WEEK
+              <select aria-label="Season week" value={data.seasonWeek || 1} onChange={(e) => up({ seasonWeek: Number(e.target.value) })}>
+                {[1, 2, 3, 4, 5, 6].map((w) => <option key={w} value={w}>{w}</option>)}
+                <option value={9}>All</option>
+              </select>
+            </label>
             <BackupControls data={data} setData={setData} />
             <div className={"save-chip " + saveState}>
               {saveState === "saving" ? "Saving…" : saveState === "error" ? "Save failed" : "All changes saved"}
@@ -482,11 +970,12 @@ export default function App() {
         </nav>
 
         <main className="content">
-          {tab === "roster" && <RosterTab data={data} up={up} onPrint={() => setPrintTarget("gameday")} />}
+          {tab === "roster" && <RosterTab data={data} up={up} onPrint={() => setPrintTarget("gameday")} onPrintGroups={() => setPrintTarget("groups")} />}
           {tab === "practice" && <PracticeTab data={data} up={up} onPrint={() => setPrintTarget("practice")} />}
-          {tab === "playbook" && <PlaybookTab data={data} up={up} />}
+          {tab === "playbook" && <PlaybookTab data={data} up={up} onPrintSignals={() => setPrintTarget("signals")} onPrintBook={() => setPrintTarget("playbook")} onPrintJobs={() => setPrintTarget("jobs")} onPrintSystem={() => setPrintTarget("system")} />}
+          {tab === "caller" && <CallerTab data={data} up={up} />}
           {tab === "callsheet" && <CallSheetTab data={data} up={up} onPrint={() => setPrintTarget("callsheet")} />}
-          {tab === "wrist" && <WristTab data={data} up={up} onPrint={() => setPrintTarget("wrist")} />}
+          {tab === "wrist" && <WristTab data={data} up={up} onPrint={() => setPrintTarget("wrist")} onPrintRoutes={() => setPrintTarget("routes")} />}
         </main>
       </div>
 
@@ -545,9 +1034,10 @@ function BackupControls({ data, setData }) {
 /* ============================================================
    ROSTER & DEPTH CHART — 1st/2nd/3rd team slots per position
    ============================================================ */
-function RosterTab({ data, up, onPrint }) {
+function RosterTab({ data, up, onPrint, onPrintGroups }) {
   const [name, setName] = useState("");
   const [num, setNum] = useState("");
+  const [groupsView, setGroupsView] = useState(false);
   const [formationView, setFormationView] = useState(false);
   const [depthSide, setDepthSide] = useState("off");
 
@@ -615,10 +1105,14 @@ function RosterTab({ data, up, onPrint }) {
 
   return (
     <div className="two-col">
+      {groupsView && <PracticeGroupsView data={data} up={up} onClose={() => setGroupsView(false)} onPrint={onPrintGroups} />}
       <section className="panel">
         <div className="panel-head">
           <h2>Roster</h2>
-          <button className="btn ghost" onClick={onPrint}>Print Game Day Sheet</button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="btn" onClick={() => setGroupsView(true)} title="One click: the whole roster split into QB/WR, Linemen, and LB/RB from the depth chart, offense and defense combined.">Practice Groups</button>
+            <button className="btn ghost" onClick={onPrint}>Print Game Day Sheet</button>
+          </div>
         </div>
         <div className="add-row">
           <input placeholder="Player name" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
@@ -1059,28 +1553,186 @@ function buildSchedule(practice, drills) {
 
 
 /* ============================================================
-   PLAYBOOK
+   PLAY DIAGRAM (generated SVG)
    ============================================================ */
-function PlaybookTab({ data, up }) {
+function PlayDiagram({ play, size = "big", editSel, onPick, onField, dimExcept }) {
+  if (!play || !CONCEPTS[play.concept]) return null;
+  const svgRef = useRef(null);
+  const custom = play.custom || {};
+  const spots = { ...formSpots(play.formation || "Doubles"), ...(custom.spots || {}) };
+  const els = genPlayElements(play.concept, spots, play.dir, play.tags || []);
+  for (const [label, arr] of Object.entries(custom.els || {})) els[label] = arr;
+  const carrier = playCarrier(play);
+  const fieldClick = (e) => {
+    if (!onField || !svgRef.current) return;
+    const r = svgRef.current.getBoundingClientRect();
+    onField([Math.round(((e.clientX - r.left) / r.width) * 1000) / 10, Math.round(((e.clientY - r.top) / r.height) * 440) / 10]);
+  };
+  const styles = {
+    block: { stroke: "#15171B", width: 0.9, dash: null, cap: true },
+    route: { stroke: "#1F3A5F", width: 0.9, dash: null, arrow: true },
+    carry: { stroke: "#C8102E", width: 1.5, dash: null, arrow: true },
+    motion: { stroke: "#6B6F76", width: 0.7, dash: "2 1.4", arrow: false },
+    fake: { stroke: "#B9BCC2", width: 0.8, dash: null, arrow: true },
+    throw: { stroke: "#C8102E", width: 0.5, dash: "1 1.2", arrow: false },
+  };
+  const path = (pts) => pts.map((p, i) => `${i ? "L" : "M"}${p[0]},${p[1]}`).join(" ");
+  const lines = [];
+  for (const [label, arr] of Object.entries(els)) {
+    for (const e of arr) {
+      if (!e.pts) continue;
+      const st = styles[e.kind] || styles.route;
+      const last = e.pts[e.pts.length - 1];
+      const prev = e.pts[e.pts.length - 2] || e.pts[0];
+      const ang = Math.atan2(last[1] - prev[1], last[0] - prev[0]);
+      const dim = dimExcept && !dimExcept.includes(label);
+      lines.push(
+        <g key={label + e.kind + lines.length} opacity={dim ? 0.18 : 1}>
+          <path d={path(e.pts)} fill="none" stroke={st.stroke} strokeWidth={st.width} strokeDasharray={st.dash || undefined} strokeLinecap="round" strokeLinejoin="round" />
+          {st.arrow && (
+            <path d={`M${last[0]},${last[1]} L${last[0] - 2 * Math.cos(ang - 0.5)},${last[1] - 2 * Math.sin(ang - 0.5)} M${last[0]},${last[1]} L${last[0] - 2 * Math.cos(ang + 0.5)},${last[1] - 2 * Math.sin(ang + 0.5)}`} stroke={st.stroke} strokeWidth={st.width} fill="none" strokeLinecap="round" />
+          )}
+          {st.cap && (
+            <path d={`M${last[0] - 1.6 * Math.sin(ang)},${last[1] + 1.6 * Math.cos(ang)} L${last[0] + 1.6 * Math.sin(ang)},${last[1] - 1.6 * Math.cos(ang)}`} stroke={st.stroke} strokeWidth={st.width} fill="none" />
+          )}
+        </g>
+      );
+    }
+  }
+  return (
+    <svg ref={svgRef} className={"play-svg " + size + (onField ? " editing" : "")} viewBox="0 0 100 44" preserveAspectRatio="xMidYMid meet" onClick={fieldClick}>
+      <rect x="0" y="0" width="100" height="44" fill="#F3F6F2" />
+      <line x1="0" y1="20" x2="100" y2="20" stroke="#B7791F" strokeWidth="0.6" />
+      {[10, 30, 50, 70, 90].map((x) => (
+        <g key={x}>
+          <line x1={x} y1="6" x2={x} y2="7.5" stroke="#C9CFC6" strokeWidth="0.5" />
+          <line x1={x} y1="13" x2={x} y2="14.5" stroke="#C9CFC6" strokeWidth="0.5" />
+        </g>
+      ))}
+      {lines}
+      {Object.entries(spots).map(([label, [x, y]]) => {
+        const hot = label === carrier;
+        const active = label === editSel;
+        const dim = dimExcept && !dimExcept.includes(label);
+        const stroke = active ? "#B7791F" : hot ? "#C8102E" : "#15171B";
+        return (
+          <g key={label} opacity={dim ? 0.25 : 1} onClick={onPick ? (e) => { e.stopPropagation(); onPick(label); } : undefined} style={onPick ? { cursor: "pointer" } : undefined}>
+            {label === "C"
+              ? <rect x={x - 2} y={y - 2} width="4" height="4" fill="#fff" stroke={stroke} strokeWidth={active || hot ? 1 : 0.7} />
+              : <circle cx={x} cy={y} r="2.1" fill="#fff" stroke={stroke} strokeWidth={active || hot ? 1 : 0.7} />}
+            <text x={x} y={y + 0.9} textAnchor="middle" fontSize="2.4" fontWeight="700" fontFamily="Inter, sans-serif" fill={stroke}>{label.replace(" LB", "")}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/* ============================================================
+   PLAY LAB (playbook, rebuilt around the Safari grammar)
+   ============================================================ */
+function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPrintSystem }) {
   const { plays } = data;
-  const [f, setF] = useState({ name: "", formation: "", type: "Run", note: "" });
+  const seasonWeek = data.seasonWeek || 1;
+  const [showLater, setShowLater] = useState(false);
+  const visible = showLater ? plays : plays.filter((p) => !p.week || p.week <= seasonWeek);
+  const hiddenCount = plays.length - visible.length;
+  const emptyOK = (k) => LINE_CALLS[k] === "QUICK" || k === "blank";
+  const [sel, setSel] = useState(null);
+  const [b, setB] = useState({ formation: "Doubles", concept: "power", dir: "Rt", tags: [] });
+  const [legacy, setLegacy] = useState({ name: "", formation: "", type: "Run", note: "" });
+  const [editing, setEditing] = useState(false);
+  const [ed, setEd] = useState({ sel: null, mode: "route", drawing: false });
+  const [lookForm, setLookForm] = useState("Trips Rt");
+  const [teach, setTeach] = useState(false);
 
   const nextNum = plays.reduce((m, p) => Math.max(m, Number(p.num) || 0), 0) + 1;
-
-  const add = () => {
-    if (!f.name.trim()) return;
-    up({ plays: [...plays, { id: uid(), num: nextNum, name: f.name.trim(), formation: f.formation.trim(), type: f.type, note: f.note.trim() }] });
-    setF({ name: "", formation: f.formation, type: f.type, note: "" });
-  };
+  const selected = plays.find((p) => p.id === sel) || null;
   const setPlay = (id, patch) => up({ plays: plays.map((p) => (p.id === id ? { ...p, ...patch } : p)) });
+  const addLook = () => {
+    if (!selected || !selected.concept) return;
+    const p = {
+      ...selected, id: uid(), num: nextNum, formation: lookForm, core: false, custom: null,
+      name: selected.concept === "blank" ? `${selected.name} (${lookForm})` : `${lookForm} · ${callWord(selected.concept, selected.dir, selected.tags || [])}`,
+    };
+    up({ plays: [...plays, p] });
+    setSel(p.id);
+  };
+
+  /* ---- customize editor ---- */
+  const custom = (selected && selected.custom) || { spots: {}, els: {} };
+  const spotsNow = selected ? { ...formSpots(selected.formation || "Doubles"), ...(custom.spots || {}) } : {};
+  const startLine = () => {
+    if (!selected || !ed.sel) return;
+    const els = { ...(custom.els || {}) };
+    els[ed.sel] = [...(els[ed.sel] || []), { kind: ed.mode === "move" ? "route" : ed.mode, pts: [spotsNow[ed.sel]] }];
+    setPlay(selected.id, { custom: { ...custom, els } });
+    setEd({ ...ed, drawing: true });
+  };
+  const fieldClick = (pt) => {
+    if (!selected || !ed.sel) return;
+    if (ed.mode === "move") {
+      setPlay(selected.id, { custom: { ...custom, spots: { ...(custom.spots || {}), [ed.sel]: pt } } });
+      return;
+    }
+    if (!ed.drawing) return;
+    const els = { ...(custom.els || {}) };
+    const arr = [...(els[ed.sel] || [])];
+    if (!arr.length) return;
+    const lastEl = { ...arr[arr.length - 1], pts: [...arr[arr.length - 1].pts, pt] };
+    arr[arr.length - 1] = lastEl;
+    els[ed.sel] = arr;
+    setPlay(selected.id, { custom: { ...custom, els } });
+  };
+  const clearPlayer = () => {
+    if (!selected || !ed.sel) return;
+    const els = { ...(custom.els || {}) };
+    els[ed.sel] = [];
+    setPlay(selected.id, { custom: { ...custom, els } });
+    setEd({ ...ed, drawing: false });
+  };
+  const shuffleNums = () => {
+    if (!window.confirm("Shuffle every play number randomly? The old numbers become meaningless to anyone who scouted you. Reprint wristbands after.")) return;
+    const nums = plays.map((_, i) => i + 1);
+    for (let i = nums.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [nums[i], nums[j]] = [nums[j], nums[i]]; }
+    up({ plays: plays.map((p, i) => ({ ...p, num: nums[i] })) });
+  };
+  const resetCustom = () => {
+    if (!selected) return;
+    if (!window.confirm("Reset this play to its generated diagram?")) return;
+    setPlay(selected.id, { custom: null });
+    setEd({ sel: null, mode: "route", drawing: false });
+  };
+
+  const concept = CONCEPTS[b.concept];
+  const needsDir = concept && concept.dirs.includes("Rt");
+  const bTags = b.tags || [];
+  const toggleTag = (t) => setB({ ...b, tags: bTags.includes(t) ? bTags.filter((x) => x !== t) : [...bTags, t] });
+  const buildName = `${b.formation} · ${callWord(b.concept, needsDir ? b.dir : "", bTags)}`;
+
+  const addBuilt = () => {
+    const p = {
+      id: uid(), num: nextNum, formation: b.formation, concept: b.concept,
+      dir: needsDir ? b.dir : "", tags: bTags, core: false, week: null,
+      name: buildName, type: concept.fam === "Screen" ? "Screen" : concept.fam === "Special" ? "Special" : concept.fam, note: "",
+    };
+    up({ plays: [...plays, p] });
+    setSel(p.id);
+  };
+  const addLegacy = () => {
+    if (!legacy.name.trim()) return;
+    up({ plays: [...plays, { id: uid(), num: nextNum, name: legacy.name.trim(), formation: legacy.formation.trim(), type: legacy.type, note: legacy.note.trim() }] });
+    setLegacy({ name: "", formation: "", type: legacy.type, note: "" });
+  };
   const duplicate = (id) => {
     const src = plays.find((p) => p.id === id);
     if (!src) return;
-    const flip = (s) => {
-      if (/right|rt\b/i.test(s)) return s.replace(/Right/gi, "Left").replace(/\bRt\b/gi, "Lt");
-      if (/left|lt\b/i.test(s)) return s.replace(/Left/gi, "Right").replace(/\bLt\b/gi, "Rt");
-      return s + " Copy";
-    };
+    if (src.concept && src.dir) {
+      const nd = src.dir === "Rt" ? "Lt" : "Rt";
+      up({ plays: [...plays, { ...src, id: uid(), num: nextNum, dir: nd, custom: null, name: `${src.formation} · ${callWord(src.concept, nd, src.tags || [])}` }] });
+      return;
+    }
+    const flip = (s) => (/right|rt\b/i.test(s) ? s.replace(/Right/gi, "Left").replace(/\bRt\b/gi, "Lt") : /left|lt\b/i.test(s) ? s.replace(/Left/gi, "Right").replace(/\bLt\b/gi, "Rt") : s + " Copy");
     up({ plays: [...plays, { ...src, id: uid(), num: nextNum, name: flip(src.name) }] });
   };
   const remove = (id) => {
@@ -1088,62 +1740,755 @@ function PlaybookTab({ data, up }) {
     if (!window.confirm(`Delete play${p ? ` "${p.name}"` : ""}? It comes off the call sheet and wristbands too.`)) return;
     const cs = {};
     for (const k of Object.keys(data.callSheet || {})) cs[k] = (data.callSheet[k] || []).filter((pid) => pid !== id);
-    const selected = data.wrist.selected === null ? null : data.wrist.selected.filter((pid) => pid !== id);
-    up({ plays: plays.filter((p) => p.id !== id), callSheet: cs, wrist: { ...data.wrist, selected } });
+    const selWrist = data.wrist.selected === null ? null : data.wrist.selected.filter((pid) => pid !== id);
+    up({ plays: plays.filter((x) => x.id !== id), callSheet: cs, wrist: { ...data.wrist, selected: selWrist } });
+    if (sel === id) setSel(null);
   };
 
+  const famGroups = { Run: [], Pass: [], Screen: [], Special: [] };
+  for (const [k, c] of Object.entries(CONCEPTS)) famGroups[c.fam].push(k);
+
+  const counts = {};
+  for (const p of plays) counts[p.num] = (counts[p.num] || 0) + 1;
+  const dups = Object.keys(counts).filter((n) => counts[n] > 1);
+
   return (
-    <section className="panel">
-      <div className="panel-head">
-        <h2>Playbook</h2>
-        <span className="hint" style={{ margin: 0 }}>Play numbers are what go on the wristband. Keep names short so they print big.</span>
-      </div>
-      <div className="add-row wrap">
-        <span className="next-num">#{nextNum}</span>
-        <input placeholder="Play name (e.g. Power Rt)" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} onKeyDown={(e) => e.key === "Enter" && add()} />
-        <input placeholder="Formation" style={{ width: 130 }} value={f.formation} onChange={(e) => setF({ ...f, formation: e.target.value })} />
-        <select value={f.type} onChange={(e) => setF({ ...f, type: e.target.value })}>
-          {PLAY_TYPES.map((t) => <option key={t}>{t}</option>)}
-        </select>
-        <input placeholder="Note (optional)" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
-        <button className="btn" onClick={add}>Add Play</button>
-      </div>
-      <div className="table-wrap">
-        <table>
-          <thead><tr><th style={{ width: 60 }}>No.</th><th>Play</th><th>Formation</th><th>Type</th><th>Note</th><th></th></tr></thead>
-          <tbody>
-            {[...plays].sort((a, b) => a.num - b.num).map((p) => (
-              <tr key={p.id}>
-                <td><input className="cell num" type="number" key={p.id + ":" + p.num} defaultValue={p.num}
-                  onBlur={(e) => { const n = Number(e.target.value); if (n && n !== p.num) setPlay(p.id, { num: n }); }}
-                  onKeyDown={(e) => e.key === "Enter" && e.target.blur()} /></td>
-                <td><input className="cell" value={p.name} onChange={(e) => setPlay(p.id, { name: e.target.value })} /></td>
-                <td><input className="cell" value={p.formation} onChange={(e) => setPlay(p.id, { formation: e.target.value })} /></td>
-                <td>
-                  <select className="cell" style={{ color: TYPE_COLORS[p.type], fontWeight: 600 }} value={p.type} onChange={(e) => setPlay(p.id, { type: e.target.value })}>
-                    {PLAY_TYPES.map((t) => <option key={t}>{t}</option>)}
-                  </select>
-                </td>
-                <td><input className="cell" value={p.note} onChange={(e) => setPlay(p.id, { note: e.target.value })} /></td>
-                <td className="row-actions">
-                  <button title="Duplicate (flips Rt/Lt)" onClick={() => duplicate(p.id)}>⧉</button>
-                  <button className="danger" onClick={() => remove(p.id)}>✕</button>
-                </td>
-              </tr>
+    <div className="two-col lab">
+      <section className="panel">
+        <div className="panel-head">
+          <h2>Play Lab</h2>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="btn" onClick={() => setTeach(true)}>Teach Mode</button>
+            <button className="btn ghost" onClick={onPrintSystem} title="The whole offense on one page, for new coaches">System Sheet</button>
+            <button className="btn ghost" onClick={onPrintJobs}>Job Cards</button>
+            <button className="btn ghost" onClick={shuffleNums} title="Re-encrypt: reassign every play number randomly, then reprint bands">Shuffle #s</button>
+            <button className="btn ghost" onClick={onPrintBook}>Print Play Cards</button>
+            <button className="btn ghost" onClick={onPrintSignals}>Print Signal Chart</button>
+          </div>
+        </div>
+        <div className="builder">
+          <b className="form-title">Build a play</b>
+          <div className="builder-row">
+            <select value={b.formation} onChange={(e) => { const f = e.target.value; setB({ ...b, formation: f, concept: f === "Empty" && !emptyOK(b.concept) ? "sparrow" : b.concept }); }}>
+              {PLAY_FORM_NAMES.map((f) => <option key={f}>{f}</option>)}
+            </select>
+            <select value={b.concept} onChange={(e) => setB({ ...b, concept: e.target.value })}>
+              {Object.entries(famGroups).map(([fam, keys]) => (
+                <optgroup key={fam} label={fam}>
+                  {keys.filter((k) => b.formation !== "Empty" || emptyOK(k)).map((k) => <option key={k} value={k}>{CONCEPTS[k].dirs[0] ? `${CONCEPTS[k].words.Rt} / ${CONCEPTS[k].words.Lt}` : CONCEPTS[k].words[""]}</option>)}
+                </optgroup>
+              ))}
+            </select>
+            {needsDir && (
+              <select value={b.dir} onChange={(e) => setB({ ...b, dir: e.target.value })}>
+                <option value="Rt">Rt</option><option value="Lt">Lt</option>
+              </select>
+            )}
+            {["Jet", "Orbit", "Zip", "Now", "Wheel", "Max", ...(seasonWeek >= 5 ? ["Peek"] : [])].map((t) => (
+              <label key={t} className={"tag-check" + (bTags.includes(t) ? " on" : "")}>
+                <input type="checkbox" checked={bTags.includes(t)} onChange={() => toggleTag(t)} />{t}
+              </label>
             ))}
-            {plays.length === 0 && <tr><td colSpan={6} className="empty">No plays yet. Add your first one above.</td></tr>}
-          </tbody>
-        </table>
+            <button className="btn" onClick={addBuilt}>Add #{nextNum}</button>
+          </div>
+          <div className="builder-preview">
+            <PlayDiagram play={{ formation: b.formation, concept: b.concept, dir: needsDir ? b.dir : "", tags: bTags }} size="small" />
+            <div className="builder-call">
+              {b.formation}{" · "}
+              {LINE_CALLS[b.concept] && <span className="line-chip" style={{ margin: "0 4px" }}>{LINE_CALLS[b.concept]}</span>}
+              {LINE_CALLS[b.concept] ? " " : "· "}{callWord(b.concept, needsDir ? b.dir : "", bTags)}
+              {b.concept === "blank" && <span className="hint" style={{ margin: "0 0 0 8px" }}>(pick the line call on the play card)</span>}
+              {b.formation === "Empty" && <span className="hint" style={{ margin: "0 0 0 8px" }}>Empty = QUICK family only. Nobody home to protect the QB.</span>}
+            </div>
+          </div>
+        </div>
+        <div className="lab-filter-row">
+          <span className="hint" style={{ margin: 0 }}>Showing what's installed thru week {seasonWeek >= 9 ? 6 : seasonWeek} (the WEEK dial up top).</span>
+          {hiddenCount > 0 && !showLater && <button className="btn ghost small" onClick={() => setShowLater(true)}>Show {hiddenCount} later installs</button>}
+          {showLater && <button className="btn ghost small" onClick={() => setShowLater(false)}>Hide later installs</button>}
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th style={{ width: 46 }}>No.</th><th>Play</th><th>Fam</th><th style={{ width: 44 }} title="Core plays are the memorized one-word calls">Core</th><th style={{ width: 40 }}>Wk</th><th></th></tr></thead>
+            <tbody>
+              {[...visible].sort((a, z) => a.num - z.num).map((p) => (
+                <tr key={p.id} className={sel === p.id ? "sel-row" : ""} onClick={() => setSel(p.id)}>
+                  <td><input className="cell num" type="number" key={p.id + ":" + p.num} defaultValue={p.num}
+                    onClick={(e) => e.stopPropagation()}
+                    onBlur={(e) => { const n = Number(e.target.value); if (n && n !== p.num) setPlay(p.id, { num: n }); }}
+                    onKeyDown={(e) => e.key === "Enter" && e.target.blur()} /></td>
+                  <td className="play-name-cell">{p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
+                    ? <b>{p.formation} · {lineCallFor(p) && <span className="row-line">{lineCallFor(p)} ·</span>} {callWord(p.concept, p.dir, p.tags || [])}</b>
+                    : <b>{lineCallFor(p) && <span className="row-line">{lineCallFor(p)} ·</span>} {p.name}</b>}{p.concept && <span className="drill-notes"> {CONCEPTS[p.concept] ? "" : ""}</span>}</td>
+                  <td><span className="type-dot" style={{ background: TYPE_COLORS[p.type] || "#5B616B" }} /></td>
+                  <td><button className={"core-star" + (p.core ? " on" : "")} title="Core = one-word sideline call" onClick={(e) => { e.stopPropagation(); setPlay(p.id, { core: !p.core }); }}>★</button></td>
+                  <td className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>{p.week || ""}</td>
+                  <td className="row-actions">
+                    <button title={p.concept ? "Duplicate flipped (Rt/Lt)" : "Duplicate"} onClick={(e) => { e.stopPropagation(); duplicate(p.id); }}>⧉</button>
+                    <button className="danger" onClick={(e) => { e.stopPropagation(); remove(p.id); }}>✕</button>
+                  </td>
+                </tr>
+              ))}
+              {plays.length === 0 && <tr><td colSpan={6} className="empty">Build your first play above.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+        {dups.length > 0 && <div className="warn"><b>Duplicate play numbers:</b> {dups.map((n) => `#${n}`).join(", ")}. Kids read numbers off the wristband, so every play needs its own.</div>}
+        <div className="drill-form">
+          <b className="form-title">Add a custom play (no diagram)</b>
+          <div className="builder-row">
+            <input placeholder="Play name" value={legacy.name} onChange={(e) => setLegacy({ ...legacy, name: e.target.value })} />
+            <input placeholder="Formation" style={{ width: 110 }} value={legacy.formation} onChange={(e) => setLegacy({ ...legacy, formation: e.target.value })} />
+            <select value={legacy.type} onChange={(e) => setLegacy({ ...legacy, type: e.target.value })}>{PLAY_TYPES.map((t) => <option key={t}>{t}</option>)}</select>
+            <button className="btn" onClick={addLegacy}>Add</button>
+          </div>
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h2>{selected ? `#${selected.num} · ${selected.name}` : "Play Card"}</h2>
+          {selected && selected.concept && CONCEPTS[selected.concept] && (
+            <button className={"btn " + (editing ? "" : "ghost")} onClick={() => { setEditing(!editing); setEd({ sel: null, mode: "route", drawing: false }); }}>
+              {editing ? "Done Editing" : "Customize"}
+            </button>
+          )}
+        </div>
+        {!selected && <div className="empty pad">Select a play to see its card: the diagram, the call, the signal, and the coaching points.</div>}
+        {selected && (
+          <div className="play-card">
+            {selected.concept && CONCEPTS[selected.concept] ? (
+              <>
+                {editing && (
+                  <div className="ed-toolbar">
+                    <span className="ed-hint">{ed.sel ? `Editing ${ed.sel}:` : "Tap a player, then draw."}</span>
+                    {["route", "carry", "block", "motion", "fake"].map((m) => (
+                      <button key={m} className={"ed-mode " + m + (ed.mode === m ? " on" : "")} onClick={() => setEd({ ...ed, mode: m, drawing: false })}>{m}</button>
+                    ))}
+                    <button className="ed-mode" disabled={!ed.sel} onClick={() => startLine()}>{ed.drawing ? "Drawing… tap field" : "Start line"}</button>
+                    <button className="ed-mode" disabled={!ed.sel} onClick={() => setEd({ ...ed, mode: "move", drawing: false })}>Move player</button>
+                    <button className="ed-mode" disabled={!ed.sel} onClick={() => clearPlayer()}>Clear player</button>
+                    <button className="ed-mode danger" onClick={() => resetCustom()}>Reset play</button>
+                  </div>
+                )}
+                <PlayDiagram
+                  play={selected}
+                  editSel={editing ? ed.sel : null}
+                  onPick={editing ? (label) => setEd({ ...ed, sel: label, drawing: false }) : undefined}
+                  onField={editing ? fieldClick : undefined}
+                />
+                <div className="pc-meta">
+                  <div className="pc-callrow">
+                    {lineCallFor(selected) && <span className="line-chip">{lineCallFor(selected)}</span>}
+                    <span className="pc-word">{callWord(selected.concept, selected.dir, selected.tags || [])}</span>
+                    <span className={"pc-badge" + (selected.core ? " core" : "")}>{selected.core ? "CORE · one-word call" : `BAND · call "${selected.num}"`}</span>
+                    {selected.custom && <span className="pc-badge">CUSTOMIZED</span>}
+                    {selected.formation === "Empty" && lineCallFor(selected) !== "QUICK" && <span className="pc-badge" style={{ background: "var(--red)", color: "#fff" }}>EMPTY = QUICK ONLY</span>}
+                  </div>
+                  {selected.concept === "blank" && (
+                    <input className="cell" placeholder="Name this play" value={selected.name} onChange={(e) => setPlay(selected.id, { name: e.target.value })} />
+                  )}
+                  {selected.concept === "blank" ? (
+                    <div className="pc-line"><b>Line call:</b>{" "}
+                      <select value={selected.lineCall || ""} onChange={(e) => setPlay(selected.id, { lineCall: e.target.value })}>
+                        <option value="">(pick one)</option>
+                        {LINE_WORDS.map((w) => <option key={w}>{w}</option>)}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="pc-line"><b>Call it:</b> "{selected.formation === "Doubles" ? "" : selected.formation + "... "}{lineCallFor(selected)}... {callWord(selected.concept, selected.dir, selected.tags || [])}." The line only listens for {lineCallFor(selected) || "their word"} plus R or L.</div>
+                  )}
+                  <div className="pc-line"><b>Signal:</b> {CONCEPTS[selected.concept].signal}</div>
+                  <div className="pc-line"><b>How it works:</b> {CONCEPTS[selected.concept].how}</div>
+                  <div className="pc-line"><b>QB:</b> {CONCEPTS[selected.concept].read}</div>
+                  <div className="pc-line"><b>Ball goes to:</b> {playCarrier(selected) || "your design"}</div>
+                  {seasonWeek >= 4 && selected.concept !== "blank" && (
+                    <div className="pc-line"><b>Kill to:</b>{" "}
+                      <select value={selected.killId || ""} onChange={(e) => setPlay(selected.id, { killId: e.target.value || null })}>
+                        <option value="">(none)</option>
+                        {[...plays].filter((x) => x.id !== selected.id).sort((a, z) => a.num - z.num).map((x) => <option key={x.id} value={x.id}>#{x.num} {x.name}</option>)}
+                      </select>
+                      <span className="hint" style={{ margin: "0 0 0 8px" }}>Band shows both numbers. QB counts the box and yells KILL KILL to flip. Week 4 tool.</span>
+                    </div>
+                  )}
+                  <div className="new-look">
+                    <select value={lookForm} onChange={(e) => setLookForm(e.target.value)}>
+                      {PLAY_FORM_NAMES.filter((f) => f !== selected.formation).map((f) => <option key={f}>{f}</option>)}
+                    </select>
+                    <button className="btn small" onClick={addLook}>Add This Look #{nextNum}</button>
+                    <span className="hint" style={{ margin: 0 }}>Same play, new costume. Kids learn nothing new.</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="empty pad">Custom play, no generated diagram. Rebuild it in the builder to get one.</div>
+            )}
+            <input className="cell" placeholder="Coaching note for this play" value={selected.note || ""} onChange={(e) => setPlay(selected.id, { note: e.target.value })} />
+          </div>
+        )}
+      </section>
+
+      {teach && <TeachMode plays={visible} startId={sel} onClose={() => setTeach(false)} />}
+    </div>
+  );
+}
+
+/* ============================================================
+   SIDELINE CALLER — three-speed tempo, tap to call, self-scout
+   ============================================================ */
+const RESULTS = ["Loss", "0-3", "4-9", "10+", "TD", "TO"];
+function CallerTab({ data, up }) {
+  const seasonWeek = data.seasonWeek || 1;
+  const plays = [...data.plays].sort((a, z) => a.num - z.num);
+  const log = data.callLog || [];
+  const game = data.gameLabel || "";
+  const gameLog = log.filter((e) => e.game === game);
+  const last = gameLog[0] || null;
+
+  const logCall = (p, note) => {
+    up({ callLog: [{ id: uid(), t: Date.now(), game, playId: p.id, label: note ? `${note}: ${p.name}` : p.name, word: p.concept ? callWord(p.concept, p.dir, p.tags || []) : p.name, concept: p.concept || null, dir: p.dir || "", result: null }, ...log] });
+    if (boardMode && !note) setBoard({ num: p.num, line: lineCallFor(p), word: p.concept ? callWord(p.concept, p.dir, p.tags || []) : p.name });
+  };
+  const setResult = (id, r) => up({ callLog: log.map((e) => (e.id === id ? { ...e, result: r } : e)) });
+  const removeEntry = (id) => up({ callLog: log.filter((e) => e.id !== id) });
+  const turbo = () => { const p = last && plays.find((x) => x.id === last.playId); if (p) logCall(p, "TURBO"); };
+  const mirror = () => {
+    const p = last && plays.find((x) => x.id === last.playId);
+    if (!p) return;
+    if (p.concept && p.dir) {
+      const twin = plays.find((x) => x.concept === p.concept && x.formation === p.formation && x.dir === (p.dir === "Rt" ? "Lt" : "Rt"));
+      if (twin) return logCall(twin, "MIRROR");
+    }
+    logCall(p, "MIRROR");
+  };
+  const clearGame = () => {
+    if (!window.confirm(`Clear the log for "${game || "this game"}"?`)) return;
+    up({ callLog: log.filter((e) => e.game !== game) });
+  };
+
+  const [wkFilter, setWkFilter] = useState(seasonWeek >= 9 ? 0 : seasonWeek);
+  const [boardMode, setBoardMode] = useState(false);
+  const [board, setBoard] = useState(null);
+
+  /* ---- packages: one word, three snaps ---- */
+  const packages = data.packages || [];
+  const [pkgRun, setPkgRun] = useState(null); /* {name, ids, pos} */
+  const resolvePkg = (pk) =>
+    (pk.ids
+      ? pk.ids.map((id) => plays.find((p) => p.id === id))
+      : (pk.steps || []).map((s) =>
+          plays.find((p) => p.concept === s.concept && (s.dir === "" || p.dir === s.dir) && p.formation === "Doubles") ||
+          plays.find((p) => p.concept === s.concept && (s.dir === "" || p.dir === s.dir))
+        )
+    ).filter(Boolean);
+  const startPkg = (pk) => { const ps = resolvePkg(pk); if (ps.length) setPkgRun({ name: pk.name, ids: ps.map((p) => p.id), pos: 0 }); };
+  const callPkgNext = () => {
+    if (!pkgRun) return;
+    const p = plays.find((x) => x.id === pkgRun.ids[pkgRun.pos]);
+    if (p) logCall(p);
+    const pos = pkgRun.pos + 1;
+    pos >= pkgRun.ids.length ? setPkgRun(null) : setPkgRun({ ...pkgRun, pos });
+  };
+  const removePkg = (id) => { if (window.confirm("Delete this package?")) up({ packages: packages.filter((x) => x.id !== id) }); };
+  const [pkgName, setPkgName] = useState("");
+  const [pkgPicks, setPkgPicks] = useState(["", "", ""]);
+  const addPkg = () => {
+    if (!pkgName.trim() || pkgPicks.some((x) => !x)) return;
+    up({ packages: [...packages, { id: uid(), name: pkgName.trim().toUpperCase(), ids: [...pkgPicks] }] });
+    setPkgName(""); setPkgPicks(["", "", ""]);
+  };
+  const installed = wkFilter > 0 ? plays.filter((p) => !p.week || p.week <= wkFilter) : plays;
+  const core = installed.filter((p) => p.core);
+  const rest = installed.filter((p) => !p.core);
+  const fams = ["Run", "Pass", "Screen", "Special"];
+
+  /* ---- opening script ---- */
+  const script = data.script || [];
+  const scriptPos = data.scriptPos || 0;
+  const scriptPlays = script.map((id) => plays.find((p) => p.id === id)).filter(Boolean);
+  const nextScripted = scriptPlays[scriptPos] || null;
+  const addToScript = (id) => id && up({ script: [...script, id] });
+  const removeFromScript = (i) => up({ script: script.filter((_, idx) => idx !== i), scriptPos: Math.min(scriptPos, Math.max(0, script.length - 2)) });
+  const callScripted = () => { if (nextScripted) { logCall(nextScripted); up({ scriptPos: scriptPos + 1 }); } };
+  const resetScript = () => up({ scriptPos: 0 });
+  const loadSuggested = () => {
+    const wants = [["power", "Rt"], ["jet", "Rt"], ["sparrow", ""], ["trap", "Rt"], ["owl", ""], ["bubble", "Rt"], ["power", "Lt"], ["keep", "Rt"], ["hawk", ""], ["eagle", ""]];
+    const ids = wants.map(([c, d]) => (plays.find((p) => p.concept === c && (d === "" || p.dir === d)) || {}).id).filter(Boolean);
+    up({ script: ids, scriptPos: 0 });
+  };
+
+  /* self-scout */
+  const byWord = {};
+  const touches = {};
+  const byForm = {};
+  for (const e of gameLog) {
+    const k = e.word || e.label;
+    byWord[k] = byWord[k] || { calls: 0, graded: 0, wins: 0 };
+    byWord[k].calls++;
+    if (e.result) { byWord[k].graded++; if (["4-9", "10+", "TD"].includes(e.result)) byWord[k].wins++; }
+    const p = plays.find((x) => x.id === e.playId);
+    const c = p && playCarrier(p);
+    if (c) touches[c] = (touches[c] || 0) + 1;
+    if (p && p.formation) {
+      const f = (byForm[p.formation] = byForm[p.formation] || { calls: 0, runs: 0 });
+      f.calls++;
+      if (p.type === "Run" || p.type === "Special") f.runs++;
+    }
+  }
+
+  return (
+    <div className="two-col">
+      <section className="panel">
+        <div className="panel-head">
+          <h2>Sideline Caller</h2>
+          <div style={{ display: "flex", gap: 8 }}>
+            <select className="cell" value={wkFilter} onChange={(e) => setWkFilter(Number(e.target.value))}>
+              <option value={0}>All installed</option>
+              <option value={1}>Thru week 1</option>
+              <option value={2}>Thru week 2</option>
+              <option value={3}>Thru week 3</option>
+              <option value={4}>Thru week 4</option>
+              <option value={5}>Thru week 5</option>
+              <option value={6}>Thru week 6</option>
+            </select>
+            <input className="cell" style={{ width: 130 }} placeholder="Game (vs Hoover)" value={game} onChange={(e) => up({ gameLabel: e.target.value })} />
+          </div>
+        </div>
+        <div className="tempo-row">
+          <button className="tempo-btn turbo" disabled={!last || (last.label || "").startsWith("TURBO")} onClick={turbo} title="Same play again, snap it now. Never twice in a row.">TURBO</button>
+          <button className="tempo-btn mirror" disabled={!last} onClick={mirror} title="Same play, other direction">MIRROR</button>
+          {last && <span className="last-call">Last: <b>{last.word || last.label}</b></span>}
+          <label className="tag-check" style={{ marginLeft: "auto" }} title="Tapping a play flashes its giant number to hold up. The board IS the call.">
+            <input type="checkbox" checked={boardMode} onChange={(e) => setBoardMode(e.target.checked)} />Board mode
+          </label>
+        </div>
+        {last && !last.result && (
+          <div className="result-row">
+            <span className="hint" style={{ margin: 0 }}>Result (optional):</span>
+            {RESULTS.map((r) => <button key={r} className={"result-chip " + r.replace("+", "p")} onClick={() => setResult(last.id, r)}>{r}</button>)}
+          </div>
+        )}
+        {seasonWeek >= 4 && last && (() => {
+          const lp = plays.find((x) => x.id === last.playId);
+          const kp = lp && lp.killId && plays.find((x) => x.id === lp.killId);
+          return kp ? (
+            <div className="result-row">
+              <span className="hint" style={{ margin: 0 }}>Box heavy?</span>
+              <button className="tempo-btn kill" onClick={() => logCall(kp, "KILL")}>KILL → {kp.concept ? callWord(kp.concept, kp.dir, kp.tags || []) : kp.name} #{kp.num}</button>
+            </div>
+          ) : null;
+        })()}
+        {seasonWeek >= 3 ? (
+          <>
+            <div className="caller-group-title core">PACKAGES · ONE WORD, THREE SNAPS</div>
+            <div className="pkg-bar">
+              {packages.map((pk) => (
+                <span key={pk.id} className="pkg-wrap">
+                  <button className="pkg-btn" onClick={() => startPkg(pk)} title={resolvePkg(pk).map((p) => p.name).join(" → ")}>{pk.name}</button>
+                  <button className="pkg-x" title="Delete package" onClick={() => removePkg(pk.id)}>✕</button>
+                </span>
+              ))}
+              {packages.length === 0 && <span className="hint" style={{ margin: 0 }}>No packages yet. Build one below.</span>}
+            </div>
+            {pkgRun && (() => {
+              const p = plays.find((x) => x.id === pkgRun.ids[pkgRun.pos]);
+              return (
+                <div className="script-bar pkg-run">
+                  <span className="script-next">{pkgRun.name} · {pkgRun.pos + 1} of {pkgRun.ids.length} · NEXT: <b>{p ? (p.concept ? callWord(p.concept, p.dir, p.tags || []) : p.name) : "?"}</b> <span className="mono">#{p ? p.num : ""}</span></span>
+                  <button className="btn" onClick={callPkgNext}>CALL IT</button>
+                  <button className="btn ghost small" onClick={() => setPkgRun(null)}>✕</button>
+                </div>
+              );
+            })()}
+            <div className="script-bar">
+              <input className="cell" style={{ width: 110 }} placeholder="Name (RAID)" value={pkgName} onChange={(e) => setPkgName(e.target.value)} />
+              {pkgPicks.map((v, i) => (
+                <select key={i} className="cell" value={v} onChange={(e) => setPkgPicks(pkgPicks.map((x, j) => (j === i ? e.target.value : x)))}>
+                  <option value="">{i + 1}…</option>
+                  {plays.map((p) => <option key={p.id} value={p.id}>#{p.num} {p.name}</option>)}
+                </select>
+              ))}
+              <button className="btn small" disabled={!pkgName.trim() || pkgPicks.some((x) => !x)} onClick={addPkg}>+ Package</button>
+            </div>
+          </>
+        ) : (
+          <div className="hint" style={{ padding: "4px 16px" }}>Packages (one word, three snaps at tempo) unlock at week 3 on the WEEK dial.</div>
+        )}
+        <div className="caller-group-title core">OPENING SCRIPT {scriptPlays.length > 0 && `· ${Math.min(scriptPos, scriptPlays.length)} of ${scriptPlays.length}`}</div>
+        {scriptPlays.length === 0 ? (
+          <div className="script-bar">
+            <span className="hint" style={{ margin: 0 }}>Script your first ten before kickoff.</span>
+            <button className="btn small" onClick={loadSuggested}>Load Suggested Opener</button>
+          </div>
+        ) : (
+          <>
+            <div className="script-bar">
+              {nextScripted ? (
+                <>
+                  <span className="script-next">NEXT: <b>{nextScripted.concept ? callWord(nextScripted.concept, nextScripted.dir, nextScripted.tags || []) : nextScripted.name}</b> <span className="mono">#{nextScripted.num}</span></span>
+                  <button className="btn" onClick={callScripted}>Call It</button>
+                </>
+              ) : (
+                <>
+                  <span className="script-next">Script complete. Now go hunt.</span>
+                  <button className="btn ghost small" onClick={resetScript}>Restart</button>
+                </>
+              )}
+            </div>
+            <div className="script-chips">
+              {scriptPlays.map((p, i) => (
+                <span key={i} className={"script-chip" + (i < scriptPos ? " done" : i === scriptPos ? " up" : "")}>
+                  {i + 1}. {p.concept ? callWord(p.concept, p.dir, p.tags || []) : p.name}
+                  <button onClick={() => removeFromScript(i)}>✕</button>
+                </span>
+              ))}
+            </div>
+            <div className="script-bar">
+              <select value="" onChange={(e) => addToScript(e.target.value)}>
+                <option value="">+ add play to script…</option>
+                {plays.map((p) => <option key={p.id} value={p.id}>#{p.num} {p.name}</option>)}
+              </select>
+            </div>
+          </>
+        )}
+        <div className="caller-group-title core">THE SERIES · one-word calls</div>
+        <div className="caller-grid">
+          {core.map((p) => (
+            <button key={p.id} className="call-btn core" onClick={() => logCall(p)}>
+              <span className="cb-num">{p.num}</span>
+              <span className="cb-word">{p.concept ? callWord(p.concept, p.dir, p.tags || []) : p.name}</span>
+            </button>
+          ))}
+          {core.length === 0 && <div className="empty pad">Star plays in the Play Lab to make them one-word core calls.</div>}
+        </div>
+        {fams.map((fam) => {
+          const list = rest.filter((p) => p.type === fam);
+          if (!list.length) return null;
+          return (
+            <div key={fam}>
+              <div className="caller-group-title">{fam.toUpperCase()} · wristband numbers</div>
+              <div className="caller-grid">
+                {list.map((p) => (
+                  <button key={p.id} className="call-btn" onClick={() => logCall(p)}>
+                    <span className="cb-num">{p.num}</span>
+                    <span className="cb-word small">{p.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+        <p className="hint">Call order: Formation, LINE WORD, play word (linemen only hear their word plus R or L). Numbers go on a dry-erase board, silent and meaningless without our band. Words are for TURBO only, where tempo outruns decoding. SWITCH (flip any word to its twin) lives on the board with a visual signal only, never voice, and not before week 5. Never Turbo twice in a row. Up two scores in the 4th, stop tapping and milk it.</p>
+      </section>
+
+      <section className="panel">
+        <div className="panel-head"><h2>Self-Scout {game && `· ${game}`}</h2></div>
+        {gameLog.length === 0 && <div className="empty pad">Tap calls as you make them (or log them at halftime). You get efficiency by concept and touch counts for your playmakers, live.</div>}
+        {Object.keys(touches).length > 0 && (
+          <div className="touch-row">
+            {Object.entries(touches).sort((a, z) => z[1] - a[1]).map(([who, n]) => (
+              <span key={who} className="touch-chip"><b>{who}</b> {n} {n === 1 ? "touch" : "touches"}</span>
+            ))}
+          </div>
+        )}
+        {Object.keys(byWord).length > 0 && (
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Call</th><th className="center">Calls</th><th className="center">Success</th></tr></thead>
+              <tbody>
+                {Object.entries(byWord).sort((a, z) => z[1].calls - a[1].calls).map(([w, s]) => (
+                  <tr key={w}>
+                    <td><b>{w}</b></td>
+                    <td className="center mono">{s.calls}</td>
+                    <td className="center mono">{s.graded ? Math.round((s.wins / s.graded) * 100) + "%" : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {Object.keys(byForm).length > 0 && (
+          <>
+            <div className="caller-group-title">LOOKS REPORT · are we predictable?</div>
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Formation</th><th className="center">Calls</th><th className="center">Run %</th><th></th></tr></thead>
+                <tbody>
+                  {Object.entries(byForm).sort((a, z) => z[1].calls - a[1].calls).map(([f, s]) => {
+                    const pct = Math.round((s.runs / s.calls) * 100);
+                    const tell = s.calls >= 4 && (pct >= 80 || pct <= 20);
+                    return (
+                      <tr key={f}>
+                        <td><b>{f}</b></td>
+                        <td className="center mono">{s.calls}</td>
+                        <td className="center mono">{pct}%</td>
+                        <td>{tell && <span className="tell-flag">TENDENCY · break it</span>}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+        {gameLog.length > 0 && (
+          <>
+            <div className="caller-group-title">CALL LOG</div>
+            <div className="log-scroll">
+              {gameLog.slice(0, 30).map((e) => (
+                <div key={e.id} className="call-log-row">
+                  <span className="mono log-time">{new Date(e.t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>
+                  <span className="log-label">{e.label}</span>
+                  {e.result ? <span className={"result-chip tiny " + e.result.replace("+", "p")}>{e.result}</span> :
+                    <span className="result-mini">{RESULTS.map((r) => <button key={r} onClick={() => setResult(e.id, r)}>{r === "Loss" ? "−" : r === "TO" ? "✗" : r === "TD" ? "6" : r}</button>)}</span>}
+                  <button className="icon-btn danger" onClick={() => removeEntry(e.id)}>✕</button>
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: "10px 16px" }}><button className="btn ghost" onClick={clearGame}>Clear This Game's Log</button></div>
+          </>
+        )}
+      </section>
+
+      {board && (
+        <div className="board-layer" onClick={() => setBoard(null)}>
+          <div className="board-num">{board.num}</div>
+          <div className="board-word">{board.line ? board.line + " · " : ""}{board.word}</div>
+          <div className="board-hint">Hold it up · tap to clear</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---- bird route table: any kid can play any letter off this card ---- */
+const ROUTE_TABLE = [
+  { bird: "Sparrow", X: "Hitch at 5", H: "Quick out at 4", Y: "Stick at 5", Z: "Hitch at 5", RB: "Check, leak flat" },
+  { bird: "Robin", X: "Slant", H: "Arrow to the flat", Y: "Flat", Z: "Slant", RB: "Check, leak flat" },
+  { bird: "Hawk", X: "Curl at 8", H: "Flat", Y: "Corner at 8", Z: "Curl at 8", RB: "Check, leak flat" },
+  { bird: "Owl", X: "Block", H: "Jet fake", Y: "Seam behind LBs", Z: "Block", RB: "Fake Rhino" },
+  { bird: "Falcon", X: "Go", H: "Seam", Y: "Seam", Z: "Go", RB: "Checkdown" },
+  { bird: "Eagle Max", X: "Post", H: "Block", Y: "Drag at 10", Z: "Go", RB: "Block" },
+];
+
+function RoutesPrint({ data }) {
+  const copies = Math.max(1, Math.min(12, Number(data.wrist.copies) || 4));
+  return (
+    <div className="sheet">
+      <PrintHead title="Bird Route Cards" right={<div className="p-meta">Cut, fold, tape into the wristband sleeve</div>} />
+      <div className="routes-grid">
+        {Array.from({ length: copies }, (_, i) => (
+          <div key={i} className="routes-card">
+            <div className="routes-title">BIRDS · bigger bird, deeper ball</div>
+            <table className="routes-table">
+              <thead><tr><th></th><th>X</th><th>H</th><th>Y</th><th>Z</th><th>RB</th></tr></thead>
+              <tbody>
+                {ROUTE_TABLE.map((r) => (
+                  <tr key={r.bird}><td className="routes-bird">{r.bird}</td><td>{r.X}</td><td>{r.H}</td><td>{r.Y}</td><td>{r.Z}</td><td>{r.RB}</td></tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="routes-foot">Hear an animal: block your man.</div>
+          </div>
+        ))}
       </div>
-      {(() => {
-        const counts = {};
-        for (const p of plays) counts[p.num] = (counts[p.num] || 0) + 1;
-        const dups = Object.keys(counts).filter((n) => counts[n] > 1);
-        return dups.length > 0 ? (
-          <div className="warn"><b>Duplicate play numbers:</b> {dups.map((n) => `#${n}`).join(", ")}. Kids read numbers off the wristband, so every play needs its own.</div>
-        ) : null;
-      })()}
-    </section>
+    </div>
+  );
+}
+
+/* ============================================================
+   TEACH MODE — fullscreen play presenter for chalk talks
+   ============================================================ */
+function TeachMode({ plays, startId, onClose }) {
+  const list = [...plays].filter((p) => p.concept && CONCEPTS[p.concept]).sort((a, z) => a.num - z.num);
+  const startIdx = Math.max(0, list.findIndex((p) => p.id === startId));
+  const [i, setI] = useState(startIdx);
+  const [hl, setHl] = useState(null);
+  const [quiz, setQuiz] = useState(false);
+  const [revealed, setRevealed] = useState(true);
+  const play = list[i];
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); setI((x) => Math.min(list.length - 1, x + 1)); setRevealed(!quiz); }
+      if (e.key === "ArrowLeft") { setI((x) => Math.max(0, x - 1)); setRevealed(!quiz); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, list.length, quiz]);
+
+  if (!play) return null;
+  const dimExcept = hl === null ? null : hl === "OL" ? ["LT", "LG", "C", "RG", "RT"] : hl === "XZ" ? ["X", "Z"] : [hl];
+  const jobKey = hl === null ? null : jobKeyFor(hl === "OL" ? "LT" : hl === "XZ" ? "X" : hl);
+  const job = jobKey && ASSIGNMENTS[play.concept] ? ASSIGNMENTS[play.concept][jobKey] : null;
+  const word = callWord(play.concept, play.dir, play.tags || []);
+
+  return (
+    <div className="fv-layer">
+      <div className="fv-toolbar">
+        <div className="fv-brand"><span className="p-mark" style={{ width: 30, height: 30, fontSize: 14 }}>VH</span><b>TEACH MODE</b></div>
+        <div className="teach-title">
+          <span className="mono">#{play.num}</span>
+          <span className="teach-form">{play.formation}</span>
+          {lineCallFor(play) && !(quiz && !revealed) && <span className="line-chip dark">{lineCallFor(play)}</span>}
+          <b>{quiz && !revealed ? "? ? ?" : word}</b>
+          {quiz && !revealed && <button className="btn small" onClick={() => setRevealed(true)}>Reveal</button>}
+        </div>
+        <div className="fv-actions">
+          <label className="tag-check" style={{ borderColor: "#4A4D53", color: "#B9BCC2" }}>
+            <input type="checkbox" checked={quiz} onChange={(e) => { setQuiz(e.target.checked); setRevealed(!e.target.checked); }} />Quiz
+          </label>
+          <span className="fv-hint">Arrows flip plays · Esc closes</span>
+          <button className="btn" onClick={onClose}>Close</button>
+        </div>
+      </div>
+      <div className="teach-stage">
+        <button className="teach-nav" disabled={i === 0} onClick={() => { setI(i - 1); setRevealed(!quiz); }}>‹</button>
+        <div className="teach-main">
+          <PlayDiagram play={play} size="teach" dimExcept={dimExcept} />
+          <div className="teach-hl-row">
+            <button className={"teach-hl" + (hl === null ? " on" : "")} onClick={() => setHl(null)}>Everyone</button>
+            {[["OL", "O-Line"], ["QB", "QB"], ["RB", "RB"], ["H", "H"], ["Y", "Y"], ["XZ", "X / Z"]].map(([k, lbl]) => (
+              <button key={k} className={"teach-hl" + (hl === k ? " on" : "")} onClick={() => setHl(hl === k ? null : k)}>{lbl}</button>
+            ))}
+          </div>
+          <div className="teach-job">
+            {job ? job : (CONCEPTS[play.concept] ? CONCEPTS[play.concept].how : "")}
+          </div>
+        </div>
+        <button className="teach-nav" disabled={i === list.length - 1} onClick={() => { setI(i + 1); setRevealed(!quiz); }}>›</button>
+      </div>
+    </div>
+  );
+}
+
+/* ---- printable job cards: one card per position, kid language ---- */
+function JobsPrint() {
+  const order = ["power", "trap", "jet", "keep", "counter", "sneak", "sparrow", "robin", "hawk", "owl", "falcon", "eagle", "bubble", "slip", "reverse"];
+  return (
+    <div className="sheet">
+      <PrintHead title="My Job Cards" right={<div className="p-meta">One card per position. Kid language. Laminate them.</div>} />
+      <div className="jobs-grid">
+        {JOB_GROUPS.map(([key, label]) => (
+          <div key={key} className="jobs-card">
+            <div className="routes-title">{label.toUpperCase()} · YOUR JOB ON EVERY PLAY</div>
+            <table className="routes-table">
+              <tbody>
+                {order.map((c) => (
+                  <tr key={c}>
+                    <td className="routes-bird">{CONCEPTS[c].dirs[0] ? `${CONCEPTS[c].words.Rt} / ${CONCEPTS[c].words.Lt}` : CONCEPTS[c].words[""]}</td>
+                    <td>{key === "OL" && LINE_CALLS[c] ? <span><b>{LINE_CALLS[c]}</b> · {ASSIGNMENTS[c][key]}</span> : ASSIGNMENTS[c][key]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="routes-foot">Animal = run. Bird = pass. R goes right, L goes left. Cadence: Set... GO.</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---- printable play card book (for assistants) ---- */
+function PlaybookPrint({ data }) {
+  const list = [...data.plays].filter((p) => p.concept && CONCEPTS[p.concept]).sort((a, z) => a.num - z.num);
+  return (
+    <div className="sheet">
+      <PrintHead title="Rebel Safari Playbook" right={<div className="p-meta">{list.length} plays · {todayStr()}</div>} />
+      <div className="book-grid">
+        {list.map((p) => (
+          <div key={p.id} className="book-card">
+            <div className="book-head">
+              <span className="mono"><b>#{p.num}</b></span>
+              <b>{callWord(p.concept, p.dir, p.tags || [])}</b>
+              <span className="book-form">{p.formation}{p.core ? " · CORE" : ""}</span>
+            </div>
+            <PlayDiagram play={p} size="book" />
+            <div className="book-notes">{CONCEPTS[p.concept].how}{p.note ? ` · ${p.note}` : ""}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
+/* ---- the whole offense on one page, for brand new coaches ---- */
+function SystemPrint() {
+  const dict = [
+    ["HAMMER", "Rhino / Lion", "Power. Down blocks, backside guard pulls and leads, RB downhill."],
+    ["TRAP", "Rabbit / Lynx", "Quick trap up the middle. Hits before they blink."],
+    ["REACH", "Rocket / Laser", "Jet sweep. H takes it at full speed."],
+    ["REACH", "Rustler / Longhorn", "QB keeps behind the jet fake."],
+    ["WRAP", "Renegade / Lizard", "Counter, opposite the flow. Week 6."],
+    ["SURGE", "Sub", "QB sneak behind the big center."],
+    ["QUICK", "Sparrow", "Hitches at 5. Ball out now."],
+    ["QUICK", "Robin", "Slants and flats. The money concept."],
+    ["WALL", "Hawk", "Curls at 8 with flats under."],
+    ["HAMMER", "Owl", "Looks exactly like Rhino. TE slips behind the linebackers."],
+    ["WALL", "Falcon", "Four verticals. Coach picks the target."],
+    ["WALL", "Eagle Max", "The deep shot, seven blocking."],
+    ["QUICK", "Reese's / Laffy", "Bubble screen behind the jet fake."],
+    ["GATE", "Snickers / Skittles", "Let the rush in, RB slips out behind it."],
+    ["REACH", "Rewind / Loop", "The reverse. Once a game."],
+  ];
+  return (
+    <div className="sheet">
+      <PrintHead title="The Rebel Safari on One Page" right={<div className="p-meta">Hand this to every coach. This is the whole offense.</div>} />
+      <div className="sys-rules">
+        <div className="sys-rule"><b>1</b><span><b>Animal = run. Bird = pass.</b> Animals live on the ground. Birds fly. Candy is a trick.</span></div>
+        <div className="sys-rule"><b>2</b><span><b>R goes right. L goes left.</b> Rhino runs right, Lion runs left. If a kid can spell, he knows the direction.</span></div>
+        <div className="sys-rule"><b>3</b><span><b>Your word is the only word.</b> Linemen listen for the FIRST word (their blocking). Everyone else listens for the SECOND word. Nobody decodes the whole call.</span></div>
+        <div className="sys-rule"><b>4</b><span><b>"Set... GO." Every snap, all season.</b> One cadence. Zero procedure penalties.</span></div>
+      </div>
+      <div className="p-sec-title">HOW A CALL SOUNDS</div>
+      <div className="sys-call">"Trips Right... <b>HAMMER</b>... <b>RHINO</b>." <span className="sys-note">Formation (skip it if Doubles) · line word · play word. That's it.</span></div>
+      <div className="p-sec-title">THE DICTIONARY</div>
+      <table className="p-table">
+        <thead><tr><th style={{ width: "13%" }}>Line hears</th><th style={{ width: "22%" }}>Coach calls</th><th>What happens</th></tr></thead>
+        <tbody>
+          {dict.map((r, i) => <tr key={i}><td className="mono"><b>{r[0]}</b></td><td><b>{r[1]}</b></td><td>{r[2]}</td></tr>)}
+        </tbody>
+      </table>
+      <div className="p-sec-title">SIDELINE WORDS</div>
+      <div className="sys-call"><b>TURBO</b> = same play again, snap it now (never twice in a row) · <b>MIRROR</b> = same play, other side · <b>SWITCH</b> + word = run its twin (board signal only, week 5+) · Wristband numbers go on the board, never yelled</div>
+      <div className="p-sec-title">WHO LEARNS WHAT</div>
+      <div className="sys-call">Linemen: 7 words + the R/L rule. Backs: 5 paths. Receivers: animal means block, birds are on the wristband. QB: one read per bird. New coach: this page.</div>
+      <div className="p-sec-title">YOUR FIRST PRACTICE</div>
+      <div className="sys-call">Teach the four rules. Install Rhino, Lion, Sparrow. Rep "Set... GO" and sprint-align-look until it's boring. That's a real offense by Friday.</div>
+    </div>
+  );
+}
+
+function SignalsPrint({ data }) {
+  const core = [...data.plays].filter((p) => p.core && p.concept).sort((a, z) => a.num - z.num);
+  const others = [...data.plays].filter((p) => !p.core && p.concept).sort((a, z) => a.num - z.num);
+  const row = (p) => (
+    <tr key={p.id}>
+      <td className="mono center"><b>{p.num}</b></td>
+      <td className="mono">{lineCallFor(p)}</td>
+      <td><b>{callWord(p.concept, p.dir, p.tags || [])}</b></td>
+      <td>{p.name}</td>
+      <td>{CONCEPTS[p.concept].signal}</td>
+    </tr>
+  );
+  return (
+    <div className="sheet">
+      <PrintHead title="Sideline Call & Signal Chart" right={<div className="p-meta">{todayStr()}</div>} />
+      <div className="p-sec-title">CORE · shout the word or throw the signal, no wristband needed</div>
+      <table className="p-table">
+        <thead><tr><th style={{ width: "7%" }}>#</th><th style={{ width: "11%" }}>Line</th><th style={{ width: "16%" }}>Call</th><th style={{ width: "28%" }}>Play</th><th>Signal</th></tr></thead>
+        <tbody>{core.map(row)}</tbody>
+      </table>
+      <div className="p-sec-title">BAND · call the number, QB reads it off the wristband</div>
+      <table className="p-table">
+        <thead><tr><th style={{ width: "7%" }}>#</th><th style={{ width: "11%" }}>Line</th><th style={{ width: "16%" }}>Call</th><th style={{ width: "28%" }}>Play</th><th>Signal</th></tr></thead>
+        <tbody>{others.map(row)}</tbody>
+      </table>
+      <div className="p-foot"><span>Call order: Formation, LINE WORD, play word · TURBO = same play again (never twice in a row) · MIRROR = other side · SWITCH = run its twin (board only) · Numbers on the board, never yelled</span><span>Set... GO</span></div>
+    </div>
   );
 }
 
@@ -1204,7 +2549,7 @@ function CallSheetTab({ data, up, onPrint }) {
 /* ============================================================
    WRISTBANDS
    ============================================================ */
-function WristTab({ data, up, onPrint }) {
+function WristTab({ data, up, onPrint, onPrintRoutes }) {
   const w = data.wrist;
   const plays = [...data.plays].sort((a, b) => a.num - b.num);
   const selected = w.selected; // null = all
@@ -1216,7 +2561,11 @@ function WristTab({ data, up, onPrint }) {
     setW({ selected: base.includes(id) ? base.filter((x) => x !== id) : [...base, id] });
   };
 
-  const active = plays.filter((p) => isOn(p.id));
+  const seasonWeek = data.seasonWeek || 1;
+  const active = plays.filter((p) => isOn(p.id)).map((p) => ({
+    ...p,
+    _kill: seasonWeek >= 4 && p.killId ? (plays.find((x) => x.id === p.killId) || {}).num ?? null : null,
+  }));
 
   return (
     <div className="two-col">
@@ -1257,7 +2606,8 @@ function WristTab({ data, up, onPrint }) {
       <section className="panel">
         <div className="panel-head">
           <h2>Preview</h2>
-          <button className="btn" onClick={onPrint} disabled={active.length === 0}>Print Wristbands</button>
+          <button className="btn ghost" onClick={onPrintRoutes}>Print Route Cards</button>
+            <button className="btn" onClick={onPrint} disabled={active.length === 0}>Print Wristbands</button>
         </div>
         <div className="wrist-preview-wrap">
           <WristCard plays={active} title={w.title} cols={w.cols} />
@@ -1280,12 +2630,111 @@ function WristCard({ plays, title, cols }) {
             {col.map((p) => (
               <div key={p.id} className={"wrist-play" + (dense ? " dense" : "")}>
                 <span className="wp-num">{p.num}</span>
-                <span className="wp-name">{p.name}</span>
+                <span className="wp-name">
+                  {p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
+                    ? <>{p.formation} · <span className="wp-line">{lineCallFor(p)}</span> · {callWord(p.concept, p.dir, p.tags || [])}</>
+                    : <>{lineCallFor(p) && <span className="wp-line">{lineCallFor(p)} · </span>}{p.name}</>}
+                </span>
+                {p._kill != null && <span className="wp-kill">K{p._kill}</span>}
               </div>
             ))}
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   PRACTICE GROUPS — one click, three coaching groups
+   ============================================================ */
+function PracticeGroupsView({ data, up, onClose, onPrint }) {
+  const { out, multi, unassigned } = practiceGroupsFor(data);
+  const overrides = data.pgOverrides || {};
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  const setOverride = (id, g) => up({ pgOverrides: { ...overrides, [id]: g } });
+  const clearOverride = (id) => { const o = { ...overrides }; delete o[id]; up({ pgOverrides: o }); };
+  const label = (g) => (PG_GROUPS.find(([k]) => k === g) || [])[1] || g;
+  return (
+    <div className="pg-view">
+      <div className="pg-head">
+        <div>
+          <h2 style={{ margin: 0 }}>Practice Groups</h2>
+          <p className="hint" style={{ margin: "2px 0 0" }}>Built from the depth chart, offense and defense combined. A two-way kid lands with his best slot; tap a chip to move him for tonight. Moves are remembered.</p>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn ghost" onClick={onPrint}>Print</button>
+          <button className="btn" onClick={onClose}>Done</button>
+        </div>
+      </div>
+      <div className="pg-cols">
+        {PG_GROUPS.map(([key, name]) => (
+          <div key={key} className={"pg-col " + key}>
+            <div className="pg-col-head">{name} <span className="pg-count">{out[key].length}</span></div>
+            {out[key].map(({ p, groups }) => (
+              <div key={p.id} className="pg-player">
+                <b className="mono">#{p.num || "–"}</b> {p.name}
+                <span className="pg-chips">
+                  {groups.filter((g) => g !== key).map((g) => (
+                    <button key={g} className="pg-chip" title={"Also on the depth chart as " + label(g) + ". Tap to move him there."} onClick={() => setOverride(p.id, g)}>→ {label(g)}</button>
+                  ))}
+                  {overrides[p.id] && <button className="pg-chip undo" title="Back to his default group" onClick={() => clearOverride(p.id)}>⟲</button>}
+                </span>
+              </div>
+            ))}
+            {out[key].length === 0 && <div className="empty pad">Nobody yet.</div>}
+          </div>
+        ))}
+      </div>
+      {multi.length > 0 && (
+        <p className="hint" style={{ padding: "0 16px" }}>{multi.length} two-group {multi.length === 1 ? "kid" : "kids"} on this roster. They show a chip in their column above.</p>
+      )}
+      {unassigned.length > 0 && (
+        <div className="pg-unassigned">
+          <b>Not on the depth chart yet:</b>
+          {unassigned.map((p) => (
+            <span key={p.id} className="pg-player loose">
+              <b className="mono">#{p.num || "–"}</b> {p.name}
+              {PG_GROUPS.map(([g, nm]) => <button key={g} className="pg-chip" onClick={() => setOverride(p.id, g)}>{nm}</button>)}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GroupsPrint({ data }) {
+  const { out, unassigned } = practiceGroupsFor(data);
+  const label = (g) => (PG_GROUPS.find(([k]) => k === g) || [])[1] || g;
+  return (
+    <div className="sheet">
+      <PrintHead title="Practice Groups" right={<div className="p-meta">{todayStr()}</div>} />
+      <div className="pg-print-cols">
+        {PG_GROUPS.map(([key, name]) => (
+          <div key={key} className="pg-print-col">
+            <div className="p-sec-title">{name} · {out[key].length}</div>
+            <table className="p-table">
+              <tbody>
+                {out[key].map(({ p, groups }) => (
+                  <tr key={p.id}>
+                    <td className="mono" style={{ width: 34 }}>{p.num || "–"}</td>
+                    <td>{p.name}{groups.length > 1 ? <span className="p-meta"> (also {groups.filter((g) => g !== key).map(label).join(", ")})</span> : null}</td>
+                  </tr>
+                ))}
+                {out[key].length === 0 && <tr><td>—</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        ))}
+      </div>
+      {unassigned.length > 0 && (
+        <div className="p-foot"><span>Not on the depth chart: {unassigned.map((p) => `#${p.num || "–"} ${p.name}`).join(" · ")}</span></div>
+      )}
     </div>
   );
 }
@@ -1314,6 +2763,12 @@ function PrintLayer({ target, data, onClose }) {
         {target === "callsheet" && <CallSheetPrint data={data} />}
         {target === "wrist" && <WristPrint data={data} />}
         {target === "gameday" && <GameDayPrint data={data} />}
+        {target === "signals" && <SignalsPrint data={data} />}
+        {target === "playbook" && <PlaybookPrint data={data} />}
+        {target === "routes" && <RoutesPrint data={data} />}
+        {target === "jobs" && <JobsPrint />}
+        {target === "system" && <SystemPrint />}
+        {target === "groups" && <GroupsPrint data={data} />}
       </div>
     </div>
   );
@@ -1495,6 +2950,180 @@ function Styles() {
 .backup-controls { display: flex; gap: 6px; }
 .mast-btn { appearance: none; background: transparent; border: 1px solid #4A4D53; color: #B9BCC2; font-family: var(--disp); font-weight: 600; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; padding: 5px 10px; cursor: pointer; }
 .mast-btn:hover { border-color: #fff; color: #fff; }
+
+/* ---- play lab ---- */
+.builder { padding: 12px 16px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; background: #F6F4EF; }
+.builder-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.builder-preview { display: flex; gap: 12px; align-items: center; }
+.builder-call { font-family: var(--disp); font-weight: 700; font-size: 18px; letter-spacing: 1px; }
+.play-svg { border: 1px solid var(--line); background: #F3F6F2; display: block; }
+.play-svg.big { width: 100%; }
+.play-svg.small { width: 220px; flex-shrink: 0; }
+.sel-row { background: #FDF3F4; }
+tbody tr { cursor: pointer; }
+.core-star { appearance: none; background: none; border: none; font-size: 16px; color: var(--line); cursor: pointer; }
+.core-star.on { color: #B7791F; }
+.play-card { padding: 14px 16px; display: grid; gap: 12px; }
+.pc-callrow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pc-word { font-family: var(--disp); font-weight: 700; font-size: 34px; letter-spacing: 2px; text-transform: uppercase; color: var(--red); }
+.pc-badge { font-family: var(--disp); font-weight: 600; font-size: 12px; letter-spacing: 1.2px; text-transform: uppercase; padding: 3px 9px; background: var(--line); color: var(--muted); }
+.pc-badge.core { background: #B7791F; color: #fff; }
+.pc-line { font-size: 13px; line-height: 1.45; }
+.pc-meta { display: grid; gap: 6px; }
+
+/* ---- sideline caller ---- */
+.tempo-row { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tempo-btn { appearance: none; border: none; color: #fff; font-family: var(--disp); font-weight: 700; font-size: 20px; letter-spacing: 2px; padding: 12px 22px; cursor: pointer; }
+.tempo-btn.turbo { background: var(--red); }
+.tempo-btn.turbo:active { background: var(--red-dark); }
+.tempo-btn.mirror { background: var(--ink); }
+.tempo-btn:disabled { opacity: .35; cursor: default; }
+.last-call { font-size: 13px; color: var(--muted); }
+.result-row { display: flex; align-items: center; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.result-chip { appearance: none; border: 1px solid var(--line); background: #fff; font-family: var(--disp); font-weight: 700; font-size: 13px; padding: 5px 10px; cursor: pointer; }
+.result-chip.TD { border-color: #0F6B4F; color: #0F6B4F; }
+.result-chip.TO, .result-chip.Loss { border-color: var(--red); color: var(--red); }
+.result-chip.tiny { font-size: 11px; padding: 1px 6px; cursor: default; }
+.caller-group-title { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 2px; color: var(--muted); padding: 12px 16px 6px; }
+.caller-group-title.core { color: #B7791F; }
+.caller-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; padding: 0 16px 12px; }
+.call-btn { appearance: none; border: 2px solid var(--ink); background: #fff; cursor: pointer; padding: 10px 6px; display: grid; justify-items: center; gap: 2px; min-height: 64px; }
+.call-btn:active { background: #FDF3F4; }
+.call-btn.core { border-color: #B7791F; background: #FFFBF2; }
+.cb-num { font-family: var(--mono); font-weight: 700; font-size: 11px; color: var(--muted); }
+.cb-word { font-family: var(--disp); font-weight: 700; font-size: 19px; letter-spacing: 1px; text-transform: uppercase; text-align: center; line-height: 1; }
+.cb-word.small { font-size: 13px; letter-spacing: .5px; text-transform: none; }
+.touch-row { display: flex; gap: 8px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.touch-chip { border: 1px solid var(--line); padding: 4px 10px; font-size: 12.5px; }
+.touch-chip b { font-family: var(--disp); font-size: 14px; color: var(--red); margin-right: 4px; }
+.log-scroll { max-height: 320px; overflow-y: auto; }
+.call-log-row { display: flex; align-items: center; gap: 8px; padding: 6px 16px; border-bottom: 1px dotted var(--line); font-size: 12.5px; }
+.log-time { color: var(--muted); font-size: 11px; flex-shrink: 0; }
+.log-label { flex: 1; min-width: 0; }
+.result-mini { display: flex; gap: 2px; }
+.result-mini button { appearance: none; border: 1px solid var(--line); background: #fff; font-size: 10px; padding: 1px 5px; cursor: pointer; }
+.p-sec-title { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 2px; margin: 14px 0 6px; color: var(--muted); }
+
+/* ---- play editor ---- */
+.play-svg.editing { cursor: crosshair; outline: 2px dashed #B7791F; }
+.ed-toolbar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 8px 0; }
+.ed-hint { font-size: 12px; color: var(--muted); margin-right: 4px; }
+.ed-mode { appearance: none; border: 1px solid var(--line); background: #fff; font-size: 11.5px; padding: 4px 8px; cursor: pointer; text-transform: capitalize; }
+.ed-mode.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.ed-mode.danger { color: var(--red); border-color: var(--red); }
+.ed-mode:disabled { opacity: .4; cursor: default; }
+.ed-mode.carry.on { background: var(--red); border-color: var(--red); }
+.tag-check { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); padding: 5px 9px; font-size: 12px; cursor: pointer; user-select: none; }
+.tag-check.on { border-color: #B7791F; background: #FFFBF2; font-weight: 600; }
+.tag-check input { margin: 0; }
+
+/* ---- week dial ---- */
+.week-dial { display: inline-flex; align-items: center; gap: 6px; font-family: var(--disp); font-size: 13px; letter-spacing: 1.5px; color: #fff; }
+.week-dial select { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.35); border-radius: 6px; padding: 3px 6px; font-family: var(--disp); font-size: 14px; }
+.week-dial select option { color: var(--ink); }
+
+/* ---- packages ---- */
+.pkg-bar { display: flex; align-items: center; gap: 8px; padding: 8px 16px; flex-wrap: wrap; }
+.pkg-wrap { display: inline-flex; align-items: stretch; }
+.pkg-btn { font-family: var(--disp); font-size: 18px; letter-spacing: 1.5px; padding: 8px 14px; border: 2px solid var(--ink); border-radius: 8px 0 0 8px; background: var(--gold); color: var(--ink); cursor: pointer; }
+.pkg-btn:hover { background: #ffe27a; }
+.pkg-x { border: 2px solid var(--ink); border-left: none; border-radius: 0 8px 8px 0; background: #fff; cursor: pointer; padding: 0 8px; color: #99310f; }
+.pkg-run { background: #FFF8E1; }
+.tempo-btn.kill { background: var(--red); color: #fff; border-color: var(--red); }
+
+/* ---- practice groups ---- */
+.pg-view { position: fixed; inset: 0; background: #FBFAF8; z-index: 70; overflow: auto; padding-bottom: 24px; }
+.pg-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 16px; border-bottom: 3px solid var(--ink); background: #fff; position: sticky; top: 0; z-index: 2; }
+.pg-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 16px; }
+@media (max-width: 760px) { .pg-cols { grid-template-columns: 1fr; } }
+.pg-col { background: #fff; border: 2px solid var(--ink); border-radius: 10px; overflow: hidden; }
+.pg-col-head { font-family: var(--disp); font-size: 20px; letter-spacing: 1.5px; text-transform: uppercase; padding: 8px 12px; background: var(--ink); color: #fff; display: flex; justify-content: space-between; }
+.pg-col.skill .pg-col-head { background: var(--red); }
+.pg-col.line .pg-col-head { background: var(--ink); }
+.pg-col.backs .pg-col-head { background: #3d4450; }
+.pg-count { background: rgba(255,255,255,0.2); border-radius: 12px; padding: 0 10px; }
+.pg-player { display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-bottom: 1px solid #eee; font-size: 14px; flex-wrap: wrap; }
+.pg-player.loose { border: none; padding: 4px 8px; }
+.pg-chips { margin-left: auto; display: inline-flex; gap: 6px; }
+.pg-chip { font-size: 11px; border: 1px solid var(--ink); border-radius: 999px; padding: 2px 8px; background: #fff; cursor: pointer; }
+.pg-chip:hover { background: var(--gold); }
+.pg-chip.undo { border-style: dashed; }
+.pg-unassigned { margin: 0 16px; padding: 10px 12px; background: #FFF3CD; border: 2px dashed #b8860b; border-radius: 10px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; font-size: 14px; }
+.lab-filter-row { display: flex; align-items: center; gap: 10px; padding: 6px 16px 0; flex-wrap: wrap; }
+.pg-print-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.wp-kill { font-family: var(--disp); font-size: 11px; background: var(--red); color: #fff; border-radius: 4px; padding: 0 4px; margin-left: 4px; }
+
+/* ---- opening script ---- */
+.script-bar { display: flex; align-items: center; gap: 10px; padding: 8px 16px; flex-wrap: wrap; }
+.script-next { font-size: 14px; }
+.script-next b { font-family: var(--disp); font-size: 20px; letter-spacing: 1px; text-transform: uppercase; color: var(--red); }
+.script-chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 4px 16px 8px; }
+.script-chip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); padding: 3px 8px; font-size: 12px; }
+.script-chip.done { opacity: .45; text-decoration: line-through; }
+.script-chip.up { border-color: var(--red); background: #FDF3F4; font-weight: 600; }
+.script-chip button { appearance: none; border: none; background: none; color: var(--muted); cursor: pointer; font-size: 11px; padding: 0; }
+
+/* ---- play card book print ---- */
+.book-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px; }
+.book-card { border: 1.5px solid var(--ink); page-break-inside: avoid; }
+.book-head { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-bottom: 1px solid var(--ink); font-size: 12px; }
+.book-head b { font-family: var(--disp); font-size: 15px; letter-spacing: 1px; text-transform: uppercase; }
+.book-form { margin-left: auto; color: var(--muted); font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; }
+.play-svg.book { width: 100%; border: none; }
+.book-notes { padding: 4px 8px; font-size: 10px; color: var(--muted); border-top: 1px solid var(--line); }
+
+.new-look { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 6px; border-top: 1px dotted var(--line); margin-top: 4px; }
+.tell-flag { font-family: var(--disp); font-weight: 700; font-size: 10.5px; letter-spacing: 1px; color: #fff; background: var(--red); padding: 2px 7px; }
+
+.line-chip { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 1.5px; padding: 3px 9px; background: var(--ink); color: #F4D35E; }
+.line-chip.dark { background: transparent; border: 1px solid #4A4D53; }
+.wp-line { font-family: var(--disp); font-weight: 700; font-size: 8px; letter-spacing: .5px; color: var(--red); flex-shrink: 0; }
+
+.row-line { font-family: var(--mono); font-weight: 700; font-size: 9.5px; letter-spacing: .5px; color: var(--muted); margin-right: 6px; }
+
+/* ---- system sheet ---- */
+.sys-rules { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 4px; }
+.sys-rule { display: flex; gap: 10px; align-items: flex-start; border: 1.5px solid var(--ink); padding: 8px 10px; font-size: 11.5px; line-height: 1.4; }
+.sys-rule > b { font-family: var(--disp); font-weight: 700; font-size: 26px; line-height: 1; color: var(--red); }
+.sys-call { font-size: 11.5px; line-height: 1.5; padding: 4px 0 2px; }
+.sys-call b { font-family: var(--disp); letter-spacing: .5px; }
+.sys-note { color: var(--muted); font-size: 10.5px; }
+
+/* ---- teach mode ---- */
+.teach-title { display: flex; align-items: center; gap: 12px; }
+.teach-title b { font-family: var(--disp); font-weight: 700; font-size: clamp(22px, 3vw, 40px); letter-spacing: 2px; text-transform: uppercase; color: #F4D35E; }
+.teach-title .mono { color: #9DA1A8; font-size: 14px; }
+.teach-form { color: #B9BCC2; font-family: var(--disp); font-weight: 600; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase; }
+.teach-stage { flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 2vh 2vw; overflow: hidden; }
+.teach-main { width: min(92vw, 150vh); display: grid; gap: 10px; }
+.play-svg.teach { width: 100%; border: 3px solid rgba(255,255,255,.25); }
+.teach-nav { appearance: none; background: transparent; border: 1px solid #4A4D53; color: #fff; font-size: 34px; width: 52px; height: 80px; cursor: pointer; flex-shrink: 0; }
+.teach-nav:hover { border-color: #fff; }
+.teach-nav:disabled { opacity: .25; cursor: default; }
+.teach-hl-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.teach-hl { appearance: none; border: 1px solid #4A4D53; background: transparent; color: #B9BCC2; font-family: var(--disp); font-weight: 700; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 14px; cursor: pointer; }
+.teach-hl.on { background: #F4D35E; border-color: #F4D35E; color: #15171B; }
+.teach-job { color: #fff; font-size: clamp(14px, 1.6vw, 20px); line-height: 1.4; text-align: center; min-height: 2.8em; padding: 0 4vw; }
+
+/* ---- job cards print ---- */
+.jobs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+.jobs-card { border: 1.5px solid var(--ink); page-break-inside: avoid; }
+
+/* ---- board mode ---- */
+.board-layer { position: fixed; inset: 0; z-index: 70; background: #0C0E11; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
+.board-num { font-family: var(--disp); font-weight: 700; font-size: min(58vh, 60vw); line-height: 1; color: #fff; }
+.board-word { font-family: var(--disp); font-weight: 700; font-size: clamp(18px, 3vw, 34px); letter-spacing: 3px; text-transform: uppercase; color: #F4D35E; }
+.board-hint { margin-top: 2vh; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: #6B6F76; }
+
+/* ---- route cards print ---- */
+.routes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+.routes-card { border: 1.5px solid var(--ink); page-break-inside: avoid; }
+.routes-title { font-family: var(--disp); font-weight: 700; font-size: 11px; letter-spacing: 1.5px; padding: 3px 8px; background: var(--ink); color: #fff; }
+.routes-table { width: 100%; border-collapse: collapse; font-size: 9px; }
+.routes-table th, .routes-table td { border: 0.5px solid var(--line); padding: 2px 4px; text-align: left; }
+.routes-table th { font-family: var(--disp); font-size: 9.5px; letter-spacing: 1px; }
+.routes-bird { font-family: var(--disp); font-weight: 700; font-size: 10px; letter-spacing: .5px; text-transform: uppercase; color: var(--red); }
+.routes-foot { padding: 3px 8px; font-size: 8px; color: var(--muted); border-top: 0.5px solid var(--line); }
 
 /* ---- saved plans ---- */
 .saved-plans { display: flex; gap: 8px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); background: #F6F4EF; }
@@ -1731,3 +3360,5 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 `}</style>
   );
 }
+
+export { normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord, LINE_CALLS, SEED, seedPackages, day1Plan, applyKillPairs };
