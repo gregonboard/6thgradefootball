@@ -111,6 +111,23 @@ function assignmentsFor(data, side, id) {
   return out.sort((a, b) => a.team - b.team);
 }
 
+/* ---------- playbook formations on the depth chart ----------
+   Single source of truth: PLAY_FORM_NAMES / formSpots drive both the
+   Play Lab and the Formation View, so the two can never drift apart.
+   FORM_WEEKS staggers the install to match the WEEK dial. */
+const FORM_WEEKS = { "Doubles": 1, "Doubles Lt": 1, "Trips Rt": 1, "Trips Lt": 1, "Tank Rt": 2, "Tank Lt": 2, "Bunch Rt": 3, "Bunch Lt": 3, "Empty": 4, "Stack": 5, "Nasty Rt": 5, "Nasty Lt": 5 };
+const installedForms = (week) => PLAY_FORM_NAMES.filter((f) => (FORM_WEEKS[f] || 1) <= week);
+/* Map a play diagram label to the depth chart position that fills it. */
+const PLAY_POS_LOOKUP = {
+  X: ["WR (X)"], Z: ["WR (Z)"], H: ["Slot (H)", "Wing", "FB"], Y: ["Slot (Y)", "TE"],
+  QB: ["QB"], RB: ["RB"], LT: ["LT"], LG: ["LG"], C: ["C"], RG: ["RG"], RT: ["RT"],
+};
+function resolvePlayPos(data, label) {
+  const list = offPositions(data);
+  for (const want of PLAY_POS_LOOKUP[label] || []) if (list.includes(want)) return want;
+  return list.find((p) => p.includes(`(${label})`)) || null;
+}
+
 /* ---------- practice groups ----------
    One button splits the whole roster into the three coaching groups
    (QB/WR skill, Linemen, LB/RB) from the depth chart, offense and
@@ -970,7 +987,7 @@ export default function App() {
         </nav>
 
         <main className="content">
-          {tab === "roster" && <RosterTab data={data} up={up} onPrint={() => setPrintTarget("gameday")} onPrintGroups={() => setPrintTarget("groups")} />}
+          {tab === "roster" && <RosterTab data={data} up={up} onPrint={() => setPrintTarget("gameday")} onPrintGroups={() => setPrintTarget("groups")} onPrintFormations={() => setPrintTarget("formations")} />}
           {tab === "practice" && <PracticeTab data={data} up={up} onPrint={() => setPrintTarget("practice")} />}
           {tab === "playbook" && <PlaybookTab data={data} up={up} onPrintSignals={() => setPrintTarget("signals")} onPrintBook={() => setPrintTarget("playbook")} onPrintJobs={() => setPrintTarget("jobs")} onPrintSystem={() => setPrintTarget("system")} />}
           {tab === "caller" && <CallerTab data={data} up={up} />}
@@ -1034,7 +1051,7 @@ function BackupControls({ data, setData }) {
 /* ============================================================
    ROSTER & DEPTH CHART — 1st/2nd/3rd team slots per position
    ============================================================ */
-function RosterTab({ data, up, onPrint, onPrintGroups }) {
+function RosterTab({ data, up, onPrint, onPrintGroups, onPrintFormations }) {
   const [name, setName] = useState("");
   const [num, setNum] = useState("");
   const [groupsView, setGroupsView] = useState(false);
@@ -1220,7 +1237,7 @@ function RosterTab({ data, up, onPrint, onPrintGroups }) {
         )}
       </section>
 
-      {formationView && <FormationView data={data} up={up} onClose={() => setFormationView(false)} />}
+      {formationView && <FormationView data={data} up={up} onClose={() => setFormationView(false)} onPrintFormations={onPrintFormations} />}
     </div>
   );
 }
@@ -1229,20 +1246,33 @@ function RosterTab({ data, up, onPrint, onPrintGroups }) {
 /* ============================================================
    FORMATION VIEW — big screen depth chart
    ============================================================ */
-function FormationView({ data, up, onClose }) {
+function FormationView({ data, up, onClose, onPrintFormations }) {
   const [side, setSide] = useState("offense");
+  const seasonWeek = data.seasonWeek || 1;
+  const installed = installedForms(seasonWeek >= 9 ? 6 : seasonWeek);
+  const later = PLAY_FORM_NAMES.filter((f) => !installed.includes(f));
+  const [form, setForm] = useState("base"); /* "base" = scheme look, else a playbook formation */
+  const [school, setSchool] = useState(null); /* {i, revealed} over installed formations */
+  const schoolList = installed;
+  const advanceSchool = () =>
+    setSchool((s) => {
+      if (!s) return s;
+      if (!s.revealed) return { ...s, revealed: true };
+      return { i: (s.i + 1) % schoolList.length, revealed: false };
+    });
 
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") { school ? setSchool(null) : onClose(); return; }
       if (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === " ") {
         e.preventDefault();
-        setSide((s) => (s === "offense" ? "defense" : "offense"));
+        if (school) advanceSchool();
+        else setSide((s) => (s === "offense" ? "defense" : "offense"));
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, school]);
 
   const goFullscreen = () => {
     const el = document.documentElement;
@@ -1250,8 +1280,15 @@ function FormationView({ data, up, onClose }) {
     else if (document.exitFullscreen) document.exitFullscreen();
   };
 
-  const spots = side === "offense" ? OFF_SCHEMES[offScheme(data)].spots : DEF_SCHEMES[defScheme(data)].spots;
-  const posList = side === "offense" ? offPositions(data) : defPositions(data);
+  const schoolForm = school ? schoolList[school.i] : null;
+  const activeForm = school ? schoolForm : form;
+  const usePlayForm = side === "offense" && activeForm !== "base";
+  /* Play-diagram space: y23 = LOS, deeper = bigger. Stretch onto the field view. */
+  const playSpots = usePlayForm
+    ? Object.fromEntries(Object.entries(formSpots(activeForm)).map(([k, [x, y]]) => [k, [x, 16 + (y - 23) * 3.2]]))
+    : null;
+  const spots = usePlayForm ? playSpots : side === "offense" ? OFF_SCHEMES[offScheme(data)].spots : DEF_SCHEMES[defScheme(data)].spots;
+  const posList = usePlayForm ? Object.keys(playSpots) : side === "offense" ? offPositions(data) : defPositions(data);
   const tone = side === "offense" ? "var(--red)" : "var(--def-blue)";
 
   return (
@@ -1264,7 +1301,20 @@ function FormationView({ data, up, onClose }) {
         <div className="fv-switch">
           <button className={"fv-side" + (side === "offense" ? " active off" : "")} onClick={() => setSide("offense")}>Offense</button>
           <button className={"fv-side" + (side === "defense" ? " active def" : "")} onClick={() => setSide("defense")}>Defense</button>
-          {side === "offense" && (
+          {side === "offense" && !school && (
+            <select className="fv-scheme" value={form} onChange={(e) => setForm(e.target.value)} aria-label="Formation">
+              <option value="base">Base ({offScheme(data)})</option>
+              <optgroup label={`Installed thru week ${seasonWeek >= 9 ? 6 : seasonWeek}`}>
+                {installed.map((f) => <option key={f} value={f}>{f}</option>)}
+              </optgroup>
+              {later.length > 0 && (
+                <optgroup label="Later installs">
+                  {later.map((f) => <option key={f} value={f}>{f} (wk {FORM_WEEKS[f]})</option>)}
+                </optgroup>
+              )}
+            </select>
+          )}
+          {side === "offense" && !school && form === "base" && (
             <select className="fv-scheme" value={offScheme(data)} onChange={(e) => up({ offScheme: e.target.value })}>
               {Object.keys(OFF_SCHEMES).map((k) => <option key={k} value={k}>{k}</option>)}
             </select>
@@ -1276,24 +1326,35 @@ function FormationView({ data, up, onClose }) {
           )}
         </div>
         <div className="fv-actions">
-          <span className="fv-hint">Space flips sides · Esc closes</span>
+          <span className="fv-hint">{school ? "Tap or Space: reveal, then next · Esc exits school" : "Space flips sides · Esc closes"}</span>
+          {side === "offense" && !school && <button className="btn gold" onClick={() => setSchool({ i: 0, revealed: false })}>Formation School</button>}
+          {school && <button className="btn ghost dark" onClick={() => setSchool(null)}>Exit School</button>}
+          {side === "offense" && !school && <button className="btn ghost dark" onClick={onPrintFormations}>Print Cards</button>}
           <button className="btn ghost dark" onClick={goFullscreen}>Fullscreen</button>
-          <button className="btn" onClick={onClose}>Close</button>
+          {!school && <button className="btn" onClick={onClose}>Close</button>}
         </div>
       </div>
-      <div className="fv-stage">
+      <div className="fv-stage" onClick={school ? advanceSchool : undefined} style={school ? { cursor: "pointer" } : undefined}>
         <div className="fv-field">
-          <div className="fv-los" style={{ top: side === "offense" ? "14%" : "12%" }}>
+          {school && (
+            <div className={"fv-flash" + (school.revealed ? " revealed" : "")}>
+              <span className="fv-flash-name">{schoolForm}</span>
+              {!school.revealed && <span className="fv-flash-hint">Call it. Kids sprint, align, set. Tap to check.</span>}
+              {school.revealed && <span className="fv-flash-hint">Tap for the next one · {school.i + 1} of {schoolList.length}</span>}
+            </div>
+          )}
+          {(!school || school.revealed) && <div className="fv-los" style={{ top: side === "offense" ? "14%" : "12%" }}>
             <span>LOS</span>
-          </div>
-          {posList.map((pos) => {
+          </div>}
+          {(!school || school.revealed) && posList.map((pos) => {
             const [x, y] = spots[pos] || [50, 50];
-            const slots = slotsFor(data, side === "offense" ? "off" : "def", pos);
+            const schemePos = usePlayForm ? resolvePlayPos(data, pos) : pos;
+            const slots = schemePos ? slotsFor(data, side === "offense" ? "off" : "def", schemePos) : [null, null, null];
             const starter = slots[0];
             const backups = [slots[1], slots[2]].filter(Boolean);
             return (
               <div key={pos} className="fv-node" style={{ left: `${x}%`, top: `${y}%` }}>
-                <div className="fv-pos" style={{ background: tone }}>{pos}</div>
+                <div className="fv-pos" style={{ background: usePlayForm && (pos === "H" || pos === "Y") ? "var(--gold, #E8A020)" : tone, color: usePlayForm && (pos === "H" || pos === "Y") ? "#1C2430" : undefined }}>{pos}</div>
                 {starter ? (
                   <div className="fv-card">
                     <span className="fv-num">{starter.num ? `#${starter.num}` : ""}</span>
@@ -2740,6 +2801,46 @@ function GroupsPrint({ data }) {
 }
 
 /* ============================================================
+   FORMATION CARDS PRINT — every installed look with 1st-team names
+   ============================================================ */
+function FormationsPrint({ data }) {
+  const week = (data.seasonWeek || 1) >= 9 ? 6 : data.seasonWeek || 1;
+  const forms = installedForms(week);
+  const lastName = (p) => (p ? p.name.trim().split(/\s+/).slice(-1)[0] : "");
+  return (
+    <div className="sheet">
+      <PrintHead title="Formation Cards" right={<div className="p-meta">Installed thru week {week} · {todayStr()}</div>} />
+      <div className="fp-grid">
+        {forms.map((f) => {
+          const spots = formSpots(f);
+          return (
+            <div key={f} className="fp-card">
+              <div className="fp-title">{f.toUpperCase()}</div>
+              <div className="fp-field">
+                <div className="fp-los" />
+                {Object.entries(spots).map(([label, [x, y]]) => {
+                  const schemePos = resolvePlayPos(data, label);
+                  const starter = schemePos ? slotsFor(data, "off", schemePos)[0] : null;
+                  const trav = label === "H" || label === "Y";
+                  const ol = ["LT", "LG", "C", "RG", "RT"].includes(label);
+                  return (
+                    <div key={label} className={"fp-dot" + (trav ? " trav" : "") + (ol ? " ol" : "")} style={{ left: `${x}%`, top: `${8 + (y - 22) * 6}%` }}>
+                      <span className="fp-label">{label}</span>
+                      {!ol && <span className="fp-name">{starter ? `${starter.num ? "#" + starter.num + " " : ""}${lastName(starter)}` : "open"}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="p-foot"><span>Gold = travelers (H and Y). Rt / Lt flips the picture. One card per look, kids find their name.</span></div>
+    </div>
+  );
+}
+
+/* ============================================================
    PRINT LAYER
    ============================================================ */
 function PrintLayer({ target, data, onClose }) {
@@ -2769,6 +2870,7 @@ function PrintLayer({ target, data, onClose }) {
         {target === "jobs" && <JobsPrint />}
         {target === "system" && <SystemPrint />}
         {target === "groups" && <GroupsPrint data={data} />}
+        {target === "formations" && <FormationsPrint data={data} />}
       </div>
     </div>
   );
@@ -3016,6 +3118,24 @@ tbody tr { cursor: pointer; }
 .tag-check { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); padding: 5px 9px; font-size: 12px; cursor: pointer; user-select: none; }
 .tag-check.on { border-color: #B7791F; background: #FFFBF2; font-weight: 600; }
 .tag-check input { margin: 0; }
+
+/* ---- formation school + cards ---- */
+.fv-flash { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; z-index: 3; pointer-events: none; }
+.fv-flash.revealed { inset: auto 0 4% 0; }
+.fv-flash-name { font-family: var(--disp); font-size: clamp(56px, 12vw, 150px); letter-spacing: 4px; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.4); text-transform: uppercase; }
+.fv-flash.revealed .fv-flash-name { font-size: clamp(28px, 5vw, 56px); }
+.fv-flash-hint { font-size: 16px; color: #FFD24D; letter-spacing: 1px; }
+.btn.gold { background: var(--gold, #E8A020); border-color: var(--gold, #E8A020); color: #1C2430; }
+.fp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fp-card { border: 1.5px solid var(--ink); border-radius: 8px; overflow: hidden; break-inside: avoid; }
+.fp-title { font-family: var(--disp); letter-spacing: 1.5px; background: var(--ink); color: #fff; padding: 3px 8px; font-size: 13px; }
+.fp-field { position: relative; height: 150px; background: #FBF7EE; }
+.fp-los { position: absolute; left: 4%; right: 4%; top: 14%; border-top: 1.5px dashed #9AA0A8; }
+.fp-dot { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.fp-label { width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 1.5px solid var(--ink); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 9px; }
+.fp-dot.ol .fp-label { background: #9AA0A8; color: #fff; width: 16px; height: 16px; font-size: 8px; }
+.fp-dot.trav .fp-label { background: var(--gold, #E8A020); }
+.fp-name { font-size: 8.5px; font-weight: 700; white-space: nowrap; background: rgba(255,255,255,0.85); padding: 0 3px; border-radius: 3px; }
 
 /* ---- week dial ---- */
 .week-dial { display: inline-flex; align-items: center; gap: 6px; font-family: var(--disp); font-size: 13px; letter-spacing: 1.5px; color: #fff; }
@@ -3361,4 +3481,4 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
   );
 }
 
-export { normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord, LINE_CALLS, SEED, seedPackages, day1Plan, applyKillPairs };
+export { normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord, LINE_CALLS, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots };

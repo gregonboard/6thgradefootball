@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor, within, cleanup } from "@testing-li
 import App, {
   normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord,
   LINE_CALLS, SEED, seedPackages, day1Plan, applyKillPairs,
+  installedForms, resolvePlayPos, FORM_WEEKS, formSpots,
 } from "../src/App.jsx";
 
 /* ---------- unit: vocabulary and doctrine ---------- */
@@ -116,6 +117,28 @@ describe("practiceGroupsFor", () => {
   });
 });
 
+/* ---------- unit: formation install + depth resolution ---------- */
+describe("formations", () => {
+  it("staggers formation installs on the week dial", () => {
+    expect(installedForms(1)).toEqual(["Doubles", "Doubles Lt", "Trips Rt", "Trips Lt"]);
+    expect(installedForms(6).length).toBe(12);
+    expect(FORM_WEEKS["Empty"]).toBe(4);
+  });
+  it("mirrors Lt formations and keeps labels meaningful", () => {
+    const rt = formSpots("Trips Rt"), lt = formSpots("Trips Lt");
+    expect(lt.X[0]).toBe(100 - rt.Z[0]);
+    expect(Object.keys(lt).sort()).toEqual(Object.keys(rt).sort());
+  });
+  it("resolves play labels to depth chart positions for any scheme", () => {
+    const spread = { offScheme: "Spread" };
+    expect(resolvePlayPos(spread, "H")).toBe("Slot (H)");
+    expect(resolvePlayPos(spread, "X")).toBe("WR (X)");
+    const iform = { offScheme: "I-Form" };
+    expect(resolvePlayPos(iform, "Y")).toBe("TE");
+    expect(resolvePlayPos(iform, "QB")).toBe("QB");
+  });
+});
+
 /* ---------- end to end: real clicks in jsdom ---------- */
 describe("app end-to-end", () => {
   beforeEach(() => window.localStorage.clear());
@@ -191,6 +214,34 @@ describe("app end-to-end", () => {
     expect(opts.some((t) => /Rhino/.test(t))).toBe(false);
     expect(opts.some((t) => /Reese's/.test(t))).toBe(true);
     expect(screen.getByText(/QUICK family only/)).toBeTruthy();
+  });
+
+  it("shows playbook formations on the depth chart in Formation View", async () => {
+    await load();
+    fireEvent.click(screen.getByText("Formation View"));
+    const sel = await screen.findByLabelText("Formation");
+    fireEvent.change(sel, { target: { value: "Trips Rt" } });
+    const fv = within(document.querySelector(".fv-layer"));
+    expect(fv.getByText("X")).toBeTruthy();
+    expect(fv.getByText("H")).toBeTruthy();
+    expect(fv.getByText("QB")).toBeTruthy();
+    expect(fv.getAllByText(/Sample Player/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("runs Formation School: name first, tap to reveal, tap for next", async () => {
+    await load();
+    fireEvent.click(screen.getByText("Formation View"));
+    fireEvent.click(await screen.findByText("Formation School"));
+    const fv = within(document.querySelector(".fv-layer"));
+    expect(fv.getByText("Doubles")).toBeTruthy();
+    expect(fv.getByText(/Tap to check/)).toBeTruthy();
+    fireEvent.click(document.querySelector(".fv-stage"));
+    expect(fv.getByText(/next one/)).toBeTruthy();
+    expect(fv.getByText("QB")).toBeTruthy();
+    fireEvent.click(document.querySelector(".fv-stage"));
+    expect(fv.getByText("Doubles Lt")).toBeTruthy();
+    fireEvent.click(screen.getByText("Exit School"));
+    expect(screen.queryByText(/Tap to check/)).toBeNull();
   });
 
   it("preloads tonight's Day 1 helmets plan in the practice planner", async () => {
