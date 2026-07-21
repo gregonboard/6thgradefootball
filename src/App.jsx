@@ -16,11 +16,11 @@ const OL_SPOTS = { "LT": [34, 16], "LG": [42, 16], "C": [50, 16], "RG": [58, 16]
 const OFF_SCHEMES = {
   "I-Form": {
     positions: ["QB", "RB", "FB", "WR (X)", "WR (Z)", "TE", ...OL5],
-    spots: { ...OL_SPOTS, "WR (X)": [8, 16], "TE": [74, 16], "WR (Z)": [92, 22], "QB": [50, 36.7], "FB": [50, 57.4], "RB": [50, 78] },
+    spots: { ...OL_SPOTS, "WR (X)": [8, 16], "TE": [74, 16], "WR (Z)": [92, 22], "QB": [50, 36.7], "FB": [50, 61], "RB": [50, 84] },
   },
   "Singleback": {
     positions: ["QB", "RB", "TE", "WR (X)", "WR (Z)", "Slot (Y)", ...OL5],
-    spots: { ...OL_SPOTS, "WR (X)": [6, 16], "TE": [74, 16], "Slot (Y)": [84, 22], "WR (Z)": [94, 16], "QB": [50, 36.7], "RB": [50, 57.4] },
+    spots: { ...OL_SPOTS, "WR (X)": [6, 16], "TE": [74, 16], "Slot (Y)": [84, 22], "WR (Z)": [94, 16], "QB": [50, 36.7], "RB": [50, 64] },
   },
   "Spread": {
     positions: ["QB", "RB", "WR (X)", "Slot (H)", "Slot (Y)", "WR (Z)", ...OL5],
@@ -28,7 +28,7 @@ const OFF_SCHEMES = {
   },
   "Wing-T": {
     positions: ["QB", "FB", "HB", "Wing", "TE", "WR (X)", ...OL5],
-    spots: { ...OL_SPOTS, "WR (X)": [8, 16], "TE": [74, 16], "Wing": [82, 28], "QB": [50, 36.7], "HB": [36, 57.4], "FB": [50, 57.4] },
+    spots: { ...OL_SPOTS, "WR (X)": [8, 16], "TE": [74, 16], "Wing": [82, 28], "QB": [50, 36.7], "HB": [36, 62], "FB": [50, 62] },
   },
 };
 const OFF_POS_ALL = [...new Set(Object.values(OFF_SCHEMES).flatMap((s) => s.positions))];
@@ -117,15 +117,60 @@ function assignmentsFor(data, side, id) {
    FORM_WEEKS staggers the install to match the WEEK dial. */
 const FORM_WEEKS = { "Doubles": 1, "Doubles Lt": 1, "Trips Rt": 1, "Trips Lt": 1, "Tank Rt": 2, "Tank Lt": 2, "Bunch Rt": 3, "Bunch Lt": 3, "Empty": 4, "Stack": 5, "Nasty Rt": 5, "Nasty Lt": 5 };
 const installedForms = (week) => PLAY_FORM_NAMES.filter((f) => (FORM_WEEKS[f] || 1) <= week);
-/* Map a play diagram label to the depth chart position that fills it. */
-const PLAY_POS_LOOKUP = {
-  X: ["WR (X)"], Z: ["WR (Z)"], H: ["Slot (H)", "Wing", "FB"], Y: ["Slot (Y)", "TE"],
-  QB: ["QB"], RB: ["RB"], LT: ["LT"], LG: ["LG"], C: ["C"], RG: ["RG"], RT: ["RT"],
+/* Map play diagram labels to depth chart positions JOINTLY: each label
+   has a preference list, resolved in order, and nobody gets used twice.
+   That's what makes Singleback work: Y takes the TE (tight, on the line),
+   which frees Slot (Y) to fill H (the traveler). No scheme leaves a play
+   spot empty as long as eleven positions exist. */
+const PLAY_POS_PREFS = {
+  LT: ["LT"], LG: ["LG"], C: ["C"], RG: ["RG"], RT: ["RT"], QB: ["QB"],
+  X: ["WR (X)"],
+  Y: ["TE", "Slot (Y)", "Wing"],
+  H: ["Slot (H)", "Slot (Y)", "Wing", "FB", "TE"],
+  Z: ["WR (Z)", "Wing", "Slot (Y)", "TE", "FB"],
+  RB: ["RB", "HB", "FB"],
 };
-function resolvePlayPos(data, label) {
+const PLAY_RESOLVE_ORDER = ["LT", "LG", "C", "RG", "RT", "QB", "X", "Y", "H", "Z", "RB"];
+function resolvePlayMap(data) {
   const list = offPositions(data);
-  for (const want of PLAY_POS_LOOKUP[label] || []) if (list.includes(want)) return want;
-  return list.find((p) => p.includes(`(${label})`)) || null;
+  const used = new Set();
+  const out = {};
+  for (const label of PLAY_RESOLVE_ORDER) {
+    const pick =
+      (PLAY_POS_PREFS[label] || []).find((p) => list.includes(p) && !used.has(p)) ||
+      list.find((p) => p.includes(`(${label})`) && !used.has(p)) ||
+      null;
+    out[label] = pick;
+    if (pick) used.add(pick);
+  }
+  return out;
+}
+function resolvePlayPos(data, label) {
+  return resolvePlayMap(data)[label];
+}
+
+/* Spread crowded cards apart so nothing overlaps. OL and QB stay planted;
+   skill players get nudged outward until same-row neighbors have room. */
+const PG_FIXED = new Set(["LT", "LG", "C", "RG", "RT", "QB"]);
+function fvSpread(spots, rowEps, minGap) {
+  const es = Object.entries(spots).map(([k, [x, y]]) => ({ k, x, y, fixed: PG_FIXED.has(k) }));
+  for (let pass = 0; pass < 4; pass++) {
+    for (let i = 0; i < es.length; i++) {
+      for (let j = i + 1; j < es.length; j++) {
+        const a = es[i], b = es[j];
+        if (a.fixed && b.fixed) continue;
+        if (Math.abs(a.y - b.y) >= rowEps) continue;
+        const [l, r] = a.x <= b.x ? [a, b] : [b, a];
+        const gap = r.x - l.x;
+        if (gap >= minGap) continue;
+        const need = minGap - gap;
+        if (l.fixed) r.x += need;
+        else if (r.fixed) l.x -= need;
+        else { l.x -= need / 2; r.x += need / 2; }
+      }
+    }
+  }
+  return Object.fromEntries(es.map((e) => [e.k, [Math.min(97, Math.max(3, e.x)), e.y]]));
 }
 
 /* ---------- practice groups ----------
@@ -1285,8 +1330,9 @@ function FormationView({ data, up, onClose, onPrintFormations }) {
   const usePlayForm = side === "offense" && activeForm !== "base";
   /* Play-diagram space: y23 = LOS, deeper = bigger. Stretch onto the field view. */
   const playSpots = usePlayForm
-    ? Object.fromEntries(Object.entries(formSpots(activeForm)).map(([k, [x, y]]) => [k, [x, 16 + (y - 23) * 3.2]]))
+    ? fvSpread(Object.fromEntries(Object.entries(formSpots(activeForm)).map(([k, [x, y]]) => [k, [x, 16 + (y - 23) * 3.2]])), 6, 9)
     : null;
+  const playMap = usePlayForm ? resolvePlayMap(data) : null;
   const spots = usePlayForm ? playSpots : side === "offense" ? OFF_SCHEMES[offScheme(data)].spots : DEF_SCHEMES[defScheme(data)].spots;
   const posList = usePlayForm ? Object.keys(playSpots) : side === "offense" ? offPositions(data) : defPositions(data);
   const tone = side === "offense" ? "var(--red)" : "var(--def-blue)";
@@ -1348,7 +1394,7 @@ function FormationView({ data, up, onClose, onPrintFormations }) {
           </div>}
           {(!school || school.revealed) && posList.map((pos) => {
             const [x, y] = spots[pos] || [50, 50];
-            const schemePos = usePlayForm ? resolvePlayPos(data, pos) : pos;
+            const schemePos = usePlayForm ? playMap[pos] : pos;
             const slots = schemePos ? slotsFor(data, side === "offense" ? "off" : "def", schemePos) : [null, null, null];
             const starter = slots[0];
             const backups = [slots[1], slots[2]].filter(Boolean);
@@ -2806,20 +2852,21 @@ function GroupsPrint({ data }) {
 function FormationsPrint({ data }) {
   const week = (data.seasonWeek || 1) >= 9 ? 6 : data.seasonWeek || 1;
   const forms = installedForms(week);
+  const playMap = resolvePlayMap(data);
   const lastName = (p) => (p ? p.name.trim().split(/\s+/).slice(-1)[0] : "");
   return (
     <div className="sheet">
       <PrintHead title="Formation Cards" right={<div className="p-meta">Installed thru week {week} · {todayStr()}</div>} />
       <div className="fp-grid">
         {forms.map((f) => {
-          const spots = formSpots(f);
+          const spots = fvSpread(formSpots(f), 2, 8);
           return (
             <div key={f} className="fp-card">
               <div className="fp-title">{f.toUpperCase()}</div>
               <div className="fp-field">
                 <div className="fp-los" />
                 {Object.entries(spots).map(([label, [x, y]]) => {
-                  const schemePos = resolvePlayPos(data, label);
+                  const schemePos = playMap[label];
                   const starter = schemePos ? slotsFor(data, "off", schemePos)[0] : null;
                   const trav = label === "H" || label === "Y";
                   const ol = ["LT", "LG", "C", "RG", "RT"].includes(label);

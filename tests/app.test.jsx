@@ -132,10 +132,30 @@ describe("formations", () => {
   it("resolves play labels to depth chart positions for any scheme", () => {
     const spread = { offScheme: "Spread" };
     expect(resolvePlayPos(spread, "H")).toBe("Slot (H)");
+    expect(resolvePlayPos(spread, "Y")).toBe("Slot (Y)");
     expect(resolvePlayPos(spread, "X")).toBe("WR (X)");
     const iform = { offScheme: "I-Form" };
     expect(resolvePlayPos(iform, "Y")).toBe("TE");
+    expect(resolvePlayPos(iform, "H")).toBe("FB");
     expect(resolvePlayPos(iform, "QB")).toBe("QB");
+  });
+  it("fills every play spot in Singleback: Y takes the TE, the slot travels as H", () => {
+    const sb = { offScheme: "Singleback" };
+    expect(resolvePlayPos(sb, "Y")).toBe("TE");
+    expect(resolvePlayPos(sb, "H")).toBe("Slot (Y)");
+    expect(resolvePlayPos(sb, "Z")).toBe("WR (Z)");
+    expect(resolvePlayPos(sb, "RB")).toBe("RB");
+  });
+  it("leaves no empty spots in any scheme", () => {
+    for (const scheme of ["I-Form", "Singleback", "Spread", "Wing-T"]) {
+      const map = Object.values(
+        Object.fromEntries(
+          ["LT","LG","C","RG","RT","QB","X","Y","H","Z","RB"].map((l) => [l, resolvePlayPos({ offScheme: scheme }, l)])
+        )
+      );
+      expect(map.every(Boolean)).toBe(true);
+      expect(new Set(map).size).toBe(11); /* nobody doubled up */
+    }
   });
 });
 
