@@ -115,7 +115,7 @@ function assignmentsFor(data, side, id) {
    Single source of truth: PLAY_FORM_NAMES / formSpots drive both the
    Play Lab and the Formation View, so the two can never drift apart.
    FORM_WEEKS staggers the install to match the WEEK dial. */
-const FORM_WEEKS = { "Doubles": 1, "Doubles Lt": 1, "Trips Rt": 1, "Trips Lt": 1, "Tank Rt": 2, "Tank Lt": 2, "Bunch Rt": 3, "Bunch Lt": 3, "Empty": 4, "Stack": 5, "Nasty Rt": 5, "Nasty Lt": 5 };
+const FORM_WEEKS = { "Doubles": 1, "Doubles Lt": 1, "Trips Rt": 1, "Trips Lt": 1, "Tank Rt": 4, "Tank Lt": 4, "Bunch Rt": 5, "Bunch Lt": 5, "Empty": 6, "Stack": 5, "Nasty Rt": 5, "Nasty Lt": 5 };
 const installedForms = (week) => PLAY_FORM_NAMES.filter((f) => (FORM_WEEKS[f] || 1) <= week);
 /* Map play diagram labels to depth chart positions JOINTLY: each label
    has a preference list, resolved in order, and nobody gets used twice.
@@ -541,15 +541,15 @@ const CONCEPTS = {
   jet:     { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Rocket", Lt: "Laser" }, carrier: "H", signal: "Arm launches off the palm, then point", how: "H at full speed off motion. Playside reaches, Y arcs to the safety, backside cuts off.", read: "None. Speed to the edge." },
   keep:    { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Rustler", Lt: "Longhorn" }, carrier: "QB", signal: "Swing the lasso overhead, then point", how: "Identical picture to the jet. QB keeps behind the chase with the RB leading.", read: "Pre-called. The defense pays for chasing Rocket." },
   counter: { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Renegade", Lt: "Lizard" }, carrier: "RB", signal: "Cross the forearms, then point", how: "Backside guard kicks, backside tackle wraps, RB jabs away then hits behind them. Week 6 install, once they fear Rhino.", read: "None. Patience, then burst." },
-  sneak:   { fam: "Run",    dirs: [""],         words: { "": "Sub" }, carrier: "QB", signal: "Flat hand dives under", how: "QB sneak behind the big center. Short yardage answer.", read: "None." },
+  sneak:   { fam: "Run",    dirs: [""],         words: { "": "Moose" }, carrier: "QB", signal: "Flat hand dives under", how: "QB sneak behind the big center. Short yardage answer.", read: "None." },
   sparrow: { fam: "Pass",   dirs: [""],         words: { "": "Sparrow" }, carrier: "WR", signal: "Pinch fingers, small bird", how: "Hitches outside, quick outs from the slots, Y sticks at 5. Ball out now.", read: "Pick the widest cushion before the snap and throw it on rhythm." },
   robin:   { fam: "Pass",   dirs: [""],         words: { "": "Robin" }, carrier: "WR", signal: "Flap the elbows", how: "Slants outside, arrows to the flats. The 6th grade money concept.", read: "Flat first. Covered means the slant is open behind it." },
   hawk:    { fam: "Pass",   dirs: [""],         words: { "": "Hawk" }, carrier: "WR", signal: "One arm soars", how: "Curls at 8 outside, flats underneath, Y to the corner.", read: "Watch the man over the slot: chases the flat, throw the curl; sits, throw the flat." },
   owl:     { fam: "Pass",   dirs: [""],         words: { "": "Owl" }, carrier: "Y", signal: "Circles over the eyes", how: "Everyone sells Rhino. Y slips into the seam behind the linebackers. QB fakes and pops it over their heads.", read: "Fake, find Y, throw it now. The most unfair play we own." },
   falcon:  { fam: "Pass",   dirs: [""],         words: { "": "Falcon" }, carrier: "WR", signal: "Both arms soar", how: "Four verticals, slots bend to the seams, RB checks down.", read: "Coach picks the target before the snap." },
-  eagle:   { fam: "Pass",   dirs: [""],         words: { "": "Eagle Max" }, carrier: "WR", signal: "Full wingspan flex", how: "The shot. Post and go outside, Y drags underneath, H and RB stay in to protect seven strong.", read: "One look deep for two seconds, then take the drag." },
+  eagle:   { fam: "Pass",   dirs: [""],         words: { "": "Eagle" }, carrier: "WR", signal: "Full wingspan flex", how: "The shot. Post and go outside, Y drags underneath, H and RB stay in to protect seven strong.", read: "One look deep for two seconds, then take the drag." },
   bubble:  { fam: "Screen", dirs: ["Rt", "Lt"], words: { Rt: "Reese's", Lt: "Laffy" }, carrier: "WR", signal: "Rub the belly, then point", how: "Called-side outside WR bubbles behind the jet fake, Y and the backside crack down.", read: "Catch and throw now. Free yards when they chase the jet." },
-  slip:    { fam: "Screen", dirs: ["Rt", "Lt"], words: { Rt: "Snickers", Lt: "Skittles" }, carrier: "RB", signal: "Take a big bite, then point", how: "QB drifts, the line lets the rush through and releases, RB slips out behind it.", read: "Let the rush come, then dump it over their heads." },
+  slip:    { fam: "Screen", dirs: ["Rt", "Lt"], words: { Rt: "Rolo", Lt: "Lifesaver" }, carrier: "RB", signal: "Take a big bite, then point", how: "QB drifts, the line lets the rush through and releases, RB slips out behind it.", read: "Let the rush come, then dump it over their heads." },
   reverse: { fam: "Special", dirs: ["Rt", "Lt"], words: { Rt: "Rewind", Lt: "Loop" }, carrier: "WR", signal: "Spin a finger backward, then point", how: "Full Rocket fake one way, backside WR takes it back the other way behind everyone chasing. Once a game, when they start flying to the jet.", read: "None. Sell the fake, hand it deep." },
   blank:   { fam: "Special", dirs: [""],         words: { "": "Custom" }, carrier: null, signal: "Your call", how: "A blank canvas. Use Customize to draw every path yourself.", read: "Your design." },
 };
@@ -2375,7 +2375,7 @@ const ROUTE_TABLE = [
   { bird: "Hawk", X: "Curl at 8", H: "Flat", Y: "Corner at 8", Z: "Curl at 8", RB: "Check, leak flat" },
   { bird: "Owl", X: "Block", H: "Jet fake", Y: "Seam behind LBs", Z: "Block", RB: "Fake Rhino" },
   { bird: "Falcon", X: "Go", H: "Seam", Y: "Seam", Z: "Go", RB: "Checkdown" },
-  { bird: "Eagle Max", X: "Post", H: "Block", Y: "Drag at 10", Z: "Go", RB: "Block" },
+  { bird: "Eagle", X: "Post", H: "Block", Y: "Drag at 10", Z: "Go", RB: "Block" },
 ];
 
 function RoutesPrint({ data }) {
@@ -2530,15 +2530,15 @@ function SystemPrint() {
     ["REACH", "Rocket / Laser", "Jet sweep. H takes it at full speed."],
     ["REACH", "Rustler / Longhorn", "QB keeps behind the jet fake."],
     ["WRAP", "Renegade / Lizard", "Counter, opposite the flow. Week 6."],
-    ["SURGE", "Sub", "QB sneak behind the big center."],
+    ["SURGE", "Moose", "QB sneak behind the big center."],
     ["QUICK", "Sparrow", "Hitches at 5. Ball out now."],
     ["QUICK", "Robin", "Slants and flats. The money concept."],
     ["WALL", "Hawk", "Curls at 8 with flats under."],
     ["HAMMER", "Owl", "Looks exactly like Rhino. TE slips behind the linebackers."],
     ["WALL", "Falcon", "Four verticals. Coach picks the target."],
-    ["WALL", "Eagle Max", "The deep shot, seven blocking."],
+    ["WALL", "Eagle", "The deep shot, seven blocking."],
     ["QUICK", "Reese's / Laffy", "Bubble screen behind the jet fake."],
-    ["GATE", "Snickers / Skittles", "Let the rush in, RB slips out behind it."],
+    ["GATE", "Rolo / Lifesaver", "Let the rush in, RB slips out behind it."],
     ["REACH", "Rewind / Loop", "The reverse. Once a game."],
   ];
   return (

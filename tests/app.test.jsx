@@ -11,8 +11,28 @@ import App, {
 describe("vocabulary", () => {
   it("renames Lasso to Longhorn and Snickers Lt to Skittles", () => {
     expect(CONCEPTS.keep.words.Lt).toBe("Longhorn");
-    expect(CONCEPTS.slip.words).toEqual({ Rt: "Snickers", Lt: "Skittles" });
+    expect(CONCEPTS.slip.words).toEqual({ Rt: "Rolo", Lt: "Lifesaver" });
     expect(callWord("keep", "Lt")).toBe("Longhorn");
+  });
+  it("enforces the R/L first-letter rule on every directional word", () => {
+    /* This test would have caught the Snickers/Skittles mistake. */
+    for (const [key, c] of Object.entries(CONCEPTS)) {
+      if (c.dirs[0] !== "Rt") continue;
+      expect(c.words.Rt[0], key + " Rt word must start with R").toBe("R");
+      expect(c.words.Lt[0], key + " Lt word must start with L").toBe("L");
+    }
+  });
+  it("keeps every play word to one word (wristbands and kid brains)", () => {
+    for (const c of Object.values(CONCEPTS)) {
+      for (const w of Object.values(c.words)) expect(w.includes(" ")).toBe(false);
+    }
+  });
+  it("never installs a formation before its first play", () => {
+    for (const f of Object.keys(FORM_WEEKS)) {
+      const weeks = SEED.plays.filter((p) => p.formation === f).map((p) => p.week || 1);
+      if (weeks.length === 0 || FORM_WEEKS[f] === 1) continue; /* week-1 alignment installs are deliberate */
+      expect(FORM_WEEKS[f], f + " installs with its first play").toBeLessThanOrEqual(Math.min(...weeks));
+    }
   });
   it("keeps the line-call channel intact", () => {
     expect(LINE_CALLS.owl).toBe("HAMMER");
@@ -122,7 +142,7 @@ describe("formations", () => {
   it("staggers formation installs on the week dial", () => {
     expect(installedForms(1)).toEqual(["Doubles", "Doubles Lt", "Trips Rt", "Trips Lt"]);
     expect(installedForms(6).length).toBe(12);
-    expect(FORM_WEEKS["Empty"]).toBe(4);
+    expect(FORM_WEEKS["Empty"]).toBe(6);
   });
   it("mirrors Lt formations and keeps labels meaningful", () => {
     const rt = formSpots("Trips Rt"), lt = formSpots("Trips Lt");
