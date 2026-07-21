@@ -144,10 +144,22 @@ describe("formations", () => {
     expect(installedForms(6).length).toBe(12);
     expect(FORM_WEEKS["Empty"]).toBe(6);
   });
-  it("mirrors Lt formations and keeps labels meaningful", () => {
+  it("mirrors Lt formations: kids flip sides, identities never change", () => {
     const rt = formSpots("Trips Rt"), lt = formSpots("Trips Lt");
-    expect(lt.X[0]).toBe(100 - rt.Z[0]);
+    expect(lt.X[0]).toBe(100 - rt.X[0]); /* X crosses the field... */
+    expect(lt.X[1]).toBe(rt.X[1]);       /* ...but stays on the line */
+    expect(lt.Z[1]).toBe(rt.Z[1]);       /* Z stays off it */
     expect(Object.keys(lt).sort()).toEqual(Object.keys(rt).sort());
+  });
+  it("keeps every formation legal: exactly OL + X + Y on the line, Z and H off", () => {
+    for (const f of ["Doubles", "Doubles Lt", "Trips Rt", "Trips Lt", "Bunch Rt", "Bunch Lt", "Stack", "Nasty Rt", "Nasty Lt", "Empty", "Tank Rt", "Tank Lt"]) {
+      const spots = formSpots(f);
+      expect(Object.keys(spots).length, f + " fields eleven").toBe(11);
+      const onLine = Object.entries(spots).filter(([, [, y]]) => y === 23).map(([k]) => k).sort();
+      expect(onLine, f + " has exactly seven on the line").toEqual(["C", "LG", "LT", "RG", "RT", "X", "Y"]);
+      expect(spots.Z[1], f + ": Z is always off the line").toBeGreaterThan(23);
+      if (spots.H) expect(spots.H[1], f + ": H is always off the line").toBeGreaterThan(23);
+    }
   });
   it("resolves play labels to depth chart positions for any scheme", () => {
     const spread = { offScheme: "Spread" };

@@ -279,12 +279,12 @@ const uid = () => Math.random().toString(36).slice(2, 10);
    paired labels swapped (X<->Z, LT<->RT, LG<->RG). H and Y travel. */
 const PLAY_FORMS = {
   "Doubles": { X: [6, 23], H: [18, 25], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [88, 25], QB: [50, 30], RB: [43, 30] },
-  "Trips":   { X: [6, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [76, 26], Z: [90, 24], QB: [50, 30], RB: [43, 30] },
+  "Trips":   { X: [6, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [76, 26], Z: [90, 25], QB: [50, 30], RB: [43, 30] },
   "Empty":   { X: [6, 23], H: [15, 25], RB: [24, 26], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [88, 25], QB: [50, 30] },
-  "Tank":    { X: [8, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [73, 26], Z: [86, 24], QB: [50, 30], RB: [50, 35] },
-  "Bunch":   { X: [6, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [72, 27], Z: [77, 24], QB: [50, 30], RB: [43, 30] },
-  "Stack":   { X: [8, 23], H: [9, 27], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Z: [88, 23], Y: [87, 27], QB: [50, 30], RB: [43, 30] },
-  "Nasty":   { X: [26, 24], H: [32, 26], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [74, 25], QB: [50, 30], RB: [43, 30] },
+  "Tank":    { X: [8, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [73, 26], Z: [86, 25], QB: [50, 30], RB: [50, 35] },
+  "Bunch":   { X: [6, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [72, 27], Z: [77, 25], QB: [50, 30], RB: [43, 30] },
+  "Stack":   { X: [8, 23], H: [9, 27], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [88, 23], Z: [87, 27], QB: [50, 30], RB: [43, 30] },
+  "Nasty":   { X: [26, 23], H: [32, 26], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [74, 25], QB: [50, 30], RB: [43, 30] },
 };
 const PLAY_FORM_NAMES = ["Doubles", "Doubles Lt", "Trips Rt", "Trips Lt", "Bunch Rt", "Bunch Lt", "Stack", "Nasty Rt", "Nasty Lt", "Empty", "Tank Rt", "Tank Lt"];
 
@@ -292,7 +292,10 @@ function formSpots(formName) {
   const lt = / Lt$/.test(formName);
   const base = PLAY_FORMS[formName.replace(/ (Rt|Lt)$/, "")] || PLAY_FORMS["Doubles"];
   if (!lt) return base;
-  const swap = { X: "Z", Z: "X", LT: "RT", RT: "LT", LG: "RG", RG: "LG" };
+  /* Linemen never flip sides, so their labels swap in the mirror.
+     X and Z DO flip sides and keep their identity: X is always on the
+     line (split end), Z is always off it (flanker). */
+  const swap = { LT: "RT", RT: "LT", LG: "RG", RG: "LG" };
   const out = {};
   for (const [k, [x, y]] of Object.entries(base)) out[swap[k] || k] = [100 - x, y];
   return out;

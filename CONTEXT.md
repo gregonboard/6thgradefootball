@@ -2,6 +2,8 @@
 ### Read this first. It contains everything needed to work on this project with full context.
 Last updated: July 21, 2026 (post full-system confusion audit)
 
+**Formation legality rules (now enforced by tests):** X is the split end, ALWAYS on the line; Z is the flanker, ALWAYS off it; every formation has exactly seven on the line (OL5 + X + Y) and eleven total. The Lt mirror flips which SIDE kids stand on but never their on/off-line identity (the old mirror wrongly swapped the X and Z labels). Nasty's X was a step off the line (an illegal 6-man front) and Stack's front man on the right is Y, not Z. All fixed July 21; tests/app.test.jsx asserts legality for all twelve formation names so geometry errors of this class cannot recur.
+
 **Terminology ruling:** Doubles is NOT Twins. Doubles = 2x2 (two receivers each side, our base). Twins = both wideouts on the SAME side, which we do not run. Staff says Doubles, always. Other audit outcomes: sneak word Sub -> Moose (runs are animals, and "Sub" sounded like a substitution), Eagle Max -> Eagle (one word per kid; max protection is built into the concept), slip screen -> Rolo/Lifesaver. Vocabulary rule-integrity tests now enforce: every directional word pair starts R/L, every word is a single word. TRAP/WRAP rhyme is kept deliberately and taught as a mnemonic: WRAP is TRAP's big brother (one puller vs two). Rewind vs Reese's are phonetically close (REE-): reverses come off the board with the number, never voice alone.
 
 ---
