@@ -32,7 +32,7 @@ Last updated: July 21, 2026 (post full-system confusion audit)
 A gap-scheme, series-based, fast-tempo spread built specifically for this roster. The core philosophy: **the smartness lives in the structure, not in anyone's head.** Same few concepts, many costumes (the Lane Kiffin principle adapted for 11-year-olds).
 
 ### The Four Rules (the entire mental model)
-1. **Animal = run. Bird = pass.** Animals live on the ground, birds fly. Candy is a trick (screens).
+1. **Bird = pass. Candy = screen. Everything else RUNS.** (Rewritten July 22 after Greg's audit found six run words that aren't animals: Rocket, Laser, Rustler, Renegade, Rewind, Loop. The birds and candy are small CLOSED sets that are 100% consistent, so kids classify by them; any other word defaults to run. Default-to-run is also the fail-safe: a kid who mishears blocks his man, which is the harmless mistake. A vocabulary test now enforces that no run word may ever be named a bird or a candy.)
 2. **R goes right, L goes left.** The first letter of the play word is the direction.
 3. **Your word is the only word.** Linemen listen for the FIRST word (their blocking scheme). Everyone else listens for the SECOND word. Nobody decodes the whole call.
 4. **"Set... GO." Every snap, all season.** One cadence.
@@ -49,7 +49,7 @@ A gap-scheme, series-based, fast-tempo spread built specifically for this roster
 | REACH | Step playside and run | Rocket/Laser, Rustler/Longhorn, Ram/Leopard, Rewind/Loop |
 | SURGE | Fire out low, one-yard war | Sub (QB sneak) |
 | QUICK | Set and punch, ball out under 2 seconds | Sparrow, Robin, Reese's/Laffy |
-| WALL | True pass set, kick-slide and mirror | Hawk, Falcon, Eagle Max |
+| WALL | True pass set, kick-slide and mirror | Hawk, Falcon, Eagle, Raven/Lark |
 | GATE | Block one count, let rush through, release flat | Snickers (RB screen) |
 
 Eight words compress to four techniques (down+pull family, reach, pass set, release). Installed max two per week.
@@ -71,11 +71,12 @@ Eight words compress to four techniques (down+pull family, reach, pass set, rele
 - Owl = TE seam pop off a perfect Rhino fake (the most unfair play at this level; line hears HAMMER and blocks run)
 - Falcon = four verticals (coach picks target pre-snap)
 - Eagle Max = the deep shot, seven blocking
+- Raven / Lark = sprint-out flood (July 22, built for the QB, who is Greg's son; make him very successful): QB moves the launch point with the RB as bodyguard, three levels stacked call-side (go clears, deep out at 10, flat at 4), and his legs are the third answer with a hard "get down or out of bounds" rule. The only directional bird pair; birds stay direction-less otherwise. Line hears WALL.
 
 **Screens (candy):** Reese's / Laffy = bubble; Rolo / Lifesaver = RB slip screen (Snickers/Skittles was briefly used but both start with S, breaking the R/L rule; Rolo/Lifesaver restores it)
 **Special:** Rewind / Loop = reverse off the full Rocket fake
 
-**Receiver rule:** X always left outside, Z always right outside, H slot, Y tight end. Routes are keyed to letters, never formations, so every formation is free learning. On any animal: block the man over you.
+**Receiver rule:** X always left outside, Z always right outside, H slot, Y tight end. Routes are keyed to letters, never formations, so every formation is free learning. Not a bird, not candy: block the man over you.
 
 ### Formations (12 selectable looks, kids learn nothing new per look)
 Doubles (home base, 2x2 with Y attached), Doubles Lt, Trips Rt/Lt, Bunch Rt/Lt (3-man cluster, rub routes), Stack (stacked receivers, beats press), Nasty Rt/Lt (condensed splits, crack blocks), Empty, Tank Rt/Lt (heavy short yardage).
@@ -138,7 +139,7 @@ The Formation View dropdown now includes every playbook formation (single source
 6. **Wristbands**: printable QB bands (reading order: number, formation, LINE word in red, play word) and Bird Route Cards (all birds × all letters so any kid can slide positions).
 
 ### Data model (top-level keys in the single persisted object, storage key `vh6-coach-data-v1`)
-`players, depth {off, def}, offScheme, defScheme, drills, practice, savedPlans, plays [{id,num,name,formation,concept,dir,tags,core,week,custom,lineCall,type,note,killId}], callSheet, wrist, callLog, gameLabel, script, scriptPos, seasonWeek, pgOverrides, packages [{id,name,steps|ids}], day1Seeded, week2Seeded, libVersion (4), depthVersion (2), safariVersion (6)`
+`players, depth {off, def}, offScheme, defScheme, drills, practice, savedPlans, plays [{id,num,name,formation,concept,dir,tags,core,week,custom,lineCall,type,note,killId}], callSheet, wrist, callLog, gameLabel, script, scriptPos, seasonWeek, pgOverrides, packages [{id,name,steps|ids}], day1Seeded, week2Seeded, libVersion (4), depthVersion (2), safariVersion (7)`
 
 libVersion 4 adds the jet-series install drills (Motion Landmark Races, Jet Touch Pass Timing, Owl Fake & Pop, Reach & Run) and week2Seeded gates a one-time "Week 2 · Jet Series Install (Rocket, Rustler, Owl)" saved practice plan.
 

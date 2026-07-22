@@ -27,6 +27,37 @@ describe("vocabulary", () => {
       for (const w of Object.values(c.words)) expect(w.includes(" ")).toBe(false);
     }
   });
+  it("Rule 1 integrity: birds fly, candy tricks, everything else runs", () => {
+    /* Greg's July 22 audit: Rocket, Laser, Rustler, Renegade, Rewind, and Loop
+       are runs but not animals, so the kid rule is inverted to the fail-safe:
+       the closed sets (birds, candy) are 100% consistent, and any word outside
+       them means RUN, which is also what a kid who mishears should default to. */
+    const BIRDS = new Set(["Sparrow", "Robin", "Hawk", "Owl", "Falcon", "Eagle", "Raven", "Lark"]);
+    const CANDY = new Set(["Reese's", "Laffy", "Rolo", "Lifesaver"]);
+    for (const [key, c] of Object.entries(CONCEPTS)) {
+      if (key === "blank") continue;
+      for (const w of Object.values(c.words)) {
+        if (c.fam === "Pass") expect(BIRDS.has(w), `${w} is a Pass so it must be a bird`).toBe(true);
+        else if (c.fam === "Screen") expect(CANDY.has(w), `${w} is a Screen so it must be candy`).toBe(true);
+        else {
+          expect(BIRDS.has(w), `${w} runs, so it must never be a bird`).toBe(false);
+          expect(CANDY.has(w), `${w} runs, so it must never be candy`).toBe(false);
+        }
+      }
+    }
+  });
+  it("builds the QB tree: sprint-out flood exists with a run answer", () => {
+    expect(CONCEPTS.flood.words).toEqual({ Rt: "Raven", Lt: "Lark" });
+    expect(LINE_CALLS.flood).toBe("WALL");
+    expect(ASSIGNMENTS.flood.QB).toMatch(/then RUN/);
+    expect(ASSIGNMENTS.flood.QB).toMatch(/down or out of bounds/i);
+    expect(ASSIGNMENTS.flood.RB).toMatch(/bodyguard/i);
+    const names = SEED.plays.map((p) => p.name);
+    for (const want of ["Doubles · Raven", "Trips Rt · Raven", "Doubles · Hawk", "Empty · Robin", "Empty · Reese's", "Empty · Laffy"]) {
+      expect(names, want + " is seeded").toContain(want);
+    }
+    expect(SEED.plays.length).toBe(58);
+  });
   it("never installs a formation before its first play", () => {
     for (const f of Object.keys(FORM_WEEKS)) {
       const weeks = SEED.plays.filter((p) => p.formation === f).map((p) => p.week || 1);
@@ -73,7 +104,7 @@ describe("seeds", () => {
     for (const want of ["Bunch Rt · Rocket", "Nasty Rt · Ram", "Tank Rt · Ram", "Trips Rt · Rhino", "Tank Lt · Leopard"]) {
       expect(names, want + " is seeded").toContain(want);
     }
-    expect(SEED.plays.length).toBe(50);
+    expect(SEED.plays.length).toBe(58);
   });
   it("renames the jet drill in place so saved plans keep their links", () => {
     const old = { players: [], drills: [{ id: "d-keep", name: "Jet Touch Pass Timing", cat: "Group", group: "Skill (QB/RB/WR/TE)", mins: 12, notes: "old" }], libVersion: 4, safariVersion: 6, day1Seeded: true, week2Seeded: true, savedPlans: [], plays: SEED.plays.map((p) => ({ ...p })) };
@@ -122,15 +153,15 @@ describe("seeds", () => {
     const names = v3.plays.map((p) => p.name);
     expect(names).toContain("Tank Rt · Owl");
     expect(names.filter((n) => n === "Tank Rt · Owl").length).toBe(1);
-    expect(v3.plays.length).toBe(50); // 30 + ten v4 looks + Ram/Leopard + eight v6 costumes
-    expect(v3.safariVersion).toBe(6);
+    expect(v3.plays.length).toBe(58); // 30 + v4 looks + Ram/Leopard + v6 costumes + QB tree
+    expect(v3.safariVersion).toBe(7);
     expect(v3.packages.map((p) => p.name)).toContain("CHEETAH");
     const rocket = v3.plays.find((p) => p.name === "Doubles · Rocket");
     const reeses = v3.plays.find((p) => p.name === "Doubles · Reese's");
     expect(rocket.killId).toBe(reeses.id);
     // running it again must change nothing (Greg's live data reloads every session)
     const again = normalizeData(JSON.parse(JSON.stringify(v3)));
-    expect(again.plays.length).toBe(50);
+    expect(again.plays.length).toBe(58);
     expect(again.packages.length).toBe(v3.packages.length);
   });
   it("seeds the Day 1 helmets plan with grouped stations", () => {
@@ -169,7 +200,7 @@ describe("normalizeData migration", () => {
     expect(keepLt.name).toContain("Longhorn"); // derived names propagate the rename
     expect(d.savedPlans.some((s) => /day 1/i.test(s.name))).toBe(true);
     expect(d.players[0].name).toBe("Old Kid"); // user data untouched
-    expect(d.safariVersion).toBe(6);
+    expect(d.safariVersion).toBe(7);
   });
   it("does not double-seed on a second load", () => {
     const once = normalizeData({ safariVersion: 2, plays: SEED.plays.map((p) => ({ ...p })) });

@@ -450,6 +450,20 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       rt("Y", [[-2, -12], [-4, -19]]);
       if (has("RB")) add("RB", "route", [at("RB"), [at("RB")[0] + 3, at("RB")[1] - 6], [at("RB")[0] + 3, at("RB")[1] - 10]]);
       break;
+    case "flood": {
+      /* sprint-out: line slides with the QB, three levels stacked call-side */
+      for (const L of ["LT", "LG", "C", "RG", "RT"]) if (has(L)) add(L, "block", [at(L), [at(L)[0] + s * 1.5, at(L)[1] - 2.5]]);
+      const goSide = s > 0 ? "Z" : "X";
+      const backSide = s > 0 ? "X" : "Z";
+      if (has(goSide)) add(goSide, "route", [at(goSide), [at(goSide)[0], at(goSide)[1] - 19]]);
+      if (has(backSide)) add(backSide, "route", [at(backSide), [at(backSide)[0], at(backSide)[1] - 8], [at(backSide)[0] + s * 9, at(backSide)[1] - 15]]);
+      if (has("H")) { const [hx, hy] = at("H"); add("H", "route", [[hx, hy], [50 + s * 10, hy - 8], [50 + s * 21, hy - 9]]); }
+      if (has("Y")) { const [yx, yy] = at("Y"); add("Y", "route", [[yx, yy], [50 + s * 15, yy - 4], [50 + s * 24, yy - 4]]); }
+      if (has("RB")) add("RB", "block", [at("RB"), [50 + s * 12, 29], [50 + s * 17, 26]]);
+      if (has("QB")) add("QB", "fake", [at("QB"), [50 + s * 8, 31], [50 + s * 14, 29]]);
+      throwTo("H", 2);
+      break;
+    }
     case "eagle":
       olPass();
       rt("X", [[0, -11], [8, -19]]);
@@ -570,6 +584,7 @@ const CONCEPTS = {
   hawk:    { fam: "Pass",   dirs: [""],         words: { "": "Hawk" }, carrier: "WR", signal: "One arm soars", how: "Curls at 8 outside, flats underneath, Y to the corner.", read: "Watch the man over the slot: chases the flat, throw the curl; sits, throw the flat." },
   owl:     { fam: "Pass",   dirs: [""],         words: { "": "Owl" }, carrier: "Y", signal: "Circles over the eyes", how: "Everyone sells Rhino. Y slips into the seam behind the linebackers. QB fakes and pops it over their heads.", read: "Fake, find Y, throw it now. The most unfair play we own." },
   falcon:  { fam: "Pass",   dirs: [""],         words: { "": "Falcon" }, carrier: "WR", signal: "Both arms soar", how: "Four verticals, slots bend to the seams, RB checks down.", read: "Coach picks the target before the snap." },
+  flood:   { fam: "Pass",   dirs: ["Rt", "Lt"], words: { Rt: "Raven", Lt: "Lark" }, carrier: "WR", signal: "Wing out flat, run the fingers sideways, then point", how: "Sprint-out flood: QB moves the launch point to the call side with the RB leading. Three levels stacked in front of him: go to clear it, deep out at 10, flat at 4. Half the field, one look at a time, and his legs are the third answer.", read: "Deep out first. Covered? Flat. Both covered? RUN for the sticks and get down or get out of bounds." },
   eagle:   { fam: "Pass",   dirs: [""],         words: { "": "Eagle" }, carrier: "WR", signal: "Full wingspan flex", how: "The shot. Post and go outside, Y drags underneath, H and RB stay in to protect seven strong.", read: "One look deep for two seconds, then take the drag." },
   bubble:  { fam: "Screen", dirs: ["Rt", "Lt"], words: { Rt: "Reese's", Lt: "Laffy" }, carrier: "WR", signal: "Rub the belly, then point", how: "Called-side outside WR bubbles behind the jet fake, Y and the backside crack down.", read: "Catch and throw now. Free yards when they chase the jet." },
   slip:    { fam: "Screen", dirs: ["Rt", "Lt"], words: { Rt: "Rolo", Lt: "Lifesaver" }, carrier: "RB", signal: "Take a big bite, then point", how: "QB drifts, the line lets the rush through and releases, RB slips out behind it.", read: "Let the rush come, then dump it over their heads." },
@@ -577,7 +592,7 @@ const CONCEPTS = {
   blank:   { fam: "Special", dirs: [""],         words: { "": "Custom" }, carrier: null, signal: "Your call", how: "A blank canvas. Use Customize to draw every path yourself.", read: "Your design." },
 };
 /* ---- line calls: the O-line's own channel, spoken first ---- */
-const LINE_CALLS = { power: "HAMMER", owl: "HAMMER", trap: "TRAP", counter: "WRAP", jet: "REACH", keep: "REACH", stretch: "REACH", reverse: "REACH", sneak: "SURGE", sparrow: "QUICK", robin: "QUICK", bubble: "QUICK", hawk: "WALL", falcon: "WALL", eagle: "WALL", slip: "GATE" };
+const LINE_CALLS = { power: "HAMMER", owl: "HAMMER", trap: "TRAP", counter: "WRAP", jet: "REACH", keep: "REACH", stretch: "REACH", reverse: "REACH", sneak: "SURGE", sparrow: "QUICK", robin: "QUICK", bubble: "QUICK", hawk: "WALL", falcon: "WALL", eagle: "WALL", flood: "WALL", slip: "GATE" };
 const LINE_WORDS = ["HAMMER", "TRAP", "WRAP", "REACH", "SURGE", "QUICK", "WALL", "GATE"];
 const lineCallFor = (p) => (p && (p.lineCall || LINE_CALLS[p.concept])) || "";
 
@@ -609,6 +624,7 @@ const ASSIGNMENTS = {
   hawk:    { OL: "Real pass set. Stay square.", QB: "Man over the slot chases the flat: throw curl. He sits: throw flat.", RB: "Check, leak.", H: "Flat.", Y: "Corner at 8.", XZ: "Push to 8, snap around. Curl." },
   owl:     { OL: "Block Rhino. Make it look exactly the same.", QB: "Fake Rhino big, pop it to Y over their heads.", RB: "Fake Rhino, run angry without the ball.", H: "Jet motion, sell it.", Y: "Sell the block one count, slip behind the linebackers, eyes up fast.", XZ: "Block like it's a run." },
   falcon:  { OL: "Best pass set of the day. Give him time.", QB: "Coach picks the target before the snap. Trust it.", RB: "Checkdown at 5.", H: "Seam.", Y: "Seam.", XZ: "Go. Run through his shoulder." },
+  flood:   { OL: "Pass set, then slide with the QB. He is moving; move with him. Nobody crosses your face.", QB: "Sprint to the call, shoulders square so you can still throw. Deep out, then flat, then RUN. First down, then down or out of bounds.", RB: "You are his bodyguard. Lead the sprint and block the first color off the edge.", H: "Cross to the call side, deep out at 10. Snap your head around fast.", Y: "Flat at 4 on the call side. Be his easy answer.", XZ: "Called side runs the GO to pull the top off. Backside runs the post: stay alive, he might find you." },
   eagle:   { OL: "Max protect. Nobody touches him.", QB: "One look deep for two counts, then take the drag.", RB: "Block first. Always.", H: "Stay in and block. You are the bodyguard.", Y: "Drag at 10. Be the answer.", XZ: "X runs the post. Z runs the go." },
   bubble:  { OL: "Set and punch. Do not go downfield.", QB: "Catch and throw it NOW.", RB: "Fake.", H: "Jet motion, sell it.", Y: "Wall the first defender inside: get in his way, stay high.", XZ: "Called side bubbles back and out. Other side blocks his man." },
   slip:    { OL: "Block one count, let them through, release flat.", QB: "Drift back, let them come, dump it over their heads.", RB: "Let the rush go by, slip out behind them, eyes up fast.", H: "Run your man off deep.", Y: "Run him off.", XZ: "Run them off deep." },
@@ -676,6 +692,22 @@ function safariSeedPlaysV5() {
     note(mk(48, "Tank Lt", "stretch", "Lt", false, 4), "Heavy sweep, left."),
     note(mk(49, "Trips Rt", "power", "Rt", false, 3), "Power at a box that emptied chasing three receivers. When they match trips, run right at what's left."),
     note(mk(50, "Trips Lt", "power", "Lt", false, 3), "Trips power, left."),
+  ];
+}
+/* v7: the QB tree. Sprint-out floods (his legs are the third answer) and the
+   Empty quick menu, so five-out is never just two options. */
+function safariSeedPlaysV6() {
+  const mk = mkSeedPlay;
+  const note = (p, n) => ({ ...p, note: n });
+  return [
+    note(mk(51, "Doubles", "flood", "Rt", false, 4), "Sprint-out flood. Half the field, one look at a time, and running for the sticks is always allowed."),
+    note(mk(52, "Doubles", "flood", "Lt", false, 4), "Sprint-out flood, left."),
+    note(mk(53, "Trips Rt", "flood", "Rt", false, 4), "Flood into trips: the three levels are already aligned. The easiest completion in the book."),
+    note(mk(54, "Trips Lt", "flood", "Lt", false, 4), "Trips flood, left."),
+    note(mk(55, "Doubles", "hawk", "", false, 3), "The curl-flat read from home base, not just Trips."),
+    note(mk(56, "Empty", "robin", "", false, 6), "Slant-flat from five out. The backers can't hide."),
+    note(mk(57, "Empty", "bubble", "Rt", false, 6), "Empty bubble right: numbers were counted before the snap."),
+    note(mk(58, "Empty", "bubble", "Lt", false, 6), "Empty bubble, left."),
   ];
 }
 function safariSeedPlays() {
@@ -811,7 +843,7 @@ const RAW_SEED = {
   ],
   practice: { date: "", start: "17:30", title: "Practice Plan", items: [] },
   savedPlans: [],
-  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5()],
+  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6()],
   callLog: [],
   gameLabel: "",
   script: [],
@@ -880,7 +912,7 @@ function week2Plan(drills) {
 }
 SEED.packages = seedPackages();
 applyKillPairs(SEED.plays);
-SEED.safariVersion = 6;
+SEED.safariVersion = 7;
 SEED.savedPlans = [
   { id: uid(), name: "Day 1 · Helmets (Routes + Formations)", savedAt: "library", plan: day1Plan(SEED.drills) },
   { id: uid(), name: "Week 2 · Jet Series Install (Rocket, Rustler, Owl)", savedAt: "library", plan: week2Plan(SEED.drills) },
@@ -1013,6 +1045,13 @@ function normalizeData(parsed) {
     let n6 = 0;
     plays = [...plays, ...safariSeedPlaysV5().filter((p) => !haveV6.has(p.name)).map((p) => ({ ...p, id: uid(), num: base6 + (++n6) }))];
   }
+  // v7: the QB tree (sprint-out floods, Empty quick menu, Doubles Hawk).
+  if (!(parsed.safariVersion >= 7)) {
+    const haveV7 = new Set(plays.map((p) => p.name));
+    const base7 = plays.reduce((m, p) => Math.max(m, Number(p.num) || 0), 0);
+    let n7 = 0;
+    plays = [...plays, ...safariSeedPlaysV6().filter((p) => !haveV7.has(p.name)).map((p) => ({ ...p, id: uid(), num: base7 + (++n7) }))];
+  }
   // Concept play names are derived, so vocabulary updates flow through automatically.
   plays = plays.map((p) =>
     p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
@@ -1037,7 +1076,7 @@ function normalizeData(parsed) {
     gameLabel: parsed.gameLabel || "",
     script: parsed.script || [],
     scriptPos: parsed.scriptPos || 0,
-    safariVersion: 6,
+    safariVersion: 7,
     seasonWeek: parsed.seasonWeek || 1,
     pgOverrides: parsed.pgOverrides || {},
     packages,
@@ -2579,7 +2618,7 @@ function JobsPrint() {
                 ))}
               </tbody>
             </table>
-            <div className="routes-foot">Animal = run. Bird = pass. R goes right, L goes left. Cadence: Set... GO.</div>
+            <div className="routes-foot">Bird = pass. Candy = screen. Everything else RUNS. R goes right, L goes left. Cadence: Set... GO.</div>
           </div>
         ))}
       </div>
@@ -2634,7 +2673,7 @@ function SystemPrint() {
     <div className="sheet">
       <PrintHead title="The Rebel Safari on One Page" right={<div className="p-meta">Hand this to every coach. This is the whole offense.</div>} />
       <div className="sys-rules">
-        <div className="sys-rule"><b>1</b><span><b>Animal = run. Bird = pass.</b> Animals live on the ground. Birds fly. Candy is a trick.</span></div>
+        <div className="sys-rule"><b>1</b><span><b>Bird = pass. Candy = screen. Everything else RUNS.</b> Six birds fly. Four candies trick. Any other word is an animal on the ground: run it, block your man. Not sure? Block your man.</span></div>
         <div className="sys-rule"><b>2</b><span><b>R goes right. L goes left.</b> Rhino runs right, Lion runs left. If a kid can spell, he knows the direction.</span></div>
         <div className="sys-rule"><b>3</b><span><b>Your word is the only word.</b> Linemen listen for the FIRST word (their blocking). Everyone else listens for the SECOND word. Nobody decodes the whole call.</span></div>
         <div className="sys-rule"><b>4</b><span><b>"Set... GO." Every snap, all season.</b> One cadence. Zero procedure penalties.</span></div>
