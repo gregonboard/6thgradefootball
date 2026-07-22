@@ -32,7 +32,7 @@ Last updated: July 21, 2026 (post full-system confusion audit)
 A gap-scheme, series-based, fast-tempo spread built specifically for this roster. The core philosophy: **the smartness lives in the structure, not in anyone's head.** Same few concepts, many costumes (the Lane Kiffin principle adapted for 11-year-olds).
 
 ### The Four Rules (the entire mental model)
-1. **Bird = pass. Candy = screen. Everything else RUNS.** (Rewritten July 22 after Greg's audit found six run words that aren't animals: Rocket, Laser, Rustler, Renegade, Rewind, Loop. The birds and candy are small CLOSED sets that are 100% consistent, so kids classify by them; any other word defaults to run. Default-to-run is also the fail-safe: a kid who mishears blocks his man, which is the harmless mistake. A vocabulary test now enforces that no run word may ever be named a bird or a candy.)
+1. **Bird = pass. Candy = screen. Everything else RUNS.** (Rewritten July 22 after Greg's audit found six run words that aren't animals: Rocket, Laser, Rustler (since renamed Raccoon), Renegade, Rewind, Loop. The birds and candy are small CLOSED sets that are 100% consistent, so kids classify by them; any other word defaults to run. Default-to-run is also the fail-safe: a kid who mishears blocks his man, which is the harmless mistake. A vocabulary test now enforces that no run word may ever be named a bird or a candy.)
 2. **R goes right, L goes left.** The first letter of the play word is the direction.
 3. **Your word is the only word.** Linemen listen for the FIRST word (their blocking scheme). Everyone else listens for the SECOND word. Nobody decodes the whole call.
 4. **"Set... GO." Every snap, all season.** One cadence.
@@ -46,7 +46,7 @@ A gap-scheme, series-based, fast-tempo spread built specifically for this roster
 | HAMMER | Power: playside down blocks, backside guard pulls and leads | Rhino/Lion, Owl (deliberately, to enforce the play-action disguise) |
 | TRAP | Backside guard traps first man past center | Rabbit/Lynx |
 | WRAP | Counter: backside guard kicks, backside tackle wraps | Renegade/Lizard (week 6) |
-| REACH | Step playside and run | Rocket/Laser, Rustler/Longhorn, Ram/Leopard, Rewind/Loop |
+| REACH | Step playside and run | Rocket/Laser, Raccoon/Longhorn, Ram/Leopard, Rewind/Loop |
 | SURGE | Fire out low, one-yard war | Sub (QB sneak) |
 | QUICK | Set and punch, ball out under 2 seconds | Sparrow, Robin, Reese's/Laffy |
 | WALL | True pass set, kick-slide and mirror | Hawk, Falcon, Eagle, Raven/Lark |
@@ -58,8 +58,8 @@ Eight words compress to four techniques (down+pull family, reach, pass set, rele
 **Runs (ground animals, R/L pairs):**
 - Rhino / Lion = Power (base play, RB behind the pulling guard)
 - Rabbit / Lynx = Trap (quick hitter, the quick guards' showcase)
-- Rocket / Laser = Jet sweep (H at full speed off motion). Exchange ruling history (do not relitigate without Greg): v1 was a backward flip (live-fumble risk), briefly a forward touch pass (drop = incomplete, but H must catch at full speed), FINAL July 22 ruling from Greg: "he shouldn't have to catch it." The QB owns a pressed handoff into H's basket; H's only job is speed. Broken mesh = QB keeps it on the Rustler path, never chases H with the ball. Principle established: every exchange skill belongs to the QB (our smart asset), never to the kid at full speed; the reverse follows the same basket rule. From Doubles, Laser is a return motion; a seeded Doubles Lt · Laser gives the natural-cross alternative if the return rep is ugly.
-- Rustler / Longhorn = QB keep behind the jet fake (Rodeo -> Rustler after the phonetic audit; Lasso -> Longhorn in year two because Laser/Lasso was a missed collision, self-healing but sloppy)
+- Rocket / Laser = Jet sweep (H at full speed off motion). Exchange ruling history (do not relitigate without Greg): v1 was a backward flip (live-fumble risk), briefly a forward touch pass (drop = incomplete, but H must catch at full speed), FINAL July 22 ruling from Greg: "he shouldn't have to catch it." The QB owns a pressed handoff into H's basket; H's only job is speed. Broken mesh = QB keeps it on the Raccoon path, never chases H with the ball. Principle established: every exchange skill belongs to the QB (our smart asset), never to the kid at full speed; the reverse follows the same basket rule. From Doubles, Laser is a return motion; a seeded Doubles Lt · Laser gives the natural-cross alternative if the return rep is ugly.
+- Raccoon / Longhorn = QB keep behind the jet fake. Naming history: Rodeo -> Rustler in the phonetic audit; Rustler -> Raccoon July 22 because Greg asked "how are these kids gonna know rustler is an animal": the raccoon is the masked bandit that steals the ball while everyone chases Rocket. Signal changed to "wash the paws" (the lasso signal died with Rustler; circles-over-eyes was already Owl's). Lasso -> Longhorn in year two because Laser/Lasso was a missed collision. Renegade stays non-animal deliberately: every candidate collided (Rattler vs Rabbit, Rottweiler vs Rocket) and the rewritten Rule 1 covers it.
 - Renegade / Lizard = Counter (renamed from Rattler for the same reason)
 - Ram / Leopard = Stretch (July 2026, assistant-coach audit): the reach answer when a coordinator keys our down blocks and attacks downhill. Line hears REACH (already knows it from Rocket); H's jet motion becomes the lead block; RB takes the wide give, one cut when he sees grass. Same audit added the hinge rule: on HAMMER the backside tackle steps down and walls the man over the pulled guard before hinging, so a DL keyed on the puller gets sealed.
 - Sub = QB sneak
@@ -93,20 +93,20 @@ Doubles (home base, 2x2 with Y attached), Doubles Lt, Trips Rt/Lt, Bunch Rt/Lt (
 - Max = H and RB stay in to protect
 
 ### The Series (touch distribution engine)
-Every core snap shows the same picture (jet motion, RB downhill, Y attached). Off that one look: Rhino (RB), Rocket (H), Rustler (QB), Reese's (WR), Owl (Y). When the defense takes one kid away, the structure hands the ball to the next. Touches distribute by design; a scripted 10-play opener guarantees every playmaker the ball early.
+Every core snap shows the same picture (jet motion, RB downhill, Y attached). Off that one look: Rhino (RB), Rocket (H), Raccoon (QB), Reese's (WR), Owl (Y). When the defense takes one kid away, the structure hands the ball to the next. Touches distribute by design; a scripted 10-play opener guarantees every playmaker the ball early.
 
 ### Tempo doctrine (the gearbox, war-gamed)
 - **TURBO** = same play again, snapped instantly. Never twice in a row (app enforces this).
 - **MIRROR** = same play, other direction (every word has a twin). QB can also call it at the line after counting hats.
 - **SWITCH** + any word = run its twin. Year-two doctrine: SWITCH lives on the board with a visual signal ONLY, never voice, never before week 5 (a kid who misses the word runs the mirror against ten teammates). It was removed from all kid-facing route cards.
-- **Packages** (week 3+) = one word, three snaps at tempo, all off the same picture. Seeded: SAFARI (Rhino, Rocket, Owl), STAMPEDE (Rhino, Lion, Rustler), and CHEETAH (Rocket, Reese's, Rustler: everything looks like jet right and hits edge, bubble, then QB). Real Kiffin tempo is next-play-fast, not same-play-fast.
+- **Packages** (week 3+) = one word, three snaps at tempo, all off the same picture. Seeded: SAFARI (Rhino, Rocket, Owl), STAMPEDE (Rhino, Lion, Raccoon), and CHEETAH (Rocket, Reese's, Raccoon: everything looks like jet right and hits edge, bubble, then QB). Real Kiffin tempo is next-play-fast, not same-play-fast.
 - **Kill checks** (week 4+) = paired plays on the band ("14 / K8"). Default is the first play; QB counts the box and yells KILL KILL to flip. Seeded pairs: Rhino/Lion AND Rocket/Laser kill to the same-side bubble.
 - **FREEZE** = cadence trick, once a game.
 - **Call security:** wristband numbers are the encrypted everyday channel, shown silently on a board (or the app's Board Mode), never yelled. One-word calls are reserved for Turbo, where tempo outruns decoding. The app can shuffle all play numbers in one click to re-encrypt mid-season.
 - Up two scores in the 4th: stop tapping, milk the clock.
 
 ### Install schedule
-Week 1: Doubles, Rhino/Lion, Sparrow, cadence + sprint-align-look procedure, QB learns Mirror. Week 2: Rocket/Laser, Rustler/Lasso, Owl. Week 3: Rabbit/Lynx, Robin, Hawk, bubbles, Turbo live. Week 4: Eagle Max, Snickers, Sub, Tank, the Rhino Now RPO. Week 5: Bunch/Stack/Nasty looks, Orbit. Week 6: Renegade/Lizard, Freeze.
+Week 1: Doubles, Rhino/Lion, Sparrow, cadence + sprint-align-look procedure, QB learns Mirror. Week 2: Rocket/Laser, Raccoon/Longhorn, Owl. Week 3: Rabbit/Lynx, Robin, Hawk, bubbles, Turbo live. Week 4: Eagle Max, Snickers, Sub, Tank, the Rhino Now RPO. Week 5: Bunch/Stack/Nasty looks, Orbit. Week 6: Renegade/Lizard, Freeze.
 
 ---
 
@@ -141,7 +141,7 @@ The Formation View dropdown now includes every playbook formation (single source
 ### Data model (top-level keys in the single persisted object, storage key `vh6-coach-data-v1`)
 `players, depth {off, def}, offScheme, defScheme, drills, practice, savedPlans, plays [{id,num,name,formation,concept,dir,tags,core,week,custom,lineCall,type,note,killId}], callSheet, wrist, callLog, gameLabel, script, scriptPos, seasonWeek, pgOverrides, packages [{id,name,steps|ids}], day1Seeded, week2Seeded, libVersion (4), depthVersion (2), safariVersion (7)`
 
-libVersion 4 adds the jet-series install drills (Motion Landmark Races, Jet Touch Pass Timing, Owl Fake & Pop, Reach & Run) and week2Seeded gates a one-time "Week 2 · Jet Series Install (Rocket, Rustler, Owl)" saved practice plan.
+libVersion 4 adds the jet-series install drills (Motion Landmark Races, Jet Touch Pass Timing, Owl Fake & Pop, Reach & Run) and week2Seeded gates a one-time "Week 2 · Jet Series Install (Rocket, Raccoon, Owl)" saved practice plan.
 
 safariVersion 4 (July 2026, "speed in space" audit): jet exchange became the forward touch pass; QB keep job text adds "score or get down"; perimeter blocks teach wall-offs, never kill shots (youth blindside rules); ten appended looks (#31-40): Tank Rt Owl (goal line), Doubles Lt Laser, Bunch bubbles both ways, Nasty jets both ways, Stack Robin, Trips-weak jets both ways, Empty Sparrow; jet-to-bubble kill pairs; CHEETAH package.
 
@@ -157,7 +157,7 @@ Never destroy user data. `normalizeData()` runs on every load: version flags gat
 3. **The line call channel (HAMMER etc.)**: Greg's own suggestion; completes the "one channel per kid" philosophy and makes mishearing require two very different words to fail.
 4. **Owl calls HAMMER**: the line cannot tip the pop pass because they are never told it's a pass.
 5. **Numbers on a board, words for Turbo only**: the QB echo broadcasts any spoken word; wristband numbers are the encryption; tempo is the encryption for words.
-6. **Rustler (not Rodeo) and Renegade (not Rattler)**: phonetic-collision audit; Rhino/Rodeo and Rabbit/Rattler were mishearing hazards.
+6. **Raccoon (not Rodeo) and Renegade (not Rattler)**: phonetic-collision audit; Rhino/Rodeo and Rabbit/Rattler were mishearing hazards.
 7. **Series football over play lists**: four playmakers eat from one picture; distribution is structural.
 8. **Depth chart as source of truth (not player positions)**: enables a kid to be starting WR and backup QB.
 9. **Live snap counter was built and REMOVED**: Greg won't have a coach doing per-snap data entry in games. One tap per play call (Caller) is his ceiling for in-game input; result grading is optional.

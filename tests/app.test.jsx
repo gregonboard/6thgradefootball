@@ -10,7 +10,7 @@ import App, {
 /* ---------- unit: vocabulary and doctrine ---------- */
 describe("vocabulary", () => {
   it("renames Lasso to Longhorn and Snickers Lt to Skittles", () => {
-    expect(CONCEPTS.keep.words.Lt).toBe("Longhorn");
+    expect(CONCEPTS.keep.words).toEqual({ Rt: "Raccoon", Lt: "Longhorn" }); // Rustler wasn't an animal
     expect(CONCEPTS.slip.words).toEqual({ Rt: "Rolo", Lt: "Lifesaver" });
     expect(callWord("keep", "Lt")).toBe("Longhorn");
   });
@@ -85,7 +85,7 @@ describe("vocabulary", () => {
     expect(CONCEPTS.owl.read).toMatch(/Tuck it and run the Rhino path/i); // backers who don't bite
     expect(ASSIGNMENTS.stretch.RB).toMatch(/slam it NORTH/i);             // edge strung out
     expect(CONCEPTS.bubble.read).toMatch(/MIRROR/);                       // press over the bubble
-    expect(ASSIGNMENTS.jet.QB).toMatch(/Rustler path/);                   // broken mesh
+    expect(ASSIGNMENTS.jet.QB).toMatch(/Raccoon path/);                   // broken mesh
   });
   it("hinge rule: backside tackle walls the pulled guard's man on power", () => {
     // the assistant-coach fix: a DL keying the pulling guard gets walled by the tackle
@@ -105,7 +105,7 @@ describe("seeds", () => {
   it("jet exchange: QB owns the basket, H never has to catch", () => {
     expect(CONCEPTS.jet.how).toMatch(/basket/i);
     expect(ASSIGNMENTS.jet.QB).toMatch(/you own the ball/i);
-    expect(ASSIGNMENTS.jet.QB).toMatch(/Rustler path/); // broken mesh has an answer
+    expect(ASSIGNMENTS.jet.QB).toMatch(/Raccoon path/); // broken mesh has an answer
     expect(ASSIGNMENTS.jet.H).not.toMatch(/catch/i);
     expect(CONCEPTS.jet.fam).toBe("Run");
   });
