@@ -62,6 +62,29 @@ describe("seeds", () => {
     const reeses = SEED.plays.find((p) => p.concept === "bubble" && p.dir === "Rt");
     expect(rocket.killId).toBe(reeses.id);
   });
+  it("seeds the Week 2 jet-series install plan with the touch-pass drill", () => {
+    const w2 = SEED.savedPlans.find((s) => /week 2/i.test(s.name));
+    expect(w2).toBeTruthy();
+    const byId = Object.fromEntries(SEED.drills.map((d) => [d.id, d.name]));
+    const names = w2.plan.items.flatMap((it) => it.stations.map((s) => byId[s.drillId]));
+    for (const want of ["Jet Touch Pass Timing", "Motion Landmark Races", "Owl Fake & Pop", "Reach & Run (REACH steps)"]) {
+      expect(names, want + " is in the plan").toContain(want);
+    }
+  });
+  it("adds the jet drills and Week 2 plan to an existing program once", () => {
+    const old = {
+      players: [],
+      drills: SEED.drills.filter((d) => !/Jet Touch|Motion Landmark|Owl Fake|Reach & Run/.test(d.name)).map((d) => ({ ...d })),
+      libVersion: 3, safariVersion: 4, day1Seeded: true, savedPlans: [],
+      plays: SEED.plays.map((p) => ({ ...p })),
+    };
+    const d = normalizeData(old);
+    expect(d.drills.some((x) => x.name === "Jet Touch Pass Timing")).toBe(true);
+    expect(d.savedPlans.filter((s) => /week 2/i.test(s.name)).length).toBe(1);
+    const again = normalizeData(JSON.parse(JSON.stringify(d)));
+    expect(again.savedPlans.filter((s) => /week 2/i.test(s.name)).length).toBe(1);
+    expect(again.drills.length).toBe(d.drills.length);
+  });
   it("migrates a v3 program to v4 once, without duplicates", () => {
     const v3 = normalizeData({ players: [], plays: SEED.plays.filter((p) => p.num <= 30).map((p) => ({ ...p, killId: null })), safariVersion: 3, packages: seedPackages().slice(0, 2) });
     const names = v3.plays.map((p) => p.name);

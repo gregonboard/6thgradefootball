@@ -760,6 +760,11 @@ const RAW_SEED = {
     /* ---- TEAM INSTALL (helmets-friendly) ---- */
     { id: uid(), name: "Formation Races (Sprint-Align-Look)", cat: "Team", group: "Offense", mins: 12, notes: "Coach calls it, kids SPRINT to alignment, set, eyes to the sideline. Doubles first, then Trips Rt/Lt. Race the clock, celebrate perfect stances." },
     { id: uid(), name: "Team Walk-Through Install", cat: "Team", group: "Offense", mins: 15, notes: "Rhino, Lion, and Sparrow on air at walk speed, then jog speed. Line steps only, no contact. Every kid says his job out loud before the snap." },
+    /* ---- JET SERIES INSTALL (libVersion 4) ---- */
+    { id: uid(), name: "Motion Landmark Races", cat: "Individual", group: "Skill (QB/RB/WR/TE)", mins: 8, notes: "H starts on Set, hits the mesh cone at GO at FULL speed. Cone behind the QB spot. Race two H's, time them, same speed every rep." },
+    { id: uid(), name: "Jet Touch Pass Timing", cat: "Group", group: "Skill (QB/RB/WR/TE)", mins: 12, notes: "QB and H only: Set... GO, soft FORWARD flip at the cone, H catches at full speed. A drop is incomplete, celebrate and re-rack. 20 reps each way, both QBs." },
+    { id: uid(), name: "Owl Fake & Pop", cat: "Group", group: "Skill (QB/RB/WR/TE)", mins: 10, notes: "QB, RB, Y. Big Rhino fake (RB runs angry), Y sells the block one count, slips, QB pops it over the cone linebackers. Rhythm: fake, find, throw." },
+    { id: uid(), name: "Reach & Run (REACH steps)", cat: "Individual", group: "OL", mins: 8, notes: "Playside reach step and RUN on the cadence. Cover him up, do not win a wrestling match. Jet and keep live behind this." },
   ],
   practice: { date: "", start: "17:30", title: "Practice Plan", items: [] },
   savedPlans: [],
@@ -774,7 +779,7 @@ const RAW_SEED = {
   depth: { off: {}, def: {} },
   offScheme: "I-Form",
   defScheme: "5-3",
-  libVersion: 3,
+  libVersion: 4,
   seasonWeek: 1,
   pgOverrides: {},
   packages: [],
@@ -815,12 +820,31 @@ function day1Plan(drills) {
   ].filter((p) => p.stations.length > 0);
   return { date: "", start: "17:30", title: "Day 1 · Helmets: Routes + Formations", items };
 }
+/* ---- Week 2 plan: the jet series install (Rocket, Rustler, Owl) ---- */
+function week2Plan(drills) {
+  const idOf = (name) => { const d = drills.find((x) => x.name.toLowerCase() === name.toLowerCase()); return d ? d.id : null; };
+  const per = (mins, names) => ({ id: uid(), mins, stations: names.map(idOf).filter(Boolean).map((drillId) => ({ id: uid(), drillId })) });
+  const items = [
+    per(10, ["Dynamic Warmup & Stretch"]),
+    per(8, ["Motion Landmark Races", "Reach & Run (REACH steps)", "LB Read Steps"]),
+    per(12, ["Jet Touch Pass Timing", "Down Block Angles", "Pedal & Break"]),
+    per(10, ["Owl Fake & Pop", "OL Stance & First Steps", "Scrape & Fill"]),
+    per(12, ["Perimeter Drill"]),
+    per(15, ["Team Walk-Through Install"]),
+    per(10, ["10 Perfect Plays"]),
+  ].filter((p) => p.stations.length > 0);
+  return { date: "", start: "17:30", title: "Week 2 · Jet Series Install (Rocket, Rustler, Owl)", items };
+}
 SEED.packages = seedPackages();
 applyKillPairs(SEED.plays);
 SEED.safariVersion = 4;
-SEED.savedPlans = [{ id: uid(), name: "Day 1 · Helmets (Routes + Formations)", savedAt: "library", plan: day1Plan(SEED.drills) }];
+SEED.savedPlans = [
+  { id: uid(), name: "Day 1 · Helmets (Routes + Formations)", savedAt: "library", plan: day1Plan(SEED.drills) },
+  { id: uid(), name: "Week 2 · Jet Series Install (Rocket, Rustler, Owl)", savedAt: "library", plan: week2Plan(SEED.drills) },
+];
 SEED.practice = { ...SEED.practice, ...day1Plan(SEED.drills) };
 SEED.day1Seeded = true;
+SEED.week2Seeded = true;
 
 const STORAGE_KEY = "vh6-coach-data-v1";
 
@@ -936,6 +960,10 @@ function normalizeData(parsed) {
   if (!parsed.day1Seeded && !savedPlans.some((s) => /day 1/i.test(s.name || ""))) {
     savedPlans = [{ id: uid(), name: "Day 1 · Helmets (Routes + Formations)", savedAt: "library", plan: day1Plan(drills) }, ...savedPlans];
   }
+  // Seed the Week 2 jet-series install once (after the v4 drills have merged in).
+  if (!parsed.week2Seeded && !savedPlans.some((s) => /week 2/i.test(s.name || ""))) {
+    savedPlans = [{ id: uid(), name: "Week 2 · Jet Series Install (Rocket, Rustler, Owl)", savedAt: "library", plan: week2Plan(drills) }, ...savedPlans];
+  }
   return migrateDepth({
     ...SEED,
     ...parsed,
@@ -950,6 +978,7 @@ function normalizeData(parsed) {
     pgOverrides: parsed.pgOverrides || {},
     packages,
     day1Seeded: true,
+    week2Seeded: true,
     practice: { ...SEED.practice, ...(parsed.practice || {}), items },
     savedPlans,
     wrist: { ...SEED.wrist, ...(parsed.wrist || {}) },

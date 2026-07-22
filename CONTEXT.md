@@ -135,7 +135,9 @@ The Formation View dropdown now includes every playbook formation (single source
 6. **Wristbands**: printable QB bands (reading order: number, formation, LINE word in red, play word) and Bird Route Cards (all birds × all letters so any kid can slide positions).
 
 ### Data model (top-level keys in the single persisted object, storage key `vh6-coach-data-v1`)
-`players, depth {off, def}, offScheme, defScheme, drills, practice, savedPlans, plays [{id,num,name,formation,concept,dir,tags,core,week,custom,lineCall,type,note,killId}], callSheet, wrist, callLog, gameLabel, script, scriptPos, seasonWeek, pgOverrides, packages [{id,name,steps|ids}], day1Seeded, libVersion (3), depthVersion (2), safariVersion (4)`
+`players, depth {off, def}, offScheme, defScheme, drills, practice, savedPlans, plays [{id,num,name,formation,concept,dir,tags,core,week,custom,lineCall,type,note,killId}], callSheet, wrist, callLog, gameLabel, script, scriptPos, seasonWeek, pgOverrides, packages [{id,name,steps|ids}], day1Seeded, week2Seeded, libVersion (4), depthVersion (2), safariVersion (4)`
+
+libVersion 4 adds the jet-series install drills (Motion Landmark Races, Jet Touch Pass Timing, Owl Fake & Pop, Reach & Run) and week2Seeded gates a one-time "Week 2 · Jet Series Install (Rocket, Rustler, Owl)" saved practice plan.
 
 safariVersion 4 (July 2026, "speed in space" audit): jet exchange became the forward touch pass; QB keep job text adds "score or get down"; perimeter blocks teach wall-offs, never kill shots (youth blindside rules); ten appended looks (#31-40): Tank Rt Owl (goal line), Doubles Lt Laser, Bunch bubbles both ways, Nasty jets both ways, Stack Robin, Trips-weak jets both ways, Empty Sparrow; jet-to-bubble kill pairs; CHEETAH package.
 
