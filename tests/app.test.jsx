@@ -61,9 +61,27 @@ describe("seeds", () => {
     expect(pk.map((p) => p.name)).toEqual(["SAFARI", "STAMPEDE", "CHEETAH"]);
     expect(pk.every((p) => p.steps.length === 3)).toBe(true);
   });
-  it("makes the jet a forward touch pass, never a live fumble", () => {
-    expect(CONCEPTS.jet.how).toMatch(/touch pass/i);
-    expect(CONCEPTS.jet.fam).toBe("Run"); // still an animal in the kids' rules
+  it("jet exchange: QB owns the basket, H never has to catch", () => {
+    expect(CONCEPTS.jet.how).toMatch(/basket/i);
+    expect(ASSIGNMENTS.jet.QB).toMatch(/you own the ball/i);
+    expect(ASSIGNMENTS.jet.QB).toMatch(/Rustler path/); // broken mesh has an answer
+    expect(ASSIGNMENTS.jet.H).not.toMatch(/catch/i);
+    expect(CONCEPTS.jet.fam).toBe("Run");
+  });
+  it("seeds the v6 costume looks", () => {
+    const names = SEED.plays.map((p) => p.name);
+    for (const want of ["Bunch Rt · Rocket", "Nasty Rt · Ram", "Tank Rt · Ram", "Trips Rt · Rhino", "Tank Lt · Leopard"]) {
+      expect(names, want + " is seeded").toContain(want);
+    }
+    expect(SEED.plays.length).toBe(50);
+  });
+  it("renames the jet drill in place so saved plans keep their links", () => {
+    const old = { players: [], drills: [{ id: "d-keep", name: "Jet Touch Pass Timing", cat: "Group", group: "Skill (QB/RB/WR/TE)", mins: 12, notes: "old" }], libVersion: 4, safariVersion: 6, day1Seeded: true, week2Seeded: true, savedPlans: [], plays: SEED.plays.map((p) => ({ ...p })) };
+    const d = normalizeData(old);
+    const renamed = d.drills.find((x) => x.id === "d-keep");
+    expect(renamed.name).toBe("Jet Mesh & Basket");
+    expect(renamed.notes).toMatch(/QB owns the ball/i);
+    expect(d.drills.filter((x) => x.name === "Jet Mesh & Basket").length).toBe(1);
   });
   it("seeds the v4 speed looks with the goal-line Owl", () => {
     const names = SEED.plays.map((p) => p.name);
@@ -76,24 +94,24 @@ describe("seeds", () => {
     const reeses = SEED.plays.find((p) => p.concept === "bubble" && p.dir === "Rt");
     expect(rocket.killId).toBe(reeses.id);
   });
-  it("seeds the Week 2 jet-series install plan with the touch-pass drill", () => {
+  it("seeds the Week 2 jet-series install plan with the mesh drill", () => {
     const w2 = SEED.savedPlans.find((s) => /week 2/i.test(s.name));
     expect(w2).toBeTruthy();
     const byId = Object.fromEntries(SEED.drills.map((d) => [d.id, d.name]));
     const names = w2.plan.items.flatMap((it) => it.stations.map((s) => byId[s.drillId]));
-    for (const want of ["Jet Touch Pass Timing", "Motion Landmark Races", "Owl Fake & Pop", "Reach & Run (REACH steps)"]) {
+    for (const want of ["Jet Mesh & Basket", "Motion Landmark Races", "Owl Fake & Pop", "Reach & Run (REACH steps)"]) {
       expect(names, want + " is in the plan").toContain(want);
     }
   });
   it("adds the jet drills and Week 2 plan to an existing program once", () => {
     const old = {
       players: [],
-      drills: SEED.drills.filter((d) => !/Jet Touch|Motion Landmark|Owl Fake|Reach & Run/.test(d.name)).map((d) => ({ ...d })),
+      drills: SEED.drills.filter((d) => !/Jet Mesh|Motion Landmark|Owl Fake|Reach & Run/.test(d.name)).map((d) => ({ ...d })),
       libVersion: 3, safariVersion: 4, day1Seeded: true, savedPlans: [],
       plays: SEED.plays.map((p) => ({ ...p })),
     };
     const d = normalizeData(old);
-    expect(d.drills.some((x) => x.name === "Jet Touch Pass Timing")).toBe(true);
+    expect(d.drills.some((x) => x.name === "Jet Mesh & Basket")).toBe(true);
     expect(d.savedPlans.filter((s) => /week 2/i.test(s.name)).length).toBe(1);
     const again = normalizeData(JSON.parse(JSON.stringify(d)));
     expect(again.savedPlans.filter((s) => /week 2/i.test(s.name)).length).toBe(1);
@@ -104,15 +122,15 @@ describe("seeds", () => {
     const names = v3.plays.map((p) => p.name);
     expect(names).toContain("Tank Rt · Owl");
     expect(names.filter((n) => n === "Tank Rt · Owl").length).toBe(1);
-    expect(v3.plays.length).toBe(42); // 30 + ten v4 looks + Ram/Leopard
-    expect(v3.safariVersion).toBe(5);
+    expect(v3.plays.length).toBe(50); // 30 + ten v4 looks + Ram/Leopard + eight v6 costumes
+    expect(v3.safariVersion).toBe(6);
     expect(v3.packages.map((p) => p.name)).toContain("CHEETAH");
     const rocket = v3.plays.find((p) => p.name === "Doubles · Rocket");
     const reeses = v3.plays.find((p) => p.name === "Doubles · Reese's");
     expect(rocket.killId).toBe(reeses.id);
     // running it again must change nothing (Greg's live data reloads every session)
     const again = normalizeData(JSON.parse(JSON.stringify(v3)));
-    expect(again.plays.length).toBe(42);
+    expect(again.plays.length).toBe(50);
     expect(again.packages.length).toBe(v3.packages.length);
   });
   it("seeds the Day 1 helmets plan with grouped stations", () => {
@@ -151,7 +169,7 @@ describe("normalizeData migration", () => {
     expect(keepLt.name).toContain("Longhorn"); // derived names propagate the rename
     expect(d.savedPlans.some((s) => /day 1/i.test(s.name))).toBe(true);
     expect(d.players[0].name).toBe("Old Kid"); // user data untouched
-    expect(d.safariVersion).toBe(5);
+    expect(d.safariVersion).toBe(6);
   });
   it("does not double-seed on a second load", () => {
     const once = normalizeData({ safariVersion: 2, plays: SEED.plays.map((p) => ({ ...p })) });
