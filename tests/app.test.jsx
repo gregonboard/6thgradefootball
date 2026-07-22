@@ -42,10 +42,41 @@ describe("vocabulary", () => {
 
 /* ---------- unit: seeds ---------- */
 describe("seeds", () => {
-  it("seeds SAFARI and STAMPEDE packages", () => {
+  it("seeds SAFARI, STAMPEDE, and CHEETAH packages", () => {
     const pk = seedPackages();
-    expect(pk.map((p) => p.name)).toEqual(["SAFARI", "STAMPEDE"]);
-    expect(pk[0].steps.length).toBe(3);
+    expect(pk.map((p) => p.name)).toEqual(["SAFARI", "STAMPEDE", "CHEETAH"]);
+    expect(pk.every((p) => p.steps.length === 3)).toBe(true);
+  });
+  it("makes the jet a forward touch pass, never a live fumble", () => {
+    expect(CONCEPTS.jet.how).toMatch(/touch pass/i);
+    expect(CONCEPTS.jet.fam).toBe("Run"); // still an animal in the kids' rules
+  });
+  it("seeds the v4 speed looks with the goal-line Owl", () => {
+    const names = SEED.plays.map((p) => p.name);
+    for (const want of ["Tank Rt · Owl", "Doubles Lt · Laser", "Bunch Rt · Reese's", "Nasty Rt · Rocket", "Stack · Robin", "Trips Rt · Laser", "Empty · Sparrow"]) {
+      expect(names, want + " is seeded").toContain(want);
+    }
+  });
+  it("pairs the jets with their bubbles as kills", () => {
+    const rocket = SEED.plays.find((p) => p.concept === "jet" && p.dir === "Rt");
+    const reeses = SEED.plays.find((p) => p.concept === "bubble" && p.dir === "Rt");
+    expect(rocket.killId).toBe(reeses.id);
+  });
+  it("migrates a v3 program to v4 once, without duplicates", () => {
+    const v3 = normalizeData({ players: [], plays: SEED.plays.filter((p) => p.num <= 30).map((p) => ({ ...p, killId: null })), safariVersion: 3, packages: seedPackages().slice(0, 2) });
+    const names = v3.plays.map((p) => p.name);
+    expect(names).toContain("Tank Rt · Owl");
+    expect(names.filter((n) => n === "Tank Rt · Owl").length).toBe(1);
+    expect(v3.plays.length).toBe(40);
+    expect(v3.safariVersion).toBe(4);
+    expect(v3.packages.map((p) => p.name)).toContain("CHEETAH");
+    const rocket = v3.plays.find((p) => p.name === "Doubles · Rocket");
+    const reeses = v3.plays.find((p) => p.name === "Doubles · Reese's");
+    expect(rocket.killId).toBe(reeses.id);
+    // running it again must change nothing (Greg's live data reloads every session)
+    const again = normalizeData(JSON.parse(JSON.stringify(v3)));
+    expect(again.plays.length).toBe(40);
+    expect(again.packages.length).toBe(v3.packages.length);
   });
   it("seeds the Day 1 helmets plan with grouped stations", () => {
     const plan = day1Plan(SEED.drills);
@@ -83,7 +114,7 @@ describe("normalizeData migration", () => {
     expect(keepLt.name).toContain("Longhorn"); // derived names propagate the rename
     expect(d.savedPlans.some((s) => /day 1/i.test(s.name))).toBe(true);
     expect(d.players[0].name).toBe("Old Kid"); // user data untouched
-    expect(d.safariVersion).toBe(3);
+    expect(d.safariVersion).toBe(4);
   });
   it("does not double-seed on a second load", () => {
     const once = normalizeData({ safariVersion: 2, plays: SEED.plays.map((p) => ({ ...p })) });

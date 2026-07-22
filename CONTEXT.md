@@ -58,7 +58,7 @@ Eight words compress to four techniques (down+pull family, reach, pass set, rele
 **Runs (ground animals, R/L pairs):**
 - Rhino / Lion = Power (base play, RB behind the pulling guard)
 - Rabbit / Lynx = Trap (quick hitter, the quick guards' showcase)
-- Rocket / Laser = Jet sweep (H at full speed off motion)
+- Rocket / Laser = Jet sweep (H at full speed off motion). The exchange is a FORWARD touch pass (July 2026 ruling): a drop is incomplete, never a live fumble, so the worst play is 2nd and 10, not a scoop-six. Still an animal in the kids' rules; only QB and H know it's technically a pass. From Doubles, Laser is a return motion; a seeded Doubles Lt · Laser gives the natural-cross alternative if the return rep is ugly.
 - Rustler / Longhorn = QB keep behind the jet fake (Rodeo -> Rustler after the phonetic audit; Lasso -> Longhorn in year two because Laser/Lasso was a missed collision, self-healing but sloppy)
 - Renegade / Lizard = Counter (renamed from Rattler for the same reason)
 - Sub = QB sneak
@@ -95,8 +95,8 @@ Every core snap shows the same picture (jet motion, RB downhill, Y attached). Of
 - **TURBO** = same play again, snapped instantly. Never twice in a row (app enforces this).
 - **MIRROR** = same play, other direction (every word has a twin). QB can also call it at the line after counting hats.
 - **SWITCH** + any word = run its twin. Year-two doctrine: SWITCH lives on the board with a visual signal ONLY, never voice, never before week 5 (a kid who misses the word runs the mirror against ten teammates). It was removed from all kid-facing route cards.
-- **Packages** (week 3+) = one word, three snaps at tempo, all off the same picture. Seeded: SAFARI (Rhino, Rocket, Owl) and STAMPEDE (Rhino, Lion, Rustler). Real Kiffin tempo is next-play-fast, not same-play-fast.
-- **Kill checks** (week 4+) = paired plays on the band ("14 / K8"). Default is the first play; QB counts the box and yells KILL KILL to flip. Seeded pair: Rhino kills to the bubble.
+- **Packages** (week 3+) = one word, three snaps at tempo, all off the same picture. Seeded: SAFARI (Rhino, Rocket, Owl), STAMPEDE (Rhino, Lion, Rustler), and CHEETAH (Rocket, Reese's, Rustler: everything looks like jet right and hits edge, bubble, then QB). Real Kiffin tempo is next-play-fast, not same-play-fast.
+- **Kill checks** (week 4+) = paired plays on the band ("14 / K8"). Default is the first play; QB counts the box and yells KILL KILL to flip. Seeded pairs: Rhino/Lion AND Rocket/Laser kill to the same-side bubble.
 - **FREEZE** = cadence trick, once a game.
 - **Call security:** wristband numbers are the encrypted everyday channel, shown silently on a board (or the app's Board Mode), never yelled. One-word calls are reserved for Turbo, where tempo outruns decoding. The app can shuffle all play numbers in one click to re-encrypt mid-season.
 - Up two scores in the 4th: stop tapping, milk the clock.
@@ -135,7 +135,9 @@ The Formation View dropdown now includes every playbook formation (single source
 6. **Wristbands**: printable QB bands (reading order: number, formation, LINE word in red, play word) and Bird Route Cards (all birds × all letters so any kid can slide positions).
 
 ### Data model (top-level keys in the single persisted object, storage key `vh6-coach-data-v1`)
-`players, depth {off, def}, offScheme, defScheme, drills, practice, savedPlans, plays [{id,num,name,formation,concept,dir,tags,core,week,custom,lineCall,type,note,killId}], callSheet, wrist, callLog, gameLabel, script, scriptPos, seasonWeek, pgOverrides, packages [{id,name,steps|ids}], day1Seeded, libVersion (3), depthVersion (2), safariVersion (3)`
+`players, depth {off, def}, offScheme, defScheme, drills, practice, savedPlans, plays [{id,num,name,formation,concept,dir,tags,core,week,custom,lineCall,type,note,killId}], callSheet, wrist, callLog, gameLabel, script, scriptPos, seasonWeek, pgOverrides, packages [{id,name,steps|ids}], day1Seeded, libVersion (3), depthVersion (2), safariVersion (4)`
+
+safariVersion 4 (July 2026, "speed in space" audit): jet exchange became the forward touch pass; QB keep job text adds "score or get down"; perimeter blocks teach wall-offs, never kill shots (youth blindside rules); ten appended looks (#31-40): Tank Rt Owl (goal line), Doubles Lt Laser, Bunch bubbles both ways, Nasty jets both ways, Stack Robin, Trips-weak jets both ways, Empty Sparrow; jet-to-bubble kill pairs; CHEETAH package.
 
 ### Migration philosophy (important for future changes)
 Never destroy user data. `normalizeData()` runs on every load: version flags gate one-time appends (drill library merges by name; Safari playbook appended after existing plays; v2 extras dedupe by name). Concept play names are DERIVED (recomputed from vocabulary on load), so renaming a call word propagates everywhere automatically. Legacy migrations handled: single-position roster → slot depth; SAFETY → FS; flat practice items → station periods.
