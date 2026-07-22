@@ -2628,10 +2628,16 @@ function JobsPrint() {
 
 /* ---- printable play card book (for assistants) ---- */
 function PlaybookPrint({ data }) {
-  const list = [...data.plays].filter((p) => p.concept && CONCEPTS[p.concept]).sort((a, z) => a.num - z.num);
+  /* The book respects the WEEK dial: print what the team has installed,
+     not all 58. Turn the dial to All (9) for the full book. */
+  const wk = data.seasonWeek || 1;
+  const list = [...data.plays]
+    .filter((p) => p.concept && CONCEPTS[p.concept])
+    .filter((p) => wk >= 9 || !p.week || p.week <= wk)
+    .sort((a, z) => a.num - z.num);
   return (
     <div className="sheet">
-      <PrintHead title="Rebel Safari Playbook" right={<div className="p-meta">{list.length} plays · {todayStr()}</div>} />
+      <PrintHead title="Rebel Safari Playbook" right={<div className="p-meta">{list.length} plays{wk < 9 ? ` · thru week ${wk}` : ""} · {todayStr()}</div>} />
       <div className="book-grid">
         {list.map((p) => (
           <div key={p.id} className="book-card">

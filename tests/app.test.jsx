@@ -470,6 +470,15 @@ describe("supabase sync", () => {
     await waitFor(() => expect(screen.getByText("All changes saved")).toBeTruthy(), { timeout: 3000 });
   });
 
+  it("prints the play-card book filtered to the WEEK dial", async () => {
+    await load();
+    fireEvent.click(screen.getByText("Play Lab"));
+    fireEvent.click(screen.getByText("Print Play Cards"));
+    // week 1: only Rhino, Lion, Sparrow are installed
+    await waitFor(() => expect(document.querySelectorAll(".book-card").length).toBe(3));
+    expect(document.querySelector(".print-layer .p-meta").textContent).toMatch(/thru week 1/);
+  });
+
   it("has no manual Backup/Restore buttons (cloud sync replaced them)", async () => {
     await load();
     expect(screen.queryByText("Backup")).toBeNull();
