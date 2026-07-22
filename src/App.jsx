@@ -1207,7 +1207,7 @@ export default function App() {
         <main className="content">
           {tab === "roster" && <RosterTab data={data} up={up} onPrint={() => setPrintTarget("gameday")} onPrintGroups={() => setPrintTarget("groups")} onPrintFormations={() => setPrintTarget("formations")} />}
           {tab === "practice" && <PracticeTab data={data} up={up} onPrint={() => setPrintTarget("practice")} />}
-          {tab === "playbook" && <PlaybookTab data={data} up={up} onPrintSignals={() => setPrintTarget("signals")} onPrintBook={() => setPrintTarget("playbook")} onPrintJobs={() => setPrintTarget("jobs")} onPrintSystem={() => setPrintTarget("system")} />}
+          {tab === "playbook" && <PlaybookTab data={data} up={up} onPrintSignals={() => setPrintTarget("signals")} onPrintBook={() => setPrintTarget("playbook")} onPrintJobs={() => setPrintTarget("jobs")} onPrintSystem={() => setPrintTarget("system")} onPrintCard={(id) => setPrintTarget("playcard:" + id)} />}
           {tab === "caller" && <CallerTab data={data} up={up} />}
           {tab === "callsheet" && <CallSheetTab data={data} up={up} onPrint={() => setPrintTarget("callsheet")} />}
           {tab === "wrist" && <WristTab data={data} up={up} onPrint={() => setPrintTarget("wrist")} onPrintRoutes={() => setPrintTarget("routes")} />}
@@ -1866,7 +1866,7 @@ function PlayDiagram({ play, size = "big", editSel, onPick, onField, dimExcept }
 /* ============================================================
    PLAY LAB (playbook, rebuilt around the Safari grammar)
    ============================================================ */
-function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPrintSystem }) {
+function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPrintSystem, onPrintCard }) {
   const { plays } = data;
   const seasonWeek = data.seasonWeek || 1;
   const [showLater, setShowLater] = useState(false);
@@ -1886,10 +1886,11 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
   const setPlay = (id, patch) => up({ plays: plays.map((p) => (p.id === id ? { ...p, ...patch } : p)) });
   const addLook = () => {
     if (!selected || !selected.concept) return;
-    const p = {
-      ...selected, id: uid(), num: nextNum, formation: lookForm, core: false, custom: null,
-      name: selected.concept === "blank" ? `${selected.name} (${lookForm})` : `${lookForm} · ${callWord(selected.concept, selected.dir, selected.tags || [])}`,
-    };
+    const name = selected.concept === "blank" ? `${selected.name} (${lookForm})` : `${lookForm} · ${callWord(selected.concept, selected.dir, selected.tags || [])}`;
+    /* That look already exists: jump to it instead of minting a duplicate. */
+    const existing = plays.find((x) => x.name === name);
+    if (existing) { setSel(existing.id); return; }
+    const p = { ...selected, id: uid(), num: nextNum, formation: lookForm, core: false, custom: null, name };
     up({ plays: [...plays, p] });
     setSel(p.id);
   };
@@ -2083,10 +2084,15 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
       <section className="panel">
         <div className="panel-head">
           <h2>{selected ? `#${selected.num} · ${selected.name}` : "Play Card"}</h2>
-          {selected && selected.concept && CONCEPTS[selected.concept] && (
-            <button className={"btn " + (editing ? "" : "ghost")} onClick={() => { setEditing(!editing); setEd({ sel: null, mode: "route", drawing: false }); }}>
-              {editing ? "Done Editing" : "Customize"}
-            </button>
+          {selected && (
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn ghost" onClick={() => onPrintCard(selected.id)}>Print This Card</button>
+              {selected.concept && CONCEPTS[selected.concept] && (
+                <button className={"btn " + (editing ? "" : "ghost")} onClick={() => { setEditing(!editing); setEd({ sel: null, mode: "route", drawing: false }); }}>
+                  {editing ? "Done Editing" : "Customize"}
+                </button>
+              )}
+            </div>
           )}
         </div>
         {!selected && <div className="empty pad">Select a play to see its card: the diagram, the call, the signal, and the coaching points.</div>}
@@ -2643,6 +2649,7 @@ function PlaybookPrint({ data }) {
           <div key={p.id} className="book-card">
             <div className="book-head">
               <span className="mono"><b>#{p.num}</b></span>
+              <span className="book-line">{lineCallFor(p)}</span>
               <b>{callWord(p.concept, p.dir, p.tags || [])}</b>
               <span className="book-form">{p.formation}{p.core ? " · CORE" : ""}</span>
             </div>
@@ -2651,6 +2658,46 @@ function PlaybookPrint({ data }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/* ---- one play, full coaching view, one page ---- */
+function PlayCardPrint({ data, playId }) {
+  const p = data.plays.find((x) => x.id === playId);
+  if (!p) return <div className="sheet">Play not found.</div>;
+  const c = p.concept && CONCEPTS[p.concept];
+  const word = c ? callWord(p.concept, p.dir, p.tags || []) : p.name;
+  const line = lineCallFor(p);
+  return (
+    <div className="sheet">
+      <PrintHead title={`#${p.num} · ${p.name}`} right={<div className="p-meta">{todayStr()}</div>} />
+      <div className="pc-callrow" style={{ marginBottom: 10 }}>
+        {line && <span className="line-chip">{line}</span>}
+        <span className="pc-word">{word}</span>
+        {p.core && <span className="pc-badge core">CORE · ONE-WORD CALL</span>}
+      </div>
+      <PlayDiagram play={p} size="book" />
+      {c && (
+        <div style={{ margin: "10px 0" }}>
+          <div className="pc-line"><b>Call it:</b> "{p.formation !== "Doubles" ? p.formation + "... " : ""}{line}... {word}." The line only listens for {line} plus R or L.</div>
+          <div className="pc-line"><b>Signal:</b> {c.signal}</div>
+          <div className="pc-line"><b>How it works:</b> {c.how}</div>
+          <div className="pc-line"><b>QB:</b> {c.read}</div>
+          <div className="pc-line"><b>Ball goes to:</b> {playCarrier(p) || "your design"}</div>
+        </div>
+      )}
+      {p.note && <div className="pc-line" style={{ marginBottom: 10 }}><b>Coaching note:</b> {p.note}</div>}
+      {c && ASSIGNMENTS[p.concept] && (
+        <div className="jobs-grid">
+          {JOB_GROUPS.map(([key, label]) => (
+            <div key={key} className="jobs-card">
+              <div className="routes-title">{label}</div>
+              <div className="pc-line" style={{ padding: "6px 8px" }}>{ASSIGNMENTS[p.concept][key]}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -3047,6 +3094,7 @@ function PrintLayer({ target, data, onClose }) {
         {target === "gameday" && <GameDayPrint data={data} />}
         {target === "signals" && <SignalsPrint data={data} />}
         {target === "playbook" && <PlaybookPrint data={data} />}
+        {typeof target === "string" && target.startsWith("playcard:") && <PlayCardPrint data={data} playId={target.slice("playcard:".length)} />}
         {target === "routes" && <RoutesPrint data={data} />}
         {target === "jobs" && <JobsPrint />}
         {target === "system" && <SystemPrint />}
@@ -3370,6 +3418,7 @@ tbody tr { cursor: pointer; }
 .book-head { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-bottom: 1px solid var(--ink); font-size: 12px; }
 .book-head b { font-family: var(--disp); font-size: 15px; letter-spacing: 1px; text-transform: uppercase; }
 .book-form { margin-left: auto; color: var(--muted); font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; }
+.book-line { font-family: var(--disp); font-weight: 700; font-size: 10px; letter-spacing: 1px; background: var(--ink); color: #EAAA00; padding: 1px 5px; }
 .play-svg.book { width: 100%; border: none; }
 .book-notes { padding: 4px 8px; font-size: 10px; color: var(--muted); border-top: 1px solid var(--line); }
 

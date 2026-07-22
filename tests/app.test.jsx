@@ -470,6 +470,29 @@ describe("supabase sync", () => {
     await waitFor(() => expect(screen.getByText("All changes saved")).toBeTruthy(), { timeout: 3000 });
   });
 
+  it("Add This Look refuses to mint a duplicate play", async () => {
+    await load();
+    fireEvent.click(screen.getByText("Play Lab"));
+    fireEvent.click(document.querySelector(".play-name-cell").closest("tr")); // select Rhino
+    const before = JSON.parse(window.localStorage.getItem("vh6-coach-data-v1") || "{}");
+    const lookSel = screen.getByDisplayValue("Trips Rt");
+    fireEvent.change(lookSel, { target: { value: "Doubles" } }); // Doubles · Rhino already exists
+    fireEvent.click(screen.getByText(/Add This Look/));
+    await waitFor(() => {
+      const d = JSON.parse(window.localStorage.getItem("vh6-coach-data-v1"));
+      expect(d.plays.filter((p) => p.name === "Doubles · Rhino").length).toBe(1);
+    }, { timeout: 3000 });
+  });
+
+  it("prints a single coaching card from the play view", async () => {
+    await load();
+    fireEvent.click(screen.getByText("Play Lab"));
+    fireEvent.click(document.querySelector(".play-name-cell").closest("tr"));
+    fireEvent.click(screen.getByText("Print This Card"));
+    await waitFor(() => expect(document.querySelector(".print-layer .jobs-grid")).toBeTruthy());
+    expect(document.querySelector(".print-layer .line-chip").textContent).toBe("HAMMER");
+  });
+
   it("prints the play-card book filtered to the WEEK dial", async () => {
     await load();
     fireEvent.click(screen.getByText("Play Lab"));
