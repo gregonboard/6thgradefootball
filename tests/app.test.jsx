@@ -77,6 +77,16 @@ describe("vocabulary", () => {
     expect(ram).toBeTruthy();
     expect(ram.week).toBe(3);
   });
+  it("no play has a run-it-right-and-lose branch (stress-test rules)", () => {
+    /* July 22 war game vs a disciplined defense: every play's worst case
+       must resolve to positive yards, not a sack, string-out, or dead throw. */
+    expect(CONCEPTS.sparrow.read).toMatch(/GO over the presser/i);       // press kills hitches
+    expect(ASSIGNMENTS.sparrow.XZ).toMatch(/Pressed\? Nod and GO/i);
+    expect(CONCEPTS.owl.read).toMatch(/Tuck it and run the Rhino path/i); // backers who don't bite
+    expect(ASSIGNMENTS.stretch.RB).toMatch(/slam it NORTH/i);             // edge strung out
+    expect(CONCEPTS.bubble.read).toMatch(/MIRROR/);                       // press over the bubble
+    expect(ASSIGNMENTS.jet.QB).toMatch(/Rustler path/);                   // broken mesh
+  });
   it("hinge rule: backside tackle walls the pulled guard's man on power", () => {
     // the assistant-coach fix: a DL keying the pulling guard gets walled by the tackle
     expect(ASSIGNMENTS.power.OL).toMatch(/walls the man over the pulled guard/i);
