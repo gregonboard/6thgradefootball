@@ -82,12 +82,12 @@ const defPositions = (data) => DEF_SCHEMES[defScheme(data)].positions;
 const DRILL_CATS = ["Warmup", "Individual", "Group", "Team", "Special Teams", "Conditioning"];
 const GROUPS = ["All", "Offense", "Defense", "OL", "DL", "OL/DL", "QB", "RB", "WR/TE", "Skill (QB/RB/WR/TE)", "LB", "DB", "LB/DB", "Bigs + Backs", "WR vs DB", "Skill + LB/DB", "Special Teams"];
 const GROUP_TONES = {
-  Offense: "#C8102E", OL: "#C8102E", QB: "#C8102E", RB: "#C8102E", "WR/TE": "#C8102E",
-  "Skill (QB/RB/WR/TE)": "#C8102E", "Bigs + Backs": "#C8102E",
-  Defense: "#1F3A5F", DL: "#1F3A5F", LB: "#1F3A5F", DB: "#1F3A5F", "LB/DB": "#1F3A5F",
+  Offense: "#C32032", OL: "#C32032", QB: "#C32032", RB: "#C32032", "WR/TE": "#C32032",
+  "Skill (QB/RB/WR/TE)": "#C32032", "Bigs + Backs": "#C32032",
+  Defense: "#23356F", DL: "#23356F", LB: "#23356F", DB: "#23356F", "LB/DB": "#23356F",
   "Special Teams": "#0F6B4F",
 };
-const groupTone = (g) => GROUP_TONES[g] || "#15171B";
+const groupTone = (g) => GROUP_TONES[g] || "#23356F";
 
 /* ---------- depth chart model ----------
    The depth chart is the source of truth. Each side has, per position,
@@ -247,14 +247,14 @@ function migrateDepth(data) {
 }
 const CAT_COLORS = {
   Warmup: "#B7791F",
-  Individual: "#1F3A5F",
+  Individual: "#23356F",
   Group: "#4C2A85",
-  Team: "#C8102E",
+  Team: "#C32032",
   "Special Teams": "#0F6B4F",
   Conditioning: "#5B616B",
 };
 const PLAY_TYPES = ["Run", "Pass", "Screen", "Special"];
-const TYPE_COLORS = { Run: "#C8102E", Pass: "#1F3A5F", Screen: "#0F6B4F", Special: "#B7791F" };
+const TYPE_COLORS = { Run: "#C32032", Pass: "#23356F", Screen: "#0F6B4F", Special: "#B7791F" };
 
 const SITUATIONS = [
   { key: "openers", label: "Openers (First 6)" },
@@ -986,7 +986,7 @@ export default function App() {
 
   if (!data) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FBFAF8", fontFamily: "Inter, system-ui, sans-serif", color: "#5B616B" }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FBFAF8", fontFamily: "Roboto, system-ui, sans-serif", color: "#5B616B" }}>
         Loading your program…
       </div>
     );
@@ -1020,10 +1020,13 @@ export default function App() {
                 <option value={9}>All</option>
               </select>
             </label>
-            <BackupControls data={data} setData={setData} />
-            <div className={"save-chip " + saveState}>
-              {saveState === "saving" ? "Saving…" : saveState === "error" ? "Save failed" : "All changes saved"}
-            </div>
+            {saveState === "error" ? (
+              <button className="save-chip error" onClick={() => setData((d) => ({ ...d }))} title="Your work is saved on this device. Tap to retry the cloud sync.">
+                Cloud sync failed · tap to retry
+              </button>
+            ) : (
+              <div className={"save-chip " + saveState}>{saveState === "saving" ? "Saving…" : "All changes saved"}</div>
+            )}
           </div>
         </header>
 
@@ -1048,51 +1051,6 @@ export default function App() {
       {printTarget && (
         <PrintLayer target={printTarget} data={data} onClose={() => setPrintTarget(null)} />
       )}
-    </div>
-  );
-}
-
-/* ============================================================
-   BACKUP (export / import JSON)
-   ============================================================ */
-function BackupControls({ data, setData }) {
-  const fileRef = useRef(null);
-
-  const exportJson = () => {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `sideline-command-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  };
-
-  const importJson = (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(reader.result);
-        if (!parsed || !Array.isArray(parsed.players)) throw new Error("bad file");
-        if (!window.confirm("Restore this backup? It replaces everything currently in the app.")) return;
-        setData(normalizeData(parsed));
-      } catch (err) {
-        window.alert("That file doesn't look like a Sideline Command backup.");
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = "";
-  };
-
-  return (
-    <div className="backup-controls">
-      <button className="mast-btn" onClick={exportJson} title="Download all data as a JSON file">Backup</button>
-      <button className="mast-btn" onClick={() => fileRef.current && fileRef.current.click()} title="Restore from a backup file">Restore</button>
-      <input ref={fileRef} type="file" accept="application/json,.json" style={{ display: "none" }} onChange={importJson} />
     </div>
   );
 }
@@ -1404,7 +1362,7 @@ function FormationView({ data, up, onClose, onPrintFormations }) {
             const backups = [slots[1], slots[2]].filter(Boolean);
             return (
               <div key={pos} className="fv-node" style={{ left: `${x}%`, top: `${y}%` }}>
-                <div className="fv-pos" style={{ background: usePlayForm && (pos === "H" || pos === "Y") ? "var(--gold, #E8A020)" : tone, color: usePlayForm && (pos === "H" || pos === "Y") ? "#1C2430" : undefined }}>{pos}</div>
+                <div className="fv-pos" style={{ background: usePlayForm && (pos === "H" || pos === "Y") ? "var(--gold, #EAAA00)" : tone, color: usePlayForm && (pos === "H" || pos === "Y") ? "#1C2430" : undefined }}>{pos}</div>
                 {starter ? (
                   <div className="fv-card">
                     <span className="fv-num">{starter.num ? `#${starter.num}` : ""}</span>
@@ -1680,12 +1638,12 @@ function PlayDiagram({ play, size = "big", editSel, onPick, onField, dimExcept }
     onField([Math.round(((e.clientX - r.left) / r.width) * 1000) / 10, Math.round(((e.clientY - r.top) / r.height) * 440) / 10]);
   };
   const styles = {
-    block: { stroke: "#15171B", width: 0.9, dash: null, cap: true },
-    route: { stroke: "#1F3A5F", width: 0.9, dash: null, arrow: true },
-    carry: { stroke: "#C8102E", width: 1.5, dash: null, arrow: true },
+    block: { stroke: "#23356F", width: 0.9, dash: null, cap: true },
+    route: { stroke: "#23356F", width: 0.9, dash: null, arrow: true },
+    carry: { stroke: "#C32032", width: 1.5, dash: null, arrow: true },
     motion: { stroke: "#6B6F76", width: 0.7, dash: "2 1.4", arrow: false },
     fake: { stroke: "#B9BCC2", width: 0.8, dash: null, arrow: true },
-    throw: { stroke: "#C8102E", width: 0.5, dash: "1 1.2", arrow: false },
+    throw: { stroke: "#C32032", width: 0.5, dash: "1 1.2", arrow: false },
   };
   const path = (pts) => pts.map((p, i) => `${i ? "L" : "M"}${p[0]},${p[1]}`).join(" ");
   const lines = [];
@@ -1725,13 +1683,13 @@ function PlayDiagram({ play, size = "big", editSel, onPick, onField, dimExcept }
         const hot = label === carrier;
         const active = label === editSel;
         const dim = dimExcept && !dimExcept.includes(label);
-        const stroke = active ? "#B7791F" : hot ? "#C8102E" : "#15171B";
+        const stroke = active ? "#B7791F" : hot ? "#C32032" : "#23356F";
         return (
           <g key={label} opacity={dim ? 0.25 : 1} onClick={onPick ? (e) => { e.stopPropagation(); onPick(label); } : undefined} style={onPick ? { cursor: "pointer" } : undefined}>
             {label === "C"
               ? <rect x={x - 2} y={y - 2} width="4" height="4" fill="#fff" stroke={stroke} strokeWidth={active || hot ? 1 : 0.7} />
               : <circle cx={x} cy={y} r="2.1" fill="#fff" stroke={stroke} strokeWidth={active || hot ? 1 : 0.7} />}
-            <text x={x} y={y + 0.9} textAnchor="middle" fontSize="2.4" fontWeight="700" fontFamily="Inter, sans-serif" fill={stroke}>{label.replace(" LB", "")}</text>
+            <text x={x} y={y + 0.9} textAnchor="middle" fontSize="2.4" fontWeight="700" fontFamily="Roboto, sans-serif" fill={stroke}>{label.replace(" LB", "")}</text>
           </g>
         );
       })}
@@ -3072,19 +3030,22 @@ function GameDayPrint({ data }) {
 function Styles() {
   return (
     <style>{`
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@500;600;700&family=Roboto:wght@400;500;600;700&display=swap');
 
 :root {
-  --red: #C8102E;
-  --red-dark: #9C0C23;
-  --ink: #15171B;
+  --red: #C32032;
+  --red-dark: #9A1927;
+  --ink: #23356F;
   --paper: #FBFAF8;
   --panel: #FFFFFF;
   --line: #E2DFD8;
   --muted: #6B6F76;
-  --def-blue: #1F3A5F;
-  --disp: 'Barlow Condensed', 'Arial Narrow', sans-serif;
-  --body: 'Inter', system-ui, sans-serif;
+  --def-blue: #23356F;
+  --blue: #23356F;      /* PMS 288, VHCS primary */
+  --lt-blue: #7DCBF1;   /* PMS 115-5, accent/trim only */
+  --gold: #EAAA00;      /* PMS 124, accent/trim only */
+  --disp: 'Roboto Condensed', 'Arial Narrow', sans-serif;
+  --body: 'Roboto', system-ui, sans-serif;
   --mono: ui-monospace, 'SF Mono', Menlo, monospace;
 }
 * { box-sizing: border-box; }
@@ -3098,11 +3059,8 @@ function Styles() {
 .team-line { font-family: var(--disp); font-weight: 700; font-size: 24px; letter-spacing: 2.5px; line-height: 1; }
 .sub-line { font-size: 10px; letter-spacing: 2.5px; color: #B9BCC2; margin-top: 4px; }
 .save-chip { font-size: 11px; letter-spacing: 1px; color: #9DA1A8; text-transform: uppercase; }
-.save-chip.error { color: #FF8A8A; }
+button.save-chip.error { appearance: none; background: transparent; border: 1px solid #EAAA00; color: #EAAA00; font-family: inherit; padding: 6px 10px; cursor: pointer; min-height: 32px; }
 .mast-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.backup-controls { display: flex; gap: 6px; }
-.mast-btn { appearance: none; background: transparent; border: 1px solid #4A4D53; color: #B9BCC2; font-family: var(--disp); font-weight: 600; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; padding: 5px 10px; cursor: pointer; }
-.mast-btn:hover { border-color: #fff; color: #fff; }
 
 /* ---- play lab ---- */
 .builder { padding: 12px 16px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; background: #F6F4EF; }
@@ -3176,7 +3134,7 @@ tbody tr { cursor: pointer; }
 .fv-flash-name { font-family: var(--disp); font-size: clamp(56px, 12vw, 150px); letter-spacing: 4px; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.4); text-transform: uppercase; }
 .fv-flash.revealed .fv-flash-name { font-size: clamp(28px, 5vw, 56px); }
 .fv-flash-hint { font-size: 16px; color: #FFD24D; letter-spacing: 1px; }
-.btn.gold { background: var(--gold, #E8A020); border-color: var(--gold, #E8A020); color: #1C2430; }
+.btn.gold { background: var(--gold, #EAAA00); border-color: var(--gold, #EAAA00); color: #1C2430; }
 .fp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .fp-card { border: 1.5px solid var(--ink); border-radius: 8px; overflow: hidden; break-inside: avoid; }
 .fp-title { font-family: var(--disp); letter-spacing: 1.5px; background: var(--ink); color: #fff; padding: 3px 8px; font-size: 13px; }
@@ -3185,7 +3143,7 @@ tbody tr { cursor: pointer; }
 .fp-dot { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 1px; }
 .fp-label { width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 1.5px solid var(--ink); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 9px; }
 .fp-dot.ol .fp-label { background: #9AA0A8; color: #fff; width: 16px; height: 16px; font-size: 8px; }
-.fp-dot.trav .fp-label { background: var(--gold, #E8A020); }
+.fp-dot.trav .fp-label { background: var(--gold, #EAAA00); }
 .fp-name { font-size: 8.5px; font-weight: 700; white-space: nowrap; background: rgba(255,255,255,0.85); padding: 0 3px; border-radius: 3px; }
 
 /* ---- week dial ---- */
@@ -3197,7 +3155,7 @@ tbody tr { cursor: pointer; }
 .pkg-bar { display: flex; align-items: center; gap: 8px; padding: 8px 16px; flex-wrap: wrap; }
 .pkg-wrap { display: inline-flex; align-items: stretch; }
 .pkg-btn { font-family: var(--disp); font-size: 18px; letter-spacing: 1.5px; padding: 8px 14px; border: 2px solid var(--ink); border-radius: 8px 0 0 8px; background: var(--gold); color: var(--ink); cursor: pointer; }
-.pkg-btn:hover { background: #ffe27a; }
+.pkg-btn:hover { background: #FFC933; }
 .pkg-x { border: 2px solid var(--ink); border-left: none; border-radius: 0 8px 8px 0; background: #fff; cursor: pointer; padding: 0 8px; color: #99310f; }
 .pkg-run { background: #FFF8E1; }
 .tempo-btn.kill { background: var(--red); color: #fff; border-color: var(--red); }
@@ -3246,7 +3204,7 @@ tbody tr { cursor: pointer; }
 .new-look { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 6px; border-top: 1px dotted var(--line); margin-top: 4px; }
 .tell-flag { font-family: var(--disp); font-weight: 700; font-size: 10.5px; letter-spacing: 1px; color: #fff; background: var(--red); padding: 2px 7px; }
 
-.line-chip { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 1.5px; padding: 3px 9px; background: var(--ink); color: #F4D35E; }
+.line-chip { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 1.5px; padding: 3px 9px; background: var(--ink); color: #EAAA00; }
 .line-chip.dark { background: transparent; border: 1px solid #4A4D53; }
 .wp-line { font-family: var(--disp); font-weight: 700; font-size: 8px; letter-spacing: .5px; color: var(--red); flex-shrink: 0; }
 
@@ -3262,7 +3220,7 @@ tbody tr { cursor: pointer; }
 
 /* ---- teach mode ---- */
 .teach-title { display: flex; align-items: center; gap: 12px; }
-.teach-title b { font-family: var(--disp); font-weight: 700; font-size: clamp(22px, 3vw, 40px); letter-spacing: 2px; text-transform: uppercase; color: #F4D35E; }
+.teach-title b { font-family: var(--disp); font-weight: 700; font-size: clamp(22px, 3vw, 40px); letter-spacing: 2px; text-transform: uppercase; color: #EAAA00; }
 .teach-title .mono { color: #9DA1A8; font-size: 14px; }
 .teach-form { color: #B9BCC2; font-family: var(--disp); font-weight: 600; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase; }
 .teach-stage { flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 2vh 2vw; overflow: hidden; }
@@ -3273,7 +3231,7 @@ tbody tr { cursor: pointer; }
 .teach-nav:disabled { opacity: .25; cursor: default; }
 .teach-hl-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 .teach-hl { appearance: none; border: 1px solid #4A4D53; background: transparent; color: #B9BCC2; font-family: var(--disp); font-weight: 700; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 14px; cursor: pointer; }
-.teach-hl.on { background: #F4D35E; border-color: #F4D35E; color: #15171B; }
+.teach-hl.on { background: #EAAA00; border-color: #EAAA00; color: #23356F; }
 .teach-job { color: #fff; font-size: clamp(14px, 1.6vw, 20px); line-height: 1.4; text-align: center; min-height: 2.8em; padding: 0 4vw; }
 
 /* ---- job cards print ---- */
@@ -3283,7 +3241,7 @@ tbody tr { cursor: pointer; }
 /* ---- board mode ---- */
 .board-layer { position: fixed; inset: 0; z-index: 70; background: #0C0E11; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
 .board-num { font-family: var(--disp); font-weight: 700; font-size: min(58vh, 60vw); line-height: 1; color: #fff; }
-.board-word { font-family: var(--disp); font-weight: 700; font-size: clamp(18px, 3vw, 34px); letter-spacing: 3px; text-transform: uppercase; color: #F4D35E; }
+.board-word { font-family: var(--disp); font-weight: 700; font-size: clamp(18px, 3vw, 34px); letter-spacing: 3px; text-transform: uppercase; color: #EAAA00; }
 .board-hint { margin-top: 2vh; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: #6B6F76; }
 
 /* ---- route cards print ---- */
@@ -3340,8 +3298,8 @@ tbody tr { cursor: pointer; }
   border: 3px solid rgba(255,255,255,.25); box-shadow: 0 0 80px rgba(0,0,0,.6) inset; }
 .fv-field::before, .fv-field::after { content: ""; position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,.10); left: 33%; }
 .fv-field::after { left: 67%; }
-.fv-los { position: absolute; left: 0; right: 0; height: 3px; background: #F4D35E; opacity: .85; }
-.fv-los span { position: absolute; right: 8px; top: -20px; font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 2px; color: #F4D35E; }
+.fv-los { position: absolute; left: 0; right: 0; height: 3px; background: #EAAA00; opacity: .85; }
+.fv-los span { position: absolute; right: 8px; top: -20px; font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 2px; color: #EAAA00; }
 .fv-node { position: absolute; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; width: 7.6%; min-width: 84px; }
 .fv-pos { color: #fff; font-family: var(--disp); font-weight: 700; font-size: clamp(10px, 1.1vw, 16px); letter-spacing: 1.5px; text-transform: uppercase; padding: 1px 8px; white-space: nowrap; }
 .fv-card { background: #fff; border: 2px solid var(--ink); padding: 4px 8px 6px; display: flex; flex-direction: column; align-items: center; width: 100%; box-shadow: 0 3px 0 rgba(0,0,0,.35); }
@@ -3360,6 +3318,7 @@ tbody tr { cursor: pointer; }
 /* ---- layout ---- */
 .content { padding: 20px; max-width: 1200px; margin: 0 auto; }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+.two-col > * { min-width: 0; } /* grid items otherwise refuse to shrink below content width */
 @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
 .panel { background: var(--panel); border: 1px solid var(--line); box-shadow: 0 1px 0 rgba(0,0,0,.03); }
 .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 2px solid var(--ink); flex-wrap: wrap; }
@@ -3475,6 +3434,63 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .wrist-play.dense .wp-name { font-size: 11.5px; }
 .wrist-play.dense .wp-num { font-size: 11px; }
 @media (max-width: 640px) { .wrist-preview-wrap { transform-origin: top left; overflow-x: auto; } }
+
+/* ---- mobile (game-day phones) ---- */
+@media (max-width: 640px) {
+  /* compact masthead: brand on one line, controls beside it */
+  .masthead { padding: 8px 12px; gap: 8px; }
+  .mast-left { gap: 8px; }
+  .mark { width: 32px; height: 32px; font-size: 15px; box-shadow: 2px 2px 0 rgba(255,255,255,.15); }
+  .team-line { font-size: 16px; letter-spacing: 1.2px; }
+  .sub-line { font-size: 8px; letter-spacing: 1.5px; margin-top: 2px; }
+  .mast-right { gap: 8px; }
+  .save-chip { font-size: 9px; }
+  button.save-chip.error { font-size: 10px; padding: 5px 8px; min-height: 28px; }
+
+  /* sticky, swipeable tab bar */
+  .tabs { position: sticky; top: 0; z-index: 40; padding: 0 6px; -webkit-overflow-scrolling: touch; }
+  .tab { font-size: 14px; padding: 12px 11px 13px; }
+
+  .content { padding: 12px 8px; }
+  .panel-head { padding: 12px; }
+  .panel-head h2 { font-size: 19px; }
+
+  /* wide tables swipe inside their panel instead of stretching the page */
+  .content table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* form rows wrap instead of forcing width */
+  .drill-form-row, .add-row { flex-wrap: wrap; }
+  .drill-form-row input, .drill-form-row select { flex: 1 1 130px; min-width: 0; }
+
+  /* fingers, not cursors */
+  .btn { min-height: 42px; }
+  .filter-chip, .result-chip, .ed-mode, .tag-check { padding: 7px 11px; }
+  .pg-chip { padding: 5px 11px; }
+
+  /* 16px controls stop iOS focus-zoom */
+  input, select, textarea { font-size: 16px; }
+
+  /* the 5in wristband proof shrinks to fit the screen */
+  .wrist-preview-wrap { padding: 10px; justify-content: flex-start; }
+  .wrist-card { transform: scale(.7); transform-origin: top left; margin-right: calc(-5in * .3); margin-bottom: calc(-3in * .3); }
+
+  /* play lab: diagram preview goes full width */
+  .builder-preview { flex-wrap: wrap; }
+  .play-svg.small { width: 100%; }
+
+  /* caller: two big columns of call words */
+  .caller-grid { grid-template-columns: repeat(2, 1fr); }
+  .tempo-btn { flex: 1 1 40%; }
+
+  /* drill cards: category chip sizes to its word, name gets the room */
+  .cat-chip { width: auto; }
+
+  /* practice plan: time stacks above the period so stations get full width */
+  .plan-row { flex-wrap: wrap; }
+  .plan-row .plan-time { width: 100%; flex-basis: 100%; padding-top: 0; }
+  .plan-main { flex-basis: 100%; }
+  .station-add { max-width: 100%; }
+}
 
 /* ---- print layer ---- */
 .print-layer { position: fixed; inset: 0; background: #4A4D53; overflow-y: auto; z-index: 50; }

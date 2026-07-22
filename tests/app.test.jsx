@@ -335,6 +335,18 @@ describe("supabase sync", () => {
       expect(raw).toBeTruthy();
       expect(JSON.parse(raw).seasonWeek).toBe(3);
     }, { timeout: 3000 });
+    // The failed cloud sync surfaces a tappable retry chip; a retry that
+    // reaches Supabase flips it back to saved.
+    const retry = await screen.findByText(/tap to retry/i, {}, { timeout: 3000 });
+    global.fetch = () => Promise.resolve({ ok: true, json: async () => [] });
+    fireEvent.click(retry);
+    await waitFor(() => expect(screen.getByText("All changes saved")).toBeTruthy(), { timeout: 3000 });
+  });
+
+  it("has no manual Backup/Restore buttons (cloud sync replaced them)", async () => {
+    await load();
+    expect(screen.queryByText("Backup")).toBeNull();
+    expect(screen.queryByText("Restore")).toBeNull();
   });
 
   it("loads the shared program from the cloud when Supabase answers", async () => {
