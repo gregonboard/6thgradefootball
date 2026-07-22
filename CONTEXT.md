@@ -46,7 +46,7 @@ A gap-scheme, series-based, fast-tempo spread built specifically for this roster
 | HAMMER | Power: playside down blocks, backside guard pulls and leads | Rhino/Lion, Owl (deliberately, to enforce the play-action disguise) |
 | TRAP | Backside guard traps first man past center | Rabbit/Lynx |
 | WRAP | Counter: backside guard kicks, backside tackle wraps | Renegade/Lizard (week 6) |
-| REACH | Step playside and run | Rocket/Laser, Rustler/Lasso, Rewind/Loop |
+| REACH | Step playside and run | Rocket/Laser, Rustler/Longhorn, Ram/Leopard, Rewind/Loop |
 | SURGE | Fire out low, one-yard war | Sub (QB sneak) |
 | QUICK | Set and punch, ball out under 2 seconds | Sparrow, Robin, Reese's/Laffy |
 | WALL | True pass set, kick-slide and mirror | Hawk, Falcon, Eagle Max |
@@ -61,6 +61,7 @@ Eight words compress to four techniques (down+pull family, reach, pass set, rele
 - Rocket / Laser = Jet sweep (H at full speed off motion). The exchange is a FORWARD touch pass (July 2026 ruling): a drop is incomplete, never a live fumble, so the worst play is 2nd and 10, not a scoop-six. Still an animal in the kids' rules; only QB and H know it's technically a pass. From Doubles, Laser is a return motion; a seeded Doubles Lt · Laser gives the natural-cross alternative if the return rep is ugly.
 - Rustler / Longhorn = QB keep behind the jet fake (Rodeo -> Rustler after the phonetic audit; Lasso -> Longhorn in year two because Laser/Lasso was a missed collision, self-healing but sloppy)
 - Renegade / Lizard = Counter (renamed from Rattler for the same reason)
+- Ram / Leopard = Stretch (July 2026, assistant-coach audit): the reach answer when a coordinator keys our down blocks and attacks downhill. Line hears REACH (already knows it from Rocket); H's jet motion becomes the lead block; RB takes the wide give, one cut when he sees grass. Same audit added the hinge rule: on HAMMER the backside tackle steps down and walls the man over the pulled guard before hinging, so a DL keyed on the puller gets sealed.
 - Sub = QB sneak
 
 **Passes (birds; bigger bird = deeper ball):**
@@ -135,7 +136,7 @@ The Formation View dropdown now includes every playbook formation (single source
 6. **Wristbands**: printable QB bands (reading order: number, formation, LINE word in red, play word) and Bird Route Cards (all birds × all letters so any kid can slide positions).
 
 ### Data model (top-level keys in the single persisted object, storage key `vh6-coach-data-v1`)
-`players, depth {off, def}, offScheme, defScheme, drills, practice, savedPlans, plays [{id,num,name,formation,concept,dir,tags,core,week,custom,lineCall,type,note,killId}], callSheet, wrist, callLog, gameLabel, script, scriptPos, seasonWeek, pgOverrides, packages [{id,name,steps|ids}], day1Seeded, week2Seeded, libVersion (4), depthVersion (2), safariVersion (4)`
+`players, depth {off, def}, offScheme, defScheme, drills, practice, savedPlans, plays [{id,num,name,formation,concept,dir,tags,core,week,custom,lineCall,type,note,killId}], callSheet, wrist, callLog, gameLabel, script, scriptPos, seasonWeek, pgOverrides, packages [{id,name,steps|ids}], day1Seeded, week2Seeded, libVersion (4), depthVersion (2), safariVersion (5)`
 
 libVersion 4 adds the jet-series install drills (Motion Landmark Races, Jet Touch Pass Timing, Owl Fake & Pop, Reach & Run) and week2Seeded gates a one-time "Week 2 · Jet Series Install (Rocket, Rustler, Owl)" saved practice plan.
 

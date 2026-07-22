@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within, cleanup } from "@testing-library/react";
 import App, {
   normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord,
-  LINE_CALLS, SEED, seedPackages, day1Plan, applyKillPairs,
+  LINE_CALLS, ASSIGNMENTS, SEED, seedPackages, day1Plan, applyKillPairs,
   installedForms, resolvePlayPos, FORM_WEEKS, formSpots,
 } from "../src/App.jsx";
 
@@ -37,6 +37,20 @@ describe("vocabulary", () => {
   it("keeps the line-call channel intact", () => {
     expect(LINE_CALLS.owl).toBe("HAMMER");
     expect(LINE_CALLS.slip).toBe("GATE");
+    expect(LINE_CALLS.stretch).toBe("REACH"); // Ram/Leopard reuse the word the line already knows
+  });
+  it("answers the down-block key with a true reach play", () => {
+    expect(CONCEPTS.stretch.words).toEqual({ Rt: "Ram", Lt: "Leopard" });
+    expect(CONCEPTS.stretch.carrier).toBe("RB");
+    const ram = SEED.plays.find((p) => p.name === "Doubles · Ram");
+    expect(ram).toBeTruthy();
+    expect(ram.week).toBe(3);
+  });
+  it("hinge rule: backside tackle walls the pulled guard's man on power", () => {
+    // the assistant-coach fix: a DL keying the pulling guard gets walled by the tackle
+    expect(ASSIGNMENTS.power.OL).toMatch(/walls the man over the pulled guard/i);
+    expect(ASSIGNMENTS.stretch.H).toMatch(/lead/i); // jet motion becomes the lead block
+    expect(ASSIGNMENTS.stretch.OL).toMatch(/reach/i);
   });
 });
 
@@ -90,15 +104,15 @@ describe("seeds", () => {
     const names = v3.plays.map((p) => p.name);
     expect(names).toContain("Tank Rt · Owl");
     expect(names.filter((n) => n === "Tank Rt · Owl").length).toBe(1);
-    expect(v3.plays.length).toBe(40);
-    expect(v3.safariVersion).toBe(4);
+    expect(v3.plays.length).toBe(42); // 30 + ten v4 looks + Ram/Leopard
+    expect(v3.safariVersion).toBe(5);
     expect(v3.packages.map((p) => p.name)).toContain("CHEETAH");
     const rocket = v3.plays.find((p) => p.name === "Doubles · Rocket");
     const reeses = v3.plays.find((p) => p.name === "Doubles · Reese's");
     expect(rocket.killId).toBe(reeses.id);
     // running it again must change nothing (Greg's live data reloads every session)
     const again = normalizeData(JSON.parse(JSON.stringify(v3)));
-    expect(again.plays.length).toBe(40);
+    expect(again.plays.length).toBe(42);
     expect(again.packages.length).toBe(v3.packages.length);
   });
   it("seeds the Day 1 helmets plan with grouped stations", () => {
@@ -137,7 +151,7 @@ describe("normalizeData migration", () => {
     expect(keepLt.name).toContain("Longhorn"); // derived names propagate the rename
     expect(d.savedPlans.some((s) => /day 1/i.test(s.name))).toBe(true);
     expect(d.players[0].name).toBe("Old Kid"); // user data untouched
-    expect(d.safariVersion).toBe(4);
+    expect(d.safariVersion).toBe(5);
   });
   it("does not double-seed on a second load", () => {
     const once = normalizeData({ safariVersion: 2, plays: SEED.plays.map((p) => ({ ...p })) });
