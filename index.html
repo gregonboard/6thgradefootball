@@ -7,16 +7,13 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <title>Sideline Command · VH Rebels 6th Grade</title>
-    <!-- OPTIONAL: sync data through Supabase so it follows you across devices.
-         1. Run supabase-setup.sql in your Supabase project's SQL editor.
-         2. Uncomment and fill in the two lines below with values from
-            Supabase → Project Settings → API. Then redeploy. -->
-    <!--
+    <!-- Supabase sync: data saves to the 6thGradFootball project and follows
+         every coach who opens the site. The anon key is public by design;
+         access is limited by the app_state table policies (supabase-setup.sql). -->
     <script>
-      window.SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
-      window.SUPABASE_ANON_KEY = "YOUR-ANON-KEY";
+      window.SUPABASE_URL = "https://lauljgjrwnqfaxattutj.supabase.co";
+      window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdWxqZ2pyd25xZmF4YXR0dXRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NzE5MjQsImV4cCI6MjA5OTU0NzkyNH0.88LvPmM_5BL6bzQgmBNlNe9j78yeHDsdFl9bUrrvn5g";
     </script>
-    -->
   </head>
   <body style="margin:0">
     <div id="root"></div>

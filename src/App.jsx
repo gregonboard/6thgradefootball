@@ -842,6 +842,8 @@ const store = {
     }
     const supa = supaCfg();
     if (supa) {
+      // Local copy FIRST: a dead sideline connection must never lose the game log.
+      try { window.localStorage.setItem(key, value); } catch (e) {}
       const res = await fetch(`${supa.url}/rest/v1/app_state?on_conflict=key`, {
         method: "POST",
         headers: {
@@ -853,7 +855,6 @@ const store = {
         body: JSON.stringify([{ key, value: JSON.parse(value) }]),
       });
       if (!res.ok) throw new Error("supabase save failed");
-      try { window.localStorage.setItem(key, value); } catch (e) {}
       return;
     }
     window.localStorage.setItem(key, value);

@@ -304,3 +304,48 @@ describe("app end-to-end", () => {
     expect(screen.getAllByText(/Team Walk-Through Install/).length).toBeGreaterThanOrEqual(1);
   });
 });
+
+/* ---------- end to end: Supabase cloud sync ---------- */
+describe("supabase sync", () => {
+  const realFetch = global.fetch;
+  beforeEach(() => window.localStorage.clear());
+  afterEach(() => {
+    cleanup();
+    delete window.SUPABASE_URL;
+    delete window.SUPABASE_ANON_KEY;
+    global.fetch = realFetch;
+  });
+
+  const cloudOn = () => {
+    window.SUPABASE_URL = "https://test.supabase.co";
+    window.SUPABASE_ANON_KEY = "test-anon-key";
+  };
+  const load = async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByText("VESTAVIA HILLS REBELS")).toBeTruthy());
+  };
+
+  it("keeps the local copy when the sideline connection is dead", async () => {
+    cloudOn();
+    global.fetch = () => Promise.reject(new TypeError("network down"));
+    await load(); // load survives: falls through to localStorage/SEED
+    fireEvent.change(screen.getByLabelText("Season week"), { target: { value: "3" } });
+    await waitFor(() => {
+      const raw = window.localStorage.getItem("vh6-coach-data-v1");
+      expect(raw).toBeTruthy();
+      expect(JSON.parse(raw).seasonWeek).toBe(3);
+    }, { timeout: 3000 });
+  });
+
+  it("loads the shared program from the cloud when Supabase answers", async () => {
+    cloudOn();
+    const cloudData = { ...JSON.parse(JSON.stringify(SEED)), seasonWeek: 5 };
+    global.fetch = (url, opts) =>
+      Promise.resolve({
+        ok: true,
+        json: async () => ((opts && opts.method) === "POST" ? [] : [{ value: cloudData }]),
+      });
+    await load();
+    expect(screen.getByLabelText("Season week").value).toBe("5");
+  });
+});
