@@ -81,6 +81,27 @@ const defScheme = (data) => (DEF_SCHEMES[data.defScheme] ? data.defScheme : "5-3
 const defPositions = (data) => DEF_SCHEMES[defScheme(data)].positions;
 const DRILL_CATS = ["Warmup", "Individual", "Group", "Team", "Special Teams", "Conditioning"];
 const GROUPS = ["All", "Offense", "Defense", "OL", "DL", "OL/DL", "QB", "RB", "WR/TE", "Skill (QB/RB/WR/TE)", "LB", "DB", "LB/DB", "Bigs + Backs", "WR vs DB", "Skill + LB/DB", "Special Teams"];
+/* Which positions each drill group actually involves, so filtering by a
+   position shows every drill that position takes part in (a "Bigs + Backs"
+   group period IS an OL drill and an RB drill and an LB drill). */
+const GROUP_POSITIONS = {
+  Offense: ["QB", "RB", "WR", "TE", "OL"],
+  Defense: ["DL", "LB", "DB"],
+  OL: ["OL"], DL: ["DL"], "OL/DL": ["OL", "DL"],
+  QB: ["QB"], RB: ["RB"], "WR/TE": ["WR", "TE"],
+  "Skill (QB/RB/WR/TE)": ["QB", "RB", "WR", "TE"],
+  LB: ["LB"], DB: ["DB"], "LB/DB": ["LB", "DB"],
+  "Bigs + Backs": ["OL", "DL", "QB", "RB", "LB"],
+  "WR vs DB": ["WR", "TE", "DB", "QB"],
+  "Skill + LB/DB": ["QB", "RB", "WR", "TE", "LB", "DB"],
+  "Special Teams": ["ST"],
+};
+const FILTER_BUCKETS = [["QB", ["QB"]], ["RB", ["RB"]], ["WR/TE", ["WR", "TE"]], ["OL", ["OL"]], ["DL", ["DL"]], ["LB", ["LB"]], ["DB", ["DB"]], ["Offense", ["QB", "RB", "WR", "TE", "OL"]], ["Defense", ["DL", "LB", "DB"]], ["Special Teams", ["ST"]]];
+const drillMatchesBucket = (drillGroup, bucketPositions) => {
+  const set = GROUP_POSITIONS[drillGroup];
+  if (!set) return true; /* "All" and custom groups involve everyone */
+  return set.some((p) => bucketPositions.includes(p));
+};
 const GROUP_TONES = {
   Offense: "#C32032", OL: "#C32032", QB: "#C32032", RB: "#C32032", "WR/TE": "#C32032",
   "Skill (QB/RB/WR/TE)": "#C32032", "Bigs + Backs": "#C32032",
@@ -844,7 +865,29 @@ const RAW_SEED = {
     { id: uid(), name: "Motion Landmark Races", cat: "Individual", group: "Skill (QB/RB/WR/TE)", mins: 8, notes: "H starts on Set, hits the mesh cone at GO at FULL speed. Cone behind the QB spot. Race two H's, time them, same speed every rep." },
     { id: uid(), name: "Jet Mesh & Basket", cat: "Group", group: "Skill (QB/RB/WR/TE)", mins: 12, notes: "QB and H only: Set... GO, H makes a basket at full speed, QB presses it in. The QB owns the ball: a bad mesh is the QB's rep, and he keeps it on the Raccoon path instead of forcing it. 20 reps each way, both QBs." },
     { id: uid(), name: "Owl Fake & Pop", cat: "Group", group: "Skill (QB/RB/WR/TE)", mins: 10, notes: "QB, RB, Y. Big Rhino fake (RB runs angry), Y sells the block one count, slips, QB pops it over the cone linebackers. Rhythm: fake, find, throw." },
-    { id: uid(), name: "Reach & Run (REACH steps)", cat: "Individual", group: "OL", mins: 8, notes: "Playside reach step and RUN on the cadence. Cover him up, do not win a wrestling match. Jet and keep live behind this." },
+    { id: uid(), name: "Reach & Run (REACH steps)", cat: "Individual", group: "OL", mins: 8, notes: "Playside reach step and RUN on the cadence. Cover him up, do not win a wrestling match. Jet and keep live behind this.", detail: "SETUP: line of 5 on a yard line, coach calls REACH R or L. COACH: first step gains ground playside at 45, second step covers his near number, then feet on fire. WIN: 5 straight reps where nobody crosses a face." },
+    /* ---- ELITE LIBRARY (libVersion 5): the highest-value youth drills, curated for this roster and scheme ---- */
+    { id: uid(), name: "Ball Security Gauntlet", cat: "Warmup", group: "Skill (QB/RB/WR/TE)", mins: 8, notes: "High and tight through two lines of punching teammates. Fumbles are cheap here so they never happen Saturday.", detail: "SETUP: two facing lines 2 yds apart, carriers run the tunnel while teammates club and rip. COACH: eagle claw over the point, ball pinned to ribs, two hands in traffic. WIN: whole group through twice with zero balls on the ground." },
+    { id: uid(), name: "Hawk Tackle Progression", cat: "Individual", group: "Defense", mins: 10, notes: "Shoulder tackle on bags: track, near-foot plant, shoulder through thigh, wrap and run the feet. Heads never in the fit.", detail: "SETUP: kneeling bag holders, tacklers 5 yds off. Progress fit -> walk -> jog -> thud. COACH: eyes through the near hip, head across never on, hug and drive. WIN: 10 clean fits per kid, zero head contact." },
+    { id: uid(), name: "Open-Field Corral", cat: "Individual", group: "Defense", mins: 8, notes: "Tackler vs ball carrier in a 5-yd box. Teaches leverage: force him sideways, never lunge.", detail: "SETUP: 5x5 cone box, offset start. COACH: sink and shuffle, inside-out leverage, tag-off or thud only. WIN: carrier never crosses the far line untouched." },
+    { id: uid(), name: "Block Destruction", cat: "Individual", group: "Defense", mins: 8, notes: "Hands inside, lock out, shed, find the ball. Defense wins when blocks die.", detail: "SETUP: pairs with a bag between, blocker fits on GO. COACH: violent hands to the breastplate, extend, rip through the up-field shoulder. WIN: shed and point at the ball within 2 seconds." },
+    { id: uid(), name: "Double-Team Drive", cat: "Individual", group: "OL", mins: 10, notes: "Two-on-one hip-to-hip drive on a bag. The engine of every HAMMER call.", detail: "SETUP: two linemen on one bag holder, four hands four eyes. COACH: hips glued, ear hole to ear hole, drive vertical then late man climbs. WIN: bag moves 5 yds with hips never separating." },
+    { id: uid(), name: "Pull & Kick (guards)", cat: "Individual", group: "OL", mins: 10, notes: "The backside guard's whole job on Rhino: pull flat, kick the first color out.", detail: "SETUP: guard on a line, cone for the down block wall, bag holder as the end man. COACH: skip pull, stay square, kick with the inside shoulder so the lane stays inside. WIN: 8 pulls each side without rounding the corner deep." },
+    { id: uid(), name: "Pull & Wall (counter)", cat: "Individual", group: "OL", mins: 8, notes: "Tackle wrap for WRAP week: pull tight off the kick and wall the first backer.", detail: "SETUP: guard kicks a bag, tackle wraps through the hole to a hoop with a stand-up dummy. COACH: shave the double team, eyes inside for the backer, fit and run the feet. WIN: 6 clean wraps per tackle." },
+    { id: uid(), name: "Mirror Dodge (pass pro)", cat: "Individual", group: "OL", mins: 8, notes: "No-hands mirror vs a dodging rusher. Feet win pass pro, not arms.", detail: "SETUP: pairs in a 3-yd alley, rusher jukes for 4 seconds, blocker mirrors with hands behind back. COACH: bent knees, quick feet, nose on his numbers. WIN: rusher never crosses the line behind you." },
+    { id: uid(), name: "Settle & Noose", cat: "Individual", group: "WR/TE", mins: 8, notes: "Find the zone window, sit down, show the QB a big target. Feeds Sparrow and Hawk.", detail: "SETUP: two cones as zone defenders, receiver runs in, settles in the gap, catches. COACH: snap the head around, hands make a noose at chest height, tuck north. WIN: 10 catches settled in the window, zero drifting." },
+    { id: uid(), name: "Turn & Locate (deep ball)", cat: "Individual", group: "WR/TE", mins: 8, notes: "Over-the-shoulder tracking for the Sparrow GO conversion and Eagle.", detail: "SETUP: receiver releases on a go, ball thrown over either shoulder. COACH: run through the catch, late hands, locate without slowing. WIN: 6 of 10 caught in stride per kid." },
+    { id: uid(), name: "Bubble Catch & North", cat: "Individual", group: "WR/TE", mins: 8, notes: "Catch the bubble moving, plant, get NORTH now. No dancing.", detail: "SETUP: QB or coach throws bubbles, one cone 5 yds upfield as the north gate. COACH: thumbs together, catch then one plant step upfield through the gate. WIN: catch-to-north in under one second." },
+    { id: uid(), name: "Jump-Cut Lane (RB)", cat: "Individual", group: "RB", mins: 8, notes: "One cut, no dancing: press the lane, jump-cut off the reaction. Feeds Rhino and Ram.", detail: "SETUP: two bags make a lane, coach steps into it or not. COACH: press to the heels of the bags, one plant, shoulders square north. WIN: zero double-cuts in 10 reps." },
+    { id: uid(), name: "Lead Block Strike (RB)", cat: "Individual", group: "RB", mins: 6, notes: "The RB's Raccoon job: lead the edge, strike the first color, feet alive.", detail: "SETUP: RB leads through a cone edge into a bag holder. COACH: inside-out fit, same-foot same-shoulder, run through contact. WIN: 6 strikes that would spring the QB." },
+    { id: uid(), name: "Sprint-Out Ladder (QB)", cat: "Individual", group: "QB", mins: 10, notes: "Raven/Lark mechanics: sprint, square the shoulders, ladder the reads, throw on the run.", detail: "SETUP: QB sprints the arc past a cone, targets at the out, the flat, and a scramble gate. COACH: chest to the target, throw off the inside foot, tuck and go through the gate when both hands stay down. WIN: 8 of 12 completions plus 2 smart tucks." },
+    { id: uid(), name: "Fake It Big (QB/RB theater)", cat: "Individual", group: "QB", mins: 6, notes: "Play-action acting class for Owl and Peek. The fake IS the play.", detail: "SETUP: QB and RB run Rhino action with no defense, coaches grade the fake only. COACH: ball to the belly, eyes downhill, RB runs angry two counts past the fake. WIN: a parent on the sideline can't tell who has it." },
+    { id: uid(), name: "Mesh Triple Rep", cat: "Group", group: "Bigs + Backs", mins: 10, notes: "The whole series in one drill: Rhino give, Rocket flip, Raccoon keep, back to back to back.", detail: "SETUP: QB, RB, H, no line. Coach calls the series play just before GO. COACH: identical first two steps on all three, QB owns every ball. WIN: 3 straight series where a watching coach can't call it early." },
+    { id: uid(), name: "Fastball Period (TURBO)", cat: "Team", group: "Offense", mins: 10, notes: "Tempo is a skill. Snap-sprint-align-snap, whistle to whistle, no huddle ever.", detail: "SETUP: full offense vs air or bags, coach signals off the board. COACH: 15 seconds max between snaps, sprint to Doubles, eyes to the sideline. WIN: 10 plays in 4 minutes with zero procedure flags." },
+    { id: uid(), name: "Kill Check Rehearsal", cat: "Team", group: "Offense", mins: 8, notes: "QB counts the box out loud, yells KILL KILL when it's heavy. The band pairs come alive.", detail: "SETUP: offense aligns, coaches build a heavy or light box with bags, QB checks. COACH: count fast, one look, loud enough for the tackles. WIN: 8 of 8 correct checks." },
+    { id: uid(), name: "Board Mode Signals", cat: "Team", group: "Offense", mins: 6, notes: "Silent reps off the number board. The encrypted channel gets practiced too.", detail: "SETUP: coach flashes numbers from the app's Board Mode, offense aligns and runs it on air. COACH: nobody speaks but the QB cadence. WIN: 6 straight correct alignments with zero words." },
+    { id: uid(), name: "Backed Up / Coming Out", cat: "Team", group: "All", mins: 8, notes: "Own goal line to the 10: safe calls, two hands on the ball, punt is a win.", detail: "SETUP: ball on your own 3, script Moose, Rhino, Rocket. COACH: no east-west behind the 5, QB never risks it. WIN: two first downs or a clean punt look, zero disasters." },
+    { id: uid(), name: "Eyes Drill (run/pass keys)", cat: "Individual", group: "LB/DB", mins: 6, notes: "High hat pass, low hat run, read the linemen not the backfield candy.", detail: "SETUP: two coaches act as OL showing run fire-out or pass set, defenders call it and step. COACH: eyes through the line to the near back, motion means nothing. WIN: 10 straight correct calls stepping the right way." },
   ],
   practice: { date: "", start: "17:30", title: "Practice Plan", items: [] },
   savedPlans: [],
@@ -859,11 +902,39 @@ const RAW_SEED = {
   depth: { off: {}, def: {} },
   offScheme: "I-Form",
   defScheme: "5-3",
-  libVersion: 4,
+  libVersion: 5,
   seasonWeek: 1,
   pgOverrides: {},
   packages: [],
 };
+/* Coaching detail for the most-used library drills, keyed by exact name.
+   Applied to the seed and merged into existing programs (only where a drill
+   has no detail yet), so the printout can coach the coaches. */
+const DRILL_DETAILS = {
+  "Dynamic Warmup & Stretch": "SETUP: two lines on the sideline numbers, captains in front. COACH: sloppy warmup = sloppy practice; coaches walk the lines and correct. WIN: sweat started, zero pulled hamstrings all year.",
+  "Stance & Takeoff": "SETUP: position-correct stances on a line, burst 5 yds on Set...GO only. COACH: kill the false step; film with a phone if one kid keeps rocking. WIN: whole group holds a stance 5 seconds and fires on GO.",
+  "Routes on Air": "SETUP: full skill group, both hashes, QBs alternating, run the week's birds. COACH: burst out of every break, catch everything with hands, tuck and get 5 north. WIN: two clean trips through the install routes.",
+  "Catch Circuit": "SETUP: four stations: high point, over-shoulder, sideline toes, low ball; rotate every 2 min. COACH: eyes follow the ball all the way into the tuck. WIN: every kid touches 20+ balls.",
+  "Accuracy Targets": "SETUP: nets or hand-shields at 8, 12, 18 yds. COACH: feet set the throw; keep score out loud, losers pick up cones. WIN: QB1 hits 70 percent.",
+  "Handoff Mesh Circuit": "SETUP: QB meshes with every back both directions, no defense. COACH: QB owns every ball, look it in, then carry out the fake with empty hands. WIN: zero balls on the ground for the period.",
+  "Down Block Angles": "SETUP: bags angled inside, blocker washes the man down the line. COACH: head playside, hips through the crack, do not get pushed upfield. WIN: bag never crosses your face.",
+  "OL Stance & First Steps": "SETUP: five-man line steps every line word on cadence, no contact. COACH: HAMMER down steps, REACH playside steps, WALL kick-slide, one word one picture. WIN: whole line steps the same way on the same sound.",
+  "Inside Run (O vs D)": "SETUP: OL/DL/QB/RB/LB between the hashes at thud; script 10 plays per side from this week's installs; pair with WR vs DB. COACH: fit and finish, no tackling to the ground. WIN: offense moves the chains on script, defense fits every gap.",
+  "WR vs DB 1-on-1s": "SETUP: press and off looks on the numbers, QBs alternate live throws. COACH: receivers win with feet not push-offs; DBs play the pocket not the man. WIN: every kid gets 6 reps minimum.",
+  "7-on-7 Skelly": "SETUP: skill vs LB/DB between the numbers, script this week's birds vs base coverage; OL runs 1-on-1s beside it. COACH: QB goes through his ladder out loud between reps. WIN: two scripted trips, under 2 incompletions each.",
+  "Team Offense Script": "SETUP: full offense vs scout defense holding bags, run the opener script in order. COACH: sprint to alignment, perfect fakes, finish 10 yds downfield. WIN: the script runs twice with zero busts.",
+  "Openers Rehearsal": "SETUP: the first six plays of the game, run twice, game speed, off the board. COACH: this is a dress rehearsal, treat a bust like a turnover. WIN: 12 snaps, 12 correct alignments and assignments.",
+  "Team Walk-Through Install": "SETUP: full offense on air, walk speed then jog, every new play this week. COACH: every kid says his job OUT LOUD before each snap; correct words, not just correct feet. WIN: each install runs clean 3 times at jog speed.",
+  "Formation Races (Sprint-Align-Look)": "SETUP: coach calls a formation, kids SPRINT to it, set, eyes to the sideline; race the stopwatch. COACH: celebrate perfect stances, restart on trots. WIN: under 12 seconds huddle-break to set.",
+  "10 Perfect Plays": "SETUP: last period, full offense on air, ten plays the kids pick. COACH: a jump, drop, or wrong fit starts the count over; energy stays fun. WIN: ten in a row and practice ends on a roar.",
+  "Motion Landmark Races": "SETUP: cone at the mesh point behind the QB spot, two H's race on Set. COACH: full speed THROUGH the cone at GO, time every rep so speed never varies. WIN: same split three reps in a row.",
+  "Jet Mesh & Basket": "SETUP: QB and H only, Set...GO cadence, mesh cone. COACH: H makes the basket and never slows, QB presses it in; a bad mesh is the QB's rep and he keeps on the Raccoon path. WIN: 20 clean each direction, both QBs.",
+  "Owl Fake & Pop": "SETUP: QB, RB, Y vs two cone linebackers. COACH: fake big (grade the acting), Y sells the block one count, pop it over the cones on rhythm. WIN: 8 of 10 completions with a fake that fools the watching coach.",
+  "Perimeter Drill": "SETUP: jet/stretch crew (QB, H, RB, playside WR+Y) vs force players holding bags. COACH: wall-offs stay high and legal, carrier reads the crack, defense sets the edge. WIN: offense turns the corner 6 of 10; defense strings 4 of 10.",
+  "Blitz Pickup Period": "SETUP: OL and RB vs scout pressure off cards. COACH: everyone points and calls the Mike out loud pre-snap; RB owns the edge. WIN: zero free runners in 10 cards.",
+  "Screen Period": "SETUP: bubble and Rolo timing vs air then vs a soft rush. COACH: linemen release flat and block level to level, receivers catch THEN turn. WIN: 8 clean catch-and-norths.",
+};
+for (const d of RAW_SEED.drills) if (!d.detail && DRILL_DETAILS[d.name]) d.detail = DRILL_DETAILS[d.name];
 const SEED = migrateDepth(RAW_SEED);
 
 /* ---- packages: one word, three snaps, all off the same picture ---- */
@@ -915,6 +986,55 @@ function week2Plan(drills) {
   ].filter((p) => p.stations.length > 0);
   return { date: "", start: "17:30", title: "Week 2 · Jet Series Install (Rocket, Raccoon, Owl)", items };
 }
+/* ============================================================
+   PRACTICE GENERATOR: one tap builds an elite, week-aware practice.
+   Deterministic (no Date/random): variety comes from genSeed, which
+   bumps every generation, so tapping again gives a fresh rotation.
+   ============================================================ */
+const GEN_POOLS = {
+  skill: ["Routes on Air", "Catch Circuit", "Ball Security Gauntlet", "Settle & Noose", "Turn & Locate (deep ball)", "Jump-Cut Lane (RB)", "Pat & Go", "Bubble Catch & North", "Lead Block Strike (RB)", "Accuracy Targets"],
+  line: ["OL Stance & First Steps", "Down Block Angles", "Reach & Run (REACH steps)", "Double-Team Drive", "Pull & Kick (guards)", "Mirror Dodge (pass pro)", "Snap & Steps"],
+  defense: ["LB Read Steps", "Hawk Tackle Progression", "Open-Field Corral", "Block Destruction", "Eyes Drill (run/pass keys)", "Pedal & Break", "Scrape & Fill", "Zone Drops & Landmarks"],
+  group: [["Inside Run (O vs D)", "WR vs DB 1-on-1s"], ["7-on-7 Skelly"], ["Perimeter Drill"], ["Blitz Pickup Period", "WR vs DB 1-on-1s"]],
+  situations: ["Kill Check Rehearsal", "Red Zone & Goal Line", "Backed Up / Coming Out", "Situations: 3rd Down", "2-Minute Drill"],
+};
+const WEEK_FOCUS = {
+  1: ["Handoff Mesh Circuit", "Formation Races (Sprint-Align-Look)", "Stance & Takeoff"],
+  2: ["Motion Landmark Races", "Jet Mesh & Basket", "Owl Fake & Pop"],
+  3: ["Mesh Triple Rep", "Bubble Catch & North", "Pull & Kick (guards)"],
+  4: ["Sprint-Out Ladder (QB)", "Kill Check Rehearsal", "Screen Period"],
+  5: ["Fastball Period (TURBO)", "Board Mode Signals", "Mesh Triple Rep"],
+  6: ["Pull & Wall (counter)", "Fake It Big (QB/RB theater)", "Fastball Period (TURBO)"],
+};
+function generatePractice(data, totalMins = 75) {
+  const wk = Math.min(data.seasonWeek || 1, 6);
+  const seed = ((data.practice && data.practice.genSeed) || 0) + wk * 7;
+  const drills = data.drills;
+  const idOf = (name) => { const d = drills.find((x) => x.name.toLowerCase() === name.toLowerCase()); return d ? d.id : null; };
+  const pick = (pool, salt) => pool[(seed + salt) % pool.length];
+  const per = (mins, names) => ({ id: uid(), mins, stations: names.filter(Boolean).map(idOf).filter(Boolean).map((drillId) => ({ id: uid(), drillId })) });
+
+  const focus = WEEK_FOCUS[wk] || WEEK_FOCUS[6];
+  const base = [
+    per(10, ["Dynamic Warmup & Stretch"]),
+    per(10, [pick(GEN_POOLS.skill, 1), pick(GEN_POOLS.line, 2), pick(GEN_POOLS.defense, 3)]),
+    per(12, [focus[seed % focus.length], pick(GEN_POOLS.line, 5), pick(GEN_POOLS.defense, 6)]),
+    per(14, GEN_POOLS.group[(seed + 1) % GEN_POOLS.group.length]),
+    per(16, [wk <= 2 ? "Team Walk-Through Install" : "Team Offense Script"]),
+    wk >= 3 ? per(8, [pick(GEN_POOLS.situations, 4)]) : null,
+    per(10, ["10 Perfect Plays"]),
+  ].filter(Boolean).filter((p) => p.stations.length > 0);
+  const baseSum = base.reduce((s, p) => s + p.mins, 0);
+  const items = base.map((p) => ({ ...p, mins: Math.max(5, Math.round((p.mins * totalMins) / baseSum)) }));
+  return {
+    ...data.practice,
+    date: "",
+    title: `Week ${wk} · Auto Practice`,
+    items,
+    genSeed: ((data.practice && data.practice.genSeed) || 0) + 1,
+  };
+}
+
 SEED.packages = seedPackages();
 applyKillPairs(SEED.plays);
 SEED.safariVersion = 7;
@@ -1004,6 +1124,8 @@ function normalizeData(parsed) {
     const fresh = SEED.drills.find((x) => x.name === DRILL_RENAMES[d.name]);
     return { ...d, name: DRILL_RENAMES[d.name], notes: fresh ? fresh.notes : d.notes };
   });
+  // Coaching detail backfill: existing drills gain the coach-the-coaches text once.
+  drills = drills.map((d) => (!d.detail && DRILL_DETAILS[d.name] ? { ...d, detail: DRILL_DETAILS[d.name] } : d));
   // Merge in new library drills the coach doesn't have yet (by name).
   if ((parsed.libVersion || 1) < SEED.libVersion) {
     const have = new Set(drills.map((d) => d.name.toLowerCase()));
@@ -1566,6 +1688,7 @@ function PracticeTab({ data, up, onPrint }) {
   const [q, setQ] = useState("");
   const [catFilter, setCatFilter] = useState("All");
   const [groupFilter, setGroupFilter] = useState("All groups");
+  const [genMins, setGenMins] = useState(75);
   const { practice, drills } = data;
 
   const addDrill = () => {
@@ -1646,10 +1769,11 @@ function PracticeTab({ data, up, onPrint }) {
 
   /* library filtering */
   const needle = q.trim().toLowerCase();
+  const bucket = FILTER_BUCKETS.find(([label]) => label === groupFilter);
   const filtered = drills.filter((dr) => {
     if (catFilter !== "All" && dr.cat !== catFilter) return false;
-    if (groupFilter !== "All groups" && dr.group !== groupFilter) return false;
-    if (needle && !(`${dr.name} ${dr.notes} ${dr.group}`.toLowerCase().includes(needle))) return false;
+    if (bucket && !drillMatchesBucket(dr.group || "All", bucket[1])) return false;
+    if (needle && !(`${dr.name} ${dr.notes} ${dr.detail || ""} ${dr.group}`.toLowerCase().includes(needle))) return false;
     return true;
   });
 
@@ -1672,9 +1796,9 @@ function PracticeTab({ data, up, onPrint }) {
                 onClick={() => setCatFilter(c)}>{c}</button>
             ))}
           </div>
-          <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
+          <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} title="Shows every drill this position takes part in, including combined group periods">
             <option>All groups</option>
-            {GROUPS.map((g) => <option key={g}>{g}</option>)}
+            {FILTER_BUCKETS.map(([label]) => <option key={label}>{label}</option>)}
           </select>
         </div>
         <div className="drill-list">
@@ -1684,6 +1808,7 @@ function PracticeTab({ data, up, onPrint }) {
               <div className="drill-main">
                 <b>{dr.name} <span className="group-tag" style={{ color: groupTone(dr.group), borderColor: groupTone(dr.group) }}>{dr.group}</span></b>
                 {dr.notes && <span className="drill-notes">{dr.notes}</span>}
+                {dr.detail && <span className="drill-detail">{dr.detail}</span>}
               </div>
               <span className="drill-mins">{dr.mins}m</span>
               <button className="btn small" onClick={() => addPeriod(dr.id)}>Add →</button>
@@ -1718,6 +1843,16 @@ function PracticeTab({ data, up, onPrint }) {
             {practice.items.length > 0 && <button className="btn ghost" onClick={clearPlan}>Clear</button>}
             <button className="btn" onClick={onPrint} disabled={practice.items.length === 0}>Print One-Pager</button>
           </div>
+        </div>
+        <div className="gen-bar">
+          <button className="btn" onClick={() => {
+            if (practice.items.length > 0 && !window.confirm("Build a fresh practice? It replaces today's plan (saved plans are untouched).")) return;
+            up({ practice: generatePractice(data, genMins) });
+          }}>⚡ Build Tonight's Practice</button>
+          <select value={genMins} onChange={(e) => setGenMins(Number(e.target.value))} aria-label="Practice length">
+            {[60, 75, 90].map((m) => <option key={m} value={m}>{m} minutes</option>)}
+          </select>
+          <span className="hint" style={{ margin: 0 }}>Week-aware: warmup → skills → install stations → group → team → finisher. Tap again for a different mix.</span>
         </div>
         {savedPlans.length > 0 && (
           <div className="saved-plans">
@@ -1777,7 +1912,7 @@ function buildSchedule(practice, drills) {
       const stations = per.stations
         .map((s) => {
           const dr = drills.find((x) => x.id === s.drillId);
-          return dr ? { stationId: s.id, drillId: dr.id, name: dr.name, cat: dr.cat, group: dr.group || "All", notes: dr.notes, defMins: dr.mins } : null;
+          return dr ? { stationId: s.id, drillId: dr.id, name: dr.name, cat: dr.cat, group: dr.group || "All", notes: dr.notes, detail: dr.detail, defMins: dr.mins } : null;
         })
         .filter(Boolean);
       if (stations.length === 0) return null;
@@ -3130,12 +3265,16 @@ function PrintHead({ title, right }) {
 function PracticePrint({ data }) {
   const schedule = buildSchedule(data.practice, data.drills);
   const total = schedule.reduce((s, r) => s + r.mins, 0);
+  const wk = data.seasonWeek || 1;
+  const installs = wk < 9 ? data.plays.filter((p) => p.week === wk && p.concept && CONCEPTS[p.concept]).map((p) => callWord(p.concept, p.dir, p.tags || [])) : [];
+  const installLine = [...new Set(installs)].join(" · ");
   return (
     <div className="sheet">
       <PrintHead title={data.practice.title || "Practice Plan"} right={<>
         <div className="p-meta">{data.practice.date || todayStr()}</div>
         <div className="p-meta">Start {fmtTime(parseStart(data.practice.start))} · {total} min</div>
       </>} />
+      {installLine && <div className="p-installs"><b>WEEK {wk} INSTALLS:</b> {installLine} <span className="p-installs-note">— every drill below feeds these. Kids say their job out loud before team reps.</span></div>}
       <table className="p-table">
         <thead>
           <tr><th style={{ width: "17%" }}>Time</th><th>Period · Stations run at the same time</th><th style={{ width: "7%" }}>Min</th></tr>
@@ -3151,6 +3290,7 @@ function PracticePrint({ data }) {
                     <span className="p-group" style={{ color: groupTone(st.group), borderColor: groupTone(st.group) }}>{st.group}</span>
                     <b>{st.name}</b>
                     {st.notes && <span className="p-station-notes"> · {st.notes}</span>}
+                    {st.detail && <div className="p-station-detail">{st.detail}</div>}
                   </div>
                 ))}
               </td>
@@ -3161,7 +3301,12 @@ function PracticePrint({ data }) {
       </table>
       <div className="p-foot">
         <span>Ends {fmtTime(parseStart(data.practice.start) + total)}</span>
-        <span>Water every 2 periods · Break it down together</span>
+        <span>Water every 2 periods · One cadence: "Set... GO" · Break it down together</span>
+      </div>
+      <div className="p-coach-key">
+        <b>STATION KEY:</b> stations in the same time slot run AT THE SAME TIME with different coaches.
+        Default split: Skill (QB/RB/WR/TE + DBs) · Linemen (OL + DL) · Backers (LB/RB two-way kids).
+        SETUP tells you cones and bags, COACH is what to yell, WIN is when to move on.
       </div>
     </div>
   );
@@ -3627,6 +3772,14 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .drill-main { flex: 1; min-width: 0; display: grid; }
 .drill-main b { font-size: 13px; }
 .drill-notes { color: var(--muted); font-size: 11.5px; }
+.drill-detail { color: #8A8E96; font-size: 10.5px; line-height: 1.35; margin-top: 2px; }
+.gen-bar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: #FFFBF2; flex-wrap: wrap; }
+.p-installs { border: 1.5px solid var(--ink); padding: 6px 10px; margin-bottom: 10px; font-size: 12px; }
+.p-installs b { font-family: var(--disp); letter-spacing: 1px; color: var(--red); }
+.p-installs-note { color: var(--muted); font-size: 10.5px; }
+.p-station-detail { color: var(--muted); font-size: 9.5px; line-height: 1.35; margin: 2px 0 4px 2px; }
+.p-coach-key { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 6px; font-size: 9.5px; color: var(--muted); line-height: 1.4; }
+.p-coach-key b { color: var(--ink); }
 .drill-mins { font-family: var(--mono); font-size: 12px; color: var(--muted); }
 .plan-meta { display: flex; gap: 12px; padding: 14px 16px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
 .plan-meta label { display: grid; gap: 4px; font-family: var(--disp); font-weight: 600; font-size: 12px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); }
@@ -3778,4 +3931,4 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
   );
 }
 
-export { normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, genPlayElements, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots };
+export { normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, genPlayElements, generatePractice, drillMatchesBucket, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots };

@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within, cleanup } from "@testing-library/react";
 import App, {
   normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord,
-  LINE_CALLS, ASSIGNMENTS, genPlayElements, SEED, seedPackages, day1Plan, applyKillPairs,
+  LINE_CALLS, ASSIGNMENTS, genPlayElements, generatePractice, drillMatchesBucket, SEED, seedPackages, day1Plan, applyKillPairs,
   installedForms, resolvePlayPos, FORM_WEEKS, formSpots,
 } from "../src/App.jsx";
 
@@ -185,6 +185,46 @@ describe("seeds", () => {
     const again = normalizeData(JSON.parse(JSON.stringify(v3)));
     expect(again.plays.length).toBe(58);
     expect(again.packages.length).toBe(v3.packages.length);
+  });
+  it("seeds the elite drill library with coaching detail", () => {
+    const names = SEED.drills.map((d) => d.name);
+    for (const want of ["Hawk Tackle Progression", "Double-Team Drive", "Pull & Kick (guards)", "Mesh Triple Rep", "Sprint-Out Ladder (QB)", "Ball Security Gauntlet", "Kill Check Rehearsal", "Fastball Period (TURBO)"]) {
+      expect(names, want + " is in the library").toContain(want);
+    }
+    const withDetail = SEED.drills.filter((d) => d.detail && /SETUP:/.test(d.detail));
+    expect(withDetail.length).toBeGreaterThanOrEqual(40);
+    const inside = SEED.drills.find((d) => d.name === "Inside Run (O vs D)");
+    expect(inside.detail).toMatch(/WIN:/);
+  });
+  it("group filter shows every drill a position takes part in", () => {
+    expect(drillMatchesBucket("Bigs + Backs", ["OL"])).toBe(true);
+    expect(drillMatchesBucket("Bigs + Backs", ["DB"])).toBe(false);
+    expect(drillMatchesBucket("WR vs DB", ["DB"])).toBe(true);
+    expect(drillMatchesBucket("Skill (QB/RB/WR/TE)", ["QB"])).toBe(true);
+    expect(drillMatchesBucket("OL", ["WR", "TE"])).toBe(false);
+    expect(drillMatchesBucket("All", ["DL"])).toBe(true);
+    expect(drillMatchesBucket("My Custom Group", ["QB"])).toBe(true); // unknown groups never hide
+  });
+  it("generates a complete week-aware practice in one tap", () => {
+    for (const wk of [1, 2, 4]) {
+      const plan = generatePractice({ ...SEED, seasonWeek: wk }, 75);
+      expect(plan.items.length).toBeGreaterThanOrEqual(5);
+      const total = plan.items.reduce((s, p) => s + p.mins, 0);
+      expect(Math.abs(total - 75)).toBeLessThanOrEqual(6);
+      const byId = Object.fromEntries(SEED.drills.map((d) => [d.id, d]));
+      const names = plan.items.flatMap((it) => it.stations.map((s) => byId[s.drillId].name));
+      expect(names[0]).toBe("Dynamic Warmup & Stretch");
+      expect(names[names.length - 1]).toBe("10 Perfect Plays");
+      if (wk === 2) expect(names.some((n) => /Jet Mesh|Motion Landmark|Owl Fake/.test(n)), "wk2 features the jet install").toBe(true);
+      if (wk === 4) expect(names.some((n) => /Sprint-Out|Kill Check|Screen/.test(n)), "wk4 features the QB tree").toBe(true);
+      // multi-station periods keep all three coaching groups busy
+      const multi = plan.items.filter((it) => it.stations.length >= 3);
+      expect(multi.length).toBeGreaterThanOrEqual(2);
+    }
+    // tapping again rotates the mix
+    const a = generatePractice({ ...SEED, seasonWeek: 3, practice: { ...SEED.practice, genSeed: 0 } }, 75);
+    const b = generatePractice({ ...SEED, seasonWeek: 3, practice: { ...SEED.practice, genSeed: 1 } }, 75);
+    expect(JSON.stringify(a.items.map((i) => i.stations.map((s) => s.drillId)))).not.toBe(JSON.stringify(b.items.map((i) => i.stations.map((s) => s.drillId))));
   });
   it("seeds the Day 1 helmets plan with grouped stations", () => {
     const plan = day1Plan(SEED.drills);
