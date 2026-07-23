@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within, cleanup } from "@testing-library/react";
 import App, {
   normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord,
-  LINE_CALLS, ASSIGNMENTS, SEED, seedPackages, day1Plan, applyKillPairs,
+  LINE_CALLS, ASSIGNMENTS, genPlayElements, SEED, seedPackages, day1Plan, applyKillPairs,
   installedForms, resolvePlayPos, FORM_WEEKS, formSpots,
 } from "../src/App.jsx";
 
@@ -86,6 +86,18 @@ describe("vocabulary", () => {
     expect(ASSIGNMENTS.stretch.RB).toMatch(/slam it NORTH/i);             // edge strung out
     expect(CONCEPTS.bubble.read).toMatch(/MIRROR/);                       // press over the bubble
     expect(ASSIGNMENTS.jet.QB).toMatch(/Raccoon path/);                   // broken mesh
+  });
+  it("REACH plays draw reach blocks (playside lean), HAMMER draws down blocks", () => {
+    const OL = ["LT", "LG", "C", "RG", "RT"];
+    for (const [concept, dir, want] of [["jet", "Rt", +1], ["jet", "Lt", -1], ["keep", "Rt", +1], ["stretch", "Lt", -1], ["power", "Rt", -1]]) {
+      const els = genPlayElements(concept, formSpots("Doubles"), dir);
+      for (const L of OL) {
+        const b = (els[L] || []).find((e) => e.kind === "block");
+        if (!b) { expect(concept, `${concept}: only power may skip an OL block (the puller)`).toBe("power"); continue; }
+        const d = (b.pts[1][0] - b.pts[0][0]) * want;
+        expect(d, `${concept} ${dir}: ${L} leans the wrong way`).toBeGreaterThan(0);
+      }
+    }
   });
   it("hinge rule: backside tackle walls the pulled guard's man on power", () => {
     // the assistant-coach fix: a DL keying the pulling guard gets walled by the tackle

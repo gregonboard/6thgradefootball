@@ -333,6 +333,8 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
   const qbFake = () => has("QB") && add("QB", "fake", [at("QB"), [at("QB")[0] - 3, at("QB")[1]]]);
   const rbLeak = () => has("RB") && add("RB", "route", [at("RB"), [at("RB")[0] - 8, at("RB")[1] - 3], [at("RB")[0] - 14, at("RB")[1] - 8]]);
   const olPass = () => { for (const L of ["LT", "LG", "C", "RG", "RT"]) if (has(L)) add(L, "block", [at(L), [at(L)[0], at(L)[1] - 3]]); };
+  /* REACH: every lineman leans playside and runs (blockAll leans backside, the down-block look) */
+  const reachOL = () => { for (const L of ["LT", "LG", "C", "RG", "RT"]) if (has(L)) add(L, "block", [at(L), [at(L)[0] + s * 2.5, at(L)[1] - 3.5]]); };
   const throwTo = (L, i = 1) => { if (has("QB") && el[L]) { const r = el[L].find((e) => e.kind === "route" || e.kind === "carry"); if (r) add("QB", "throw", [at("QB"), r.pts[Math.min(i, r.pts.length - 1)]]); } };
 
   /* mirrored route helper: dx is drawn for a LEFT-side player, flipped for right */
@@ -359,7 +361,7 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       qbFake();
       break;
     case "jet":
-      blockAll(["Y", "Z", "X"]);
+      reachOL();
       if (has("Y")) add("Y", "block", [at("Y"), [at("Y")[0] + s * 5, at("Y")[1] - 7], [at("Y")[0] + s * 7, at("Y")[1] - 12]]);
       if (has(s > 0 ? "Z" : "X")) { const L = s > 0 ? "Z" : "X"; add(L, "block", [at(L), [at(L)[0] - s * 5, at(L)[1] - 5]]); }
       if (has(s > 0 ? "X" : "Z")) { const L = s > 0 ? "X" : "Z"; add(L, "block", [at(L), [at(L)[0], at(L)[1] - 4]]); }
@@ -374,7 +376,10 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       if (has("RB")) add("RB", "fake", [at("RB"), [50 - s * 6, 27], [50 - s * 10, 22]]);
       break;
     case "keep":
-      blockAll();
+      reachOL();
+      /* Y arcs to the safety (his job text), receivers block the man over them */
+      if (has("Y")) add("Y", "block", [at("Y"), [at("Y")[0] + s * 5, at("Y")[1] - 7], [at("Y")[0] + s * 7, at("Y")[1] - 12]]);
+      for (const L of ["X", "Z"]) if (has(L)) add(L, "block", [at(L), [at(L)[0], at(L)[1] - 4]]);
       jetMotion(false);
       if (has("H")) add("H", "fake", [[52, 29], [edge, 26]]);
       if (has("QB")) add("QB", "carry", [at("QB"), [50 + s * 10, 28], [50 + s * 22, 23], [50 + s * 26, 10]]);
@@ -389,7 +394,7 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       break;
     case "stretch": {
       /* every blocker leans playside (reach); H's jet motion becomes the lead */
-      for (const L of ["LT", "LG", "C", "RG", "RT"]) if (has(L)) add(L, "block", [at(L), [at(L)[0] + s * 2.5, at(L)[1] - 3.5]]);
+      reachOL();
       if (has("Y")) add("Y", "block", [at("Y"), [at("Y")[0] + s * 4, at("Y")[1] - 3]]);
       if (has(s > 0 ? "Z" : "X")) { const L = s > 0 ? "Z" : "X"; add(L, "block", [at(L), [at(L)[0], at(L)[1] - 4]]); }
       if (has(s > 0 ? "X" : "Z")) { const L = s > 0 ? "X" : "Z"; add(L, "route", [at(L), [at(L)[0] - s * 2, at(L)[1] - 9]]); }
@@ -3773,4 +3778,4 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
   );
 }
 
-export { normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots };
+export { normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, genPlayElements, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots };
