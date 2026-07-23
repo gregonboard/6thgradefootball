@@ -215,6 +215,7 @@ describe("seeds", () => {
       const names = plan.items.flatMap((it) => it.stations.map((s) => byId[s.drillId].name));
       expect(names[0]).toBe("Dynamic Warmup & Stretch");
       expect(names[names.length - 1]).toBe("10 Perfect Plays");
+      expect(names.some((n) => /Sharks & Minnows|Fumble Scramble|Everybody's Eligible|Chase the Rabbit|TD Celebration|Tug of War/.test(n)), "a fun finisher is in every practice").toBe(true);
       if (wk === 2) expect(names.some((n) => /Jet Mesh|Motion Landmark|Owl Fake/.test(n)), "wk2 features the jet install").toBe(true);
       if (wk === 4) expect(names.some((n) => /Sprint-Out|Kill Check|Screen/.test(n)), "wk4 features the QB tree").toBe(true);
       // multi-station periods keep all three coaching groups busy

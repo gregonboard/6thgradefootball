@@ -888,6 +888,13 @@ const RAW_SEED = {
     { id: uid(), name: "Board Mode Signals", cat: "Team", group: "Offense", mins: 6, notes: "Silent reps off the number board. The encrypted channel gets practiced too.", detail: "SETUP: coach flashes numbers from the app's Board Mode, offense aligns and runs it on air. COACH: nobody speaks but the QB cadence. WIN: 6 straight correct alignments with zero words." },
     { id: uid(), name: "Backed Up / Coming Out", cat: "Team", group: "All", mins: 8, notes: "Own goal line to the 10: safe calls, two hands on the ball, punt is a win.", detail: "SETUP: ball on your own 3, script Moose, Rhino, Rocket. COACH: no east-west behind the 5, QB never risks it. WIN: two first downs or a clean punt look, zero disasters." },
     { id: uid(), name: "Eyes Drill (run/pass keys)", cat: "Individual", group: "LB/DB", mins: 6, notes: "High hat pass, low hat run, read the linemen not the backfield candy.", detail: "SETUP: two coaches act as OL showing run fire-out or pass set, defenders call it and step. COACH: eyes through the line to the near back, motion means nothing. WIN: 10 straight correct calls stepping the right way." },
+    /* ---- FUN FINISHERS (libVersion 6): conditioning disguised as games ---- */
+    { id: uid(), name: "Sharks & Minnows (ball security)", cat: "Conditioning", group: "All", mins: 8, notes: "Every minnow carries a ball; sharks strip, not tackle. Losing your ball makes you a shark.", detail: "SETUP: 30x20 box, 3 sharks start, everyone else crosses with a ball high and tight. COACH: sharks punch and rip only, minnows cover with two hands in traffic. WIN: last two minnows get carried off like heroes." },
+    { id: uid(), name: "Fumble Scramble", cat: "Conditioning", group: "All", mins: 6, notes: "Balls scattered everywhere, whistle blows, scoop and score races. Turnovers become instinct.", detail: "SETUP: 8 balls loose in a 20-yd square, kids in relay lines. COACH: scoop through the ball with two hands, NEVER dive on it, score means sprint to the cone. WIN: fastest total team time; a dropped scoop restarts the runner." },
+    { id: uid(), name: "Everybody's Eligible", cat: "Conditioning", group: "All", mins: 10, notes: "5v5 two-hand touch where LINEMEN play receiver and QB. The most-run-to drill of the year.", detail: "SETUP: 30-yd field, teams drafted by captains, coaches officiate loudly. COACH: linemen catch touchdowns, skill kids block; everyone sprints because it's a game. WIN: it's conditioning and nobody noticed. Champs skip one gasser, ever." },
+    { id: uid(), name: "Chase the Rabbit", cat: "Conditioning", group: "All", mins: 6, notes: "Runner gets a head start up the sideline, chaser must take the angle, not follow the grass he left.", detail: "SETUP: runner on the numbers with 5 yds head start, chaser inside; both sprint on GO. COACH: chasers aim at the goal line, not the runner (that's pursuit angles, don't tell them). WIN: chaser touches him down before the pylon; rotate so everyone runs 4." },
+    { id: uid(), name: "TD Celebration Relay", cat: "Conditioning", group: "All", mins: 6, notes: "Relay sprints that end in a scored touchdown and a judged celebration. Max effort, guaranteed.", detail: "SETUP: three relay lines, 40 yds, ball carried the whole way, score then celebrate; teammates score the celly 1-10. COACH: full speed is the entry fee for the celebration; ball never leaves two hands at the score. WIN: best combined time plus style points." },
+    { id: uid(), name: "Tug of War (line pride)", cat: "Conditioning", group: "All", mins: 6, notes: "OL vs everyone else on the rope. The big kids finally get to be famous.", detail: "SETUP: rope on a line, best-of-three, mix the teams after the linemen win. COACH: low hips, drive the legs, exactly the HAMMER finish position (don't tell them that either). WIN: whoever loses runs one lap yelling the winners' names." },
   ],
   practice: { date: "", start: "17:30", title: "Practice Plan", items: [] },
   savedPlans: [],
@@ -902,7 +909,7 @@ const RAW_SEED = {
   depth: { off: {}, def: {} },
   offScheme: "I-Form",
   defScheme: "5-3",
-  libVersion: 5,
+  libVersion: 6,
   seasonWeek: 1,
   pgOverrides: {},
   packages: [],
@@ -997,6 +1004,7 @@ const GEN_POOLS = {
   defense: ["LB Read Steps", "Hawk Tackle Progression", "Open-Field Corral", "Block Destruction", "Eyes Drill (run/pass keys)", "Pedal & Break", "Scrape & Fill", "Zone Drops & Landmarks"],
   group: [["Inside Run (O vs D)", "WR vs DB 1-on-1s"], ["7-on-7 Skelly"], ["Perimeter Drill"], ["Blitz Pickup Period", "WR vs DB 1-on-1s"]],
   situations: ["Kill Check Rehearsal", "Red Zone & Goal Line", "Backed Up / Coming Out", "Situations: 3rd Down", "2-Minute Drill"],
+  finishers: ["Sharks & Minnows (ball security)", "Fumble Scramble", "Everybody's Eligible", "Chase the Rabbit", "TD Celebration Relay", "Tug of War (line pride)"],
 };
 const WEEK_FOCUS = {
   1: ["Handoff Mesh Circuit", "Formation Races (Sprint-Align-Look)", "Stance & Takeoff"],
@@ -1022,6 +1030,7 @@ function generatePractice(data, totalMins = 75) {
     per(14, GEN_POOLS.group[(seed + 1) % GEN_POOLS.group.length]),
     per(16, [wk <= 2 ? "Team Walk-Through Install" : "Team Offense Script"]),
     wk >= 3 ? per(8, [pick(GEN_POOLS.situations, 4)]) : null,
+    per(7, [pick(GEN_POOLS.finishers, 8)]),
     per(10, ["10 Perfect Plays"]),
   ].filter(Boolean).filter((p) => p.stations.length > 0);
   const baseSum = base.reduce((s, p) => s + p.mins, 0);
