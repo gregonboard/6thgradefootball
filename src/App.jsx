@@ -477,7 +477,7 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       rt("X", [[0, -10], [2, -8]]);
       rt("Z", [[0, -10], [2, -8]]);
       rt("H", [[-6, -5], [-11, -6]]);
-      rt("Y", [[4, -10], [12, -17]]);
+      rt("Y", [[8, -2], [13, -6], [14, -18]]); /* wheel: flat, then up the sideline */
       rbLeak();
       throwTo(s > 0 ? "Z" : "X");
       break;
@@ -628,7 +628,7 @@ const CONCEPTS = {
   sneak:   { fam: "Run",    dirs: [""],         words: { "": "Moose" }, carrier: "QB", signal: "Flat hand dives under", how: "QB sneak behind the big center. Short yardage answer.", read: "None." },
   sparrow: { fam: "Pass",   dirs: [""],         words: { "": "Sparrow" }, carrier: "WR", signal: "Pinch fingers, small bird", how: "Hitches outside, quick outs from the slots, Y sticks at 5. Ball out now. Against press, the pressed hitch automatically becomes a GO.", read: "Pick the widest cushion before the snap and throw it on rhythm. No cushion anywhere means they pressed: throw the GO over the presser or take Y at 5." },
   robin:   { fam: "Pass",   dirs: [""],         words: { "": "Robin" }, carrier: "WR", signal: "Flap the elbows", how: "Slants outside, arrows to the flats. The 6th grade money concept.", read: "Flat first. Covered means the slant is open behind it." },
-  hawk:    { fam: "Pass",   dirs: [""],         words: { "": "Hawk" }, carrier: "WR", signal: "One arm soars", how: "Curls at 8 outside, flats underneath, Y to the corner.", read: "Watch the man over the slot: chases the flat, throw the curl; sits, throw the flat." },
+  hawk:    { fam: "Pass",   dirs: [""],         words: { "": "Hawk" }, carrier: "WR", signal: "One arm soars", how: "Curls at 8 outside, flats underneath, Y WHEELS up the sideline: the same wheel these kids scored on last year. Curl, flat, wheel is a triangle one defender cannot cover.", read: "Watch the man over the slot: chases the flat, throw the curl; sits, throw the flat. And when the flat defender starts squatting on both, the wheel behind him is six." },
   owl:     { fam: "Pass",   dirs: [""],         words: { "": "Owl" }, carrier: "Y", signal: "Circles over the eyes", how: "Everyone sells Rhino. Y slips into the seam behind the linebackers. QB fakes and pops it over their heads.", read: "Fake, find Y, throw it now. Covered? Tuck it and run the Rhino path. The most unfair play we own." },
   falcon:  { fam: "Pass",   dirs: [""],         words: { "": "Falcon" }, carrier: "WR", signal: "Both arms soar", how: "Four verticals, slots bend to the seams, RB checks down.", read: "Coach picks the target before the snap." },
   flood:   { fam: "Pass",   dirs: ["Rt", "Lt"], words: { Rt: "Raven", Lt: "Lark" }, carrier: "WR", signal: "Wing out flat, run the fingers sideways, then point", how: "Sprint-out flood: QB moves the launch point to the call side with the RB leading. Three levels stacked in front of him: go to clear it, deep out at 10, flat at 4. Half the field, one look at a time, and his legs are the third answer.", read: "Deep out first. Covered? Flat. Both covered? RUN for the sticks and get down or get out of bounds." },
@@ -670,7 +670,7 @@ const ASSIGNMENTS = {
   sneak:   { OL: "Fire out low. One yard war.", QB: "Snap and surge behind the center. Two hands on the ball.", RB: "Push the pile.", H: "Get big, wall off.", Y: "Get big, wall off.", XZ: "Block the man over you." },
   sparrow: { OL: "Set and punch. Ball is out fast.", QB: "Pick the widest cushion before the snap. Catch, throw, done.", RB: "Check the rush, leak to the flat.", H: "Quick out at 4.", Y: "Stick at 5, sit in the window.", XZ: "Hitch at 5. Turn around, show your numbers. Pressed? Nod and GO: your hitch just became a fly route." },
   robin:   { OL: "Set and punch. Ball out quick.", QB: "Flat first. If he jumps it, the slant is behind him.", RB: "Check, leak to the flat.", H: "Arrow to the flat right now.", Y: "Flat.", XZ: "Slant. Three steps, cut across his face." },
-  hawk:    { OL: "Real pass set. Stay square.", QB: "Man over the slot chases the flat: throw curl. He sits: throw flat.", RB: "Check, leak.", H: "Flat.", Y: "Corner at 8.", XZ: "Push to 8, snap around. Curl." },
+  hawk:    { OL: "Real pass set. Stay square.", QB: "Man over the slot chases the flat: throw curl. He sits: throw flat. Flat defender squatting? The wheel is behind him.", RB: "Check, leak.", H: "Flat.", Y: "WHEEL: flat for three steps, then turn up the sideline and GO. Last year's touchdown route.", XZ: "Push to 8, snap around. Curl." },
   owl:     { OL: "Block Rhino. Make it look exactly the same.", QB: "Fake Rhino big, pop it to Y over their heads. Covered? Tuck and run the Rhino path: your line is already run blocking.", RB: "Fake Rhino, run angry without the ball.", H: "Jet motion, sell it.", Y: "Sell the block one count, slip behind the linebackers, eyes up fast.", XZ: "Block like it's a run." },
   falcon:  { OL: "Best pass set of the day. Give him time.", QB: "Coach picks the target before the snap. Trust it.", RB: "Checkdown at 5.", H: "Seam.", Y: "Seam.", XZ: "Go. Run through his shoulder." },
   flood:   { OL: "Pass set, then slide with the QB. He is moving; move with him. Nobody crosses your face.", QB: "Sprint to the call, shoulders square so you can still throw. Deep out, then flat, then RUN. First down, then down or out of bounds.", RB: "You are his bodyguard. Lead the sprint and block the first color off the edge.", H: "Cross to the call side, deep out at 10. Snap your head around fast.", Y: "Flat at 4 on the call side. Be his easy answer.", XZ: "Called side runs the GO to pull the top off. Backside runs the post: stay alive, he might find you." },
@@ -786,11 +786,10 @@ function safariSeedPlaysV7() {
     note(mk(61, "Doubles", "power", "Rt", false, 5, ["Peek"]), "Rhino with Owl alive behind it. Backers bite even once on film, QB pops Y over their heads. The line never knows."),
     note(mk(62, "Doubles", "jet", "Rt", false, 5, ["Orbit"]), "Rocket with the RB orbiting the OTHER way. Two fakes crossing at the snap: somebody on defense is always wrong."),
     note(mk(63, "Doubles", "jet", "Lt", false, 5, ["Orbit"]), "Laser Orbit: the crossing fakes, left."),
-    note(mk(64, "Doubles", "hawk", "", false, 5, ["Wheel"]), "Hawk with the RB wheeling behind the flat. The flat defender cannot cover two levels: curl, flat, or wheel, one of them is naked."),
-    note(mk(65, "Nasty Rt", "jet", "Rt", false, 5, ["Zip"]), "Nasty jet with Z zipping down pre-snap: an extra wall right where the corner wants to force it."),
-    note(mk(66, "Nasty Lt", "jet", "Lt", false, 5, ["Zip"]), "Nasty jet Zip, left."),
-    note(mk(67, "Doubles", "rbpass", "Rt", false, 6), "THE DAGGER. Off the board only, never voiced, once a game, only after Ram has scored. The corner who finally comes up to stop Ram just gave up six."),
-    note(mk(68, "Doubles", "rbpass", "Lt", false, 6), "The dagger, left."),
+    note(mk(64, "Nasty Rt", "jet", "Rt", false, 5, ["Zip"]), "Nasty jet with Z zipping down pre-snap: an extra wall right where the corner wants to force it."),
+    note(mk(65, "Nasty Lt", "jet", "Lt", false, 5, ["Zip"]), "Nasty jet Zip, left."),
+    note(mk(66, "Doubles", "rbpass", "Rt", false, 6), "THE DAGGER. Off the board only, never voiced, once a game, only after Ram has scored. The corner who finally comes up to stop Ram just gave up six."),
+    note(mk(67, "Doubles", "rbpass", "Lt", false, 6), "The dagger, left."),
   ];
 }
 function safariSeedPlays() {
@@ -1104,7 +1103,7 @@ function generatePractice(data, totalMins = 75) {
 SEED.packages = seedPackages();
 applyKillPairs(SEED.plays);
 SEED.plays.forEach((p) => { if (!p.note && CHAIN_NOTES[p.name]) p.note = CHAIN_NOTES[p.name]; });
-SEED.safariVersion = 8;
+SEED.safariVersion = 9;
 SEED.savedPlans = [
   { id: uid(), name: "Day 1 · Helmets (Routes + Formations)", savedAt: "library", plan: day1Plan(SEED.drills) },
   { id: uid(), name: "Week 2 · Jet Series Install (Rocket, Raccoon, Owl)", savedAt: "library", plan: week2Plan(SEED.drills) },
@@ -1254,6 +1253,11 @@ function normalizeData(parsed) {
     plays = [...plays, ...safariSeedPlaysV7().filter((p) => !haveV8.has(p.name)).map((p) => ({ ...p, id: uid(), num: base8 + (++n8) }))];
     plays = plays.map((p) => (!p.note && CHAIN_NOTES[p.name] ? { ...p, note: CHAIN_NOTES[p.name] } : p));
   }
+  // v9 (Greg's simplification ruling): the wheel lives INSIDE Hawk now, so the
+  // separate tagged play goes away. The book is frozen: improve, never add.
+  if (!(parsed.safariVersion >= 9)) {
+    plays = plays.filter((p) => !(p.name === "Doubles · Hawk Wheel" && !p.custom));
+  }
   // Concept play names are derived, so vocabulary updates flow through automatically.
   plays = plays.map((p) =>
     p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
@@ -1282,7 +1286,7 @@ function normalizeData(parsed) {
     gameLabel: parsed.gameLabel || "",
     script: parsed.script || [],
     scriptPos: parsed.scriptPos || 0,
-    safariVersion: 8,
+    safariVersion: 9,
     seasonWeek: parsed.seasonWeek || 1,
     pgOverrides: parsed.pgOverrides || {},
     packages,

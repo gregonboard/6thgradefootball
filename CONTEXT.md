@@ -67,7 +67,7 @@ Eight words compress to four techniques (down+pull family, reach, pass set, rele
 **Passes (birds; bigger bird = deeper ball):**
 - Sparrow = hitches at 5 (QB: pick widest cushion pre-snap)
 - Robin = slant-flat (QB: flat first, slant behind it)
-- Hawk = curl-flat at 8 (QB: read the man over the slot)
+- Hawk = curl-flat with Y on the WHEEL (July 26: restored from last year's tree where the TE wheel scored repeatedly with these same kids; the triangle is curl, flat, wheel and one defender cannot cover it). QB read is still one man: the man over the slot; a squatting flat defender means the wheel is six.
 - Owl = TE seam pop off a perfect Rhino fake (the most unfair play at this level; line hears HAMMER and blocks run)
 - Falcon = four verticals (coach picks target pre-snap)
 - Eagle Max = the deep shot, seven blocking
@@ -91,7 +91,7 @@ Doubles (home base, 2x2 with Y attached), Doubles Lt, Trips Rt/Lt, Bunch Rt/Lt (
 - Peek (week 5+) = Owl alive behind any HAMMER run call; QB throws the Y seam only if the backers bite. The line never knows.
 - Wheel = RB wheel route
 
-The diabolical layer (safariVersion 8, July 26) seeded the best tag combos as callable band plays #59-68: Rhino/Lion Now (THE RPO), Rhino Peek, Rocket/Laser Orbit (crossing fakes), Hawk Wheel (three-level flat stress), Nasty jet Zips, and Rainbow/Lightning. Core plays also carry CHAIN notes (when to call it: Rhinos load the box for Owl, Rockets teach the edge to chase for Raccoon, Ram scoring arms Rainbow), filled once by migration wherever a note was empty.
+The diabolical layer (safariVersion 8, July 26) seeded the best tag combos as callable band plays: Rhino/Lion Now (THE RPO), Rhino Peek, Rocket/Laser Orbit (crossing fakes), Nasty jet Zips, and Rainbow/Lightning. (A separate Hawk Wheel tag play was removed in v9 once the wheel was built into base Hawk.) Core plays also carry CHAIN notes (when to call it: Rhinos load the box for Owl, Rockets teach the edge to chase for Raccoon, Ram scoring arms Rainbow), filled once by migration wherever a note was empty.
 - Max = H and RB stay in to protect
 
 ### The Series (touch distribution engine)
@@ -141,7 +141,7 @@ The Formation View dropdown now includes every playbook formation (single source
 6. **Wristbands**: printable QB bands (reading order: number, formation, LINE word in red, play word) and Bird Route Cards (all birds × all letters so any kid can slide positions).
 
 ### Data model (top-level keys in the single persisted object, storage key `vh6-coach-data-v1`)
-`players, depth {off, def}, offScheme, defScheme, drills, practice, savedPlans, plays [{id,num,name,formation,concept,dir,tags,core,week,custom,lineCall,type,note,killId}], callSheet, wrist, callLog, gameLabel, script, scriptPos, seasonWeek, pgOverrides, packages [{id,name,steps|ids}], day1Seeded, week2Seeded, libVersion (6), depthVersion (2), safariVersion (8)`
+`players, depth {off, def}, offScheme, defScheme, drills, practice, savedPlans, plays [{id,num,name,formation,concept,dir,tags,core,week,custom,lineCall,type,note,killId}], callSheet, wrist, callLog, gameLabel, script, scriptPos, seasonWeek, pgOverrides, packages [{id,name,steps|ids}], day1Seeded, week2Seeded, libVersion (6), depthVersion (2), safariVersion (9)`
 
 libVersion 4 adds the jet-series install drills (Motion Landmark Races, Jet Touch Pass Timing, Owl Fake & Pop, Reach & Run) and week2Seeded gates a one-time "Week 2 · Jet Series Install (Rocket, Raccoon, Owl)" saved practice plan.
 
@@ -174,6 +174,10 @@ Never destroy user data. `normalizeData()` runs on every load: version flags gat
 - Ship working, tested code: this project's convention is jsdom end-to-end tests simulating real clicks before every delivery, plus geometry/collision math checks for visual layouts. Silent no-op string replacements have caused bugs; assert every programmatic edit.
 - Deliverables: updated `src/App.jsx` synced into the Vite project, built, zipped as `sideline-command-site.zip`, plus the standalone `sideline-command.jsx`. He deploys via GitHub → Netlify.
 - Keep his existing data safe: every change must pass through `normalizeData()` migration patterns.
+
+**BOOK FREEZE (Greg's ruling, July 26): the playbook is complete at 67 plays. Improve existing plays, simplify calls, fix routes; NEVER add new plays, concepts, or words without Greg explicitly asking. He was getting confused by additions, and a confused coach means confused kids.**
+
+**Returning-kid word audit (most of the roster is back; last year's tree was Eagle Slant/Corner/Post, Hawk Post/Wheel/Slant, Dragon Comeback/Go/Drag, Rocket Go/Out/Go, Falcon Corner/Drag/Out):** Eagle, Hawk, and Falcon were passes then and now (safe; new routes are normal year-over-year). Dragon is retired. THE ONE HAZARD: Rocket was a PASS last year and is the jet RUN now. Teach it once, day one, to returning receivers: "Rocket lost its wings. Not a bird, so it runs." Rule 1 self-corrects after that.
 
 ## 6. CURRENT STATE AND OPEN IDEAS
 
