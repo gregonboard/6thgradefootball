@@ -74,7 +74,7 @@ Eight words compress to four techniques (down+pull family, reach, pass set, rele
 - Raven / Lark = sprint-out flood (July 22, built for the QB, who is Greg's son; make him very successful): QB moves the launch point with the RB as bodyguard, three levels stacked call-side (go clears, deep out at 10, flat at 4), and his legs are the third answer with a hard "get down or out of bounds" rule. The only directional bird pair; birds stay direction-less otherwise. Line hears WALL.
 
 **Screens (candy):** Reese's / Laffy = bubble; Rolo / Lifesaver = RB slip screen (Snickers/Skittles was briefly used but both start with S, breaking the R/L rule; Rolo/Lifesaver restores it)
-**Special:** Rewind / Loop = reverse off the full Rocket fake
+**Special:** Rewind / Loop = reverse off the full Rocket fake; Rainbow / Lightning = the halfback pass off Ram action (July 26, "the dagger"): RB sells Ram three steps, pulls up behind the line, throws HIGH to the call-side receiver who stalked then released past the corner. QB leaks to the flat as the valve. House rules baked into the card: off the board only, never voiced, once a game, only callable after Ram has scored, and "never force it" (tuck = Ram). Line call is REACH so it smells identical to Ram; OL job adds "nobody drifts downfield" for legality.
 
 **Receiver rule:** X always left outside, Z always right outside, H slot, Y tight end. Routes are keyed to letters, never formations, so every formation is free learning. Not a bird, not candy: block the man over you.
 
@@ -90,6 +90,8 @@ Doubles (home base, 2x2 with Y attached), Doubles Lt, Trips Rt/Lt, Bunch Rt/Lt (
 - Now = bubble attached (Rhino Now IS the RPO: QB reads the man over the slot; legal on Trap and Counter too)
 - Peek (week 5+) = Owl alive behind any HAMMER run call; QB throws the Y seam only if the backers bite. The line never knows.
 - Wheel = RB wheel route
+
+The diabolical layer (safariVersion 8, July 26) seeded the best tag combos as callable band plays #59-68: Rhino/Lion Now (THE RPO), Rhino Peek, Rocket/Laser Orbit (crossing fakes), Hawk Wheel (three-level flat stress), Nasty jet Zips, and Rainbow/Lightning. Core plays also carry CHAIN notes (when to call it: Rhinos load the box for Owl, Rockets teach the edge to chase for Raccoon, Ram scoring arms Rainbow), filled once by migration wherever a note was empty.
 - Max = H and RB stay in to protect
 
 ### The Series (touch distribution engine)
@@ -139,7 +141,7 @@ The Formation View dropdown now includes every playbook formation (single source
 6. **Wristbands**: printable QB bands (reading order: number, formation, LINE word in red, play word) and Bird Route Cards (all birds × all letters so any kid can slide positions).
 
 ### Data model (top-level keys in the single persisted object, storage key `vh6-coach-data-v1`)
-`players, depth {off, def}, offScheme, defScheme, drills, practice, savedPlans, plays [{id,num,name,formation,concept,dir,tags,core,week,custom,lineCall,type,note,killId}], callSheet, wrist, callLog, gameLabel, script, scriptPos, seasonWeek, pgOverrides, packages [{id,name,steps|ids}], day1Seeded, week2Seeded, libVersion (6), depthVersion (2), safariVersion (7)`
+`players, depth {off, def}, offScheme, defScheme, drills, practice, savedPlans, plays [{id,num,name,formation,concept,dir,tags,core,week,custom,lineCall,type,note,killId}], callSheet, wrist, callLog, gameLabel, script, scriptPos, seasonWeek, pgOverrides, packages [{id,name,steps|ids}], day1Seeded, week2Seeded, libVersion (6), depthVersion (2), safariVersion (8)`
 
 libVersion 4 adds the jet-series install drills (Motion Landmark Races, Jet Touch Pass Timing, Owl Fake & Pop, Reach & Run) and week2Seeded gates a one-time "Week 2 · Jet Series Install (Rocket, Raccoon, Owl)" saved practice plan.
 

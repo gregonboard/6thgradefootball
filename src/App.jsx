@@ -429,6 +429,27 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       qbFake();
       break;
     }
+    case "rbpass": {
+      /* Ram costume: same reach picture, but the RB pulls up and throws deep */
+      reachOL();
+      if (has("Y")) add("Y", "block", [at("Y"), [at("Y")[0] + s * 4, at("Y")[1] - 3]]);
+      const deep = s > 0 ? "Z" : "X";
+      const back = s > 0 ? "X" : "Z";
+      if (has(deep)) add(deep, "route", [at(deep), [at(deep)[0], at(deep)[1] - 3], [at(deep)[0] + s * 3, at(deep)[1] - 20]]);
+      if (has(back)) add(back, "block", [at(back), [at(back)[0], at(back)[1] - 4]]);
+      if (has("H")) {
+        const [hx, hy] = at("H");
+        const turn = [50 + s * 4, 29];
+        add("H", "motion", hx < 50 ? [[hx, hy], [44, 29], turn] : [[hx, hy], [56, 29], turn]);
+        add("H", "block", [turn, [edge, 26], [edge + s * 2, 21]]);
+      }
+      if (has("RB")) {
+        add("RB", "carry", [at("RB"), [50 + s * 8, 30], [50 + s * 16, 28]]);
+        if (has(deep)) add("RB", "throw", [[50 + s * 16, 28], [at(deep)[0] + s * 2, at(deep)[1] - 16]]);
+      }
+      if (has("QB")) add("QB", "fake", [at("QB"), [50 + s * 6, 31], [50 + s * 2, 27]]);
+      break;
+    }
     case "sneak":
       blockAll();
       if (has("QB")) add("QB", "carry", [at("QB"), [50, 24], [50, 16]]);
@@ -615,10 +636,11 @@ const CONCEPTS = {
   bubble:  { fam: "Screen", dirs: ["Rt", "Lt"], words: { Rt: "Reese's", Lt: "Laffy" }, carrier: "WR", signal: "Rub the belly, then point", how: "Called-side outside WR bubbles behind the jet fake, Y and the backside crack down.", read: "Catch and throw now. Pressed over the bubble? MIRROR it the other way before the snap. Free yards when they chase the jet." },
   slip:    { fam: "Screen", dirs: ["Rt", "Lt"], words: { Rt: "Rolo", Lt: "Lifesaver" }, carrier: "RB", signal: "Take a big bite, then point", how: "QB drifts, the line lets the rush through and releases, RB slips out behind it.", read: "Let the rush come, then dump it over their heads." },
   reverse: { fam: "Special", dirs: ["Rt", "Lt"], words: { Rt: "Rewind", Lt: "Loop" }, carrier: "WR", signal: "Spin a finger backward, then point", how: "Full Rocket fake one way, backside WR takes it back the other way behind everyone chasing. Once a game, when they start flying to the jet.", read: "None. Sell the fake, hand it deep." },
+  rbpass:  { fam: "Special", dirs: ["Rt", "Lt"], words: { Rt: "Rainbow", Lt: "Lightning" }, carrier: "WR", signal: "Paint an arc overhead, then point", how: "The dagger. Ram action until the corner comes up to tackle, then the RB pulls up and throws over everyone to the receiver he was pretending to block them for. Off the board only, never voiced, once a game, and only after Ram has scored.", read: "RB: sell Ram three steps, pull up BEHIND the line. Deep man behind everybody? Throw it HIGH. Anything else, tuck it and run Ram. Never force it." },
   blank:   { fam: "Special", dirs: [""],         words: { "": "Custom" }, carrier: null, signal: "Your call", how: "A blank canvas. Use Customize to draw every path yourself.", read: "Your design." },
 };
 /* ---- line calls: the O-line's own channel, spoken first ---- */
-const LINE_CALLS = { power: "HAMMER", owl: "HAMMER", trap: "TRAP", counter: "WRAP", jet: "REACH", keep: "REACH", stretch: "REACH", reverse: "REACH", sneak: "SURGE", sparrow: "QUICK", robin: "QUICK", bubble: "QUICK", hawk: "WALL", falcon: "WALL", eagle: "WALL", flood: "WALL", slip: "GATE" };
+const LINE_CALLS = { power: "HAMMER", owl: "HAMMER", trap: "TRAP", counter: "WRAP", jet: "REACH", keep: "REACH", stretch: "REACH", rbpass: "REACH", reverse: "REACH", sneak: "SURGE", sparrow: "QUICK", robin: "QUICK", bubble: "QUICK", hawk: "WALL", falcon: "WALL", eagle: "WALL", flood: "WALL", slip: "GATE" };
 const LINE_WORDS = ["HAMMER", "TRAP", "WRAP", "REACH", "SURGE", "QUICK", "WALL", "GATE"];
 const lineCallFor = (p) => (p && (p.lineCall || LINE_CALLS[p.concept])) || "";
 
@@ -630,6 +652,7 @@ const playCarrier = (p) => {
   const c = CONCEPTS[p.concept];
   if (!c) return null;
   if (p.concept === "bubble") return p.dir === "Lt" ? "X" : "Z";
+  if (p.concept === "rbpass") return p.dir === "Lt" ? "X" : "Z";
   if (p.concept === "reverse") return p.dir === "Lt" ? "Z" : "X";
   if ((p.tags || []).includes("Now")) return c.carrier + " / H";
   if ((p.tags || []).includes("Peek")) return c.carrier + " / Y";
@@ -655,6 +678,7 @@ const ASSIGNMENTS = {
   bubble:  { OL: "Set and punch. Do not go downfield.", QB: "Catch and throw it NOW.", RB: "Fake.", H: "Jet motion, sell it.", Y: "Wall the first defender inside: get in his way, stay high.", XZ: "Called side bubbles back and out. Other side blocks his man." },
   slip:    { OL: "Block one count, let them through, release flat.", QB: "Drift back, let them come, dump it over their heads.", RB: "Let the rush go by, slip out behind them, eyes up fast.", H: "Run your man off deep.", Y: "Run him off.", XZ: "Run them off deep." },
   reverse: { OL: "Reach like Rocket, then wall off.", QB: "Fake to H, then YOU own the second exchange too: press it deep into the reverse man's basket.", RB: "Fake away.", H: "Full Rocket fake. Best acting on the team.", Y: "Arc, find the safety.", XZ: "Backside man comes around deep, makes a basket, and sprints. Called side blocks down." },
+  rbpass:  { OL: "Reach like Ram but STAY GLUED to your man. Nobody drifts downfield, ever.", QB: "Hand it wide exactly like Ram, then sneak to the flat as his safety valve.", RB: "Run Ram HARD for three steps, pull up behind the line, throw it HIGH to the deep man or tuck and run Ram. Never force it.", H: "Jet motion, turn up and lead exactly like Ram. You are the bait.", Y: "Reach the end exactly like Ram.", XZ: "Called side stalks the corner two counts, then sprints past him deep. Backside blocks his man like always." },
   blank:   { OL: "Coach draws it. Know your line on the picture.", QB: "Coach draws it. Know your path.", RB: "Coach draws it. Know your path.", H: "Coach draws it. Know your path.", Y: "Coach draws it. Know your path.", XZ: "Coach draws it. Know your path." },
 };
 const JOB_GROUPS = [["OL", "O-Line"], ["QB", "Quarterback"], ["RB", "Running Back"], ["H", "H (Slot)"], ["Y", "Y (Tight End)"], ["XZ", "X and Z (Outside)"]];
@@ -734,6 +758,39 @@ function safariSeedPlaysV6() {
     note(mk(56, "Empty", "robin", "", false, 6), "Slant-flat from five out. The backers can't hide."),
     note(mk(57, "Empty", "bubble", "Rt", false, 6), "Empty bubble right: numbers were counted before the snap."),
     note(mk(58, "Empty", "bubble", "Lt", false, 6), "Empty bubble, left."),
+  ];
+}
+/* Sequencing notes for the core plays: WHEN to call it is half the scheme.
+   Filled once (v8) wherever a note is empty, so coach edits always win. */
+const CHAIN_NOTES = {
+  "Doubles · Rhino": "CHAIN: hammer this until they cheat the box. Two good Rhinos make Owl and the kill-to-bubble free.",
+  "Doubles · Lion": "CHAIN: the left hammer. Same rule: make them load the box, then cash the answers.",
+  "Doubles · Rocket": "CHAIN: hit the edge until the end starts chasing. The moment he does, Raccoon walks out the back door.",
+  "Doubles · Laser": "CHAIN: same as Rocket. A chasing edge is an invitation.",
+  "Doubles · Raccoon": "CHAIN: only after Rocket has hurt them. Their chase IS your blocking.",
+  "Doubles · Longhorn": "CHAIN: the left keep. Same rule: the jet fake buys the edge.",
+  "Doubles · Owl": "CHAIN: cash it early while the backers are hungry for Rhino. One completion buys soft boxes all night.",
+  "Doubles · Reese's": "CHAIN: the kill answer. Heavy box for Rhino means this is free candy outside.",
+  "Doubles · Laffy": "CHAIN: free candy, left. Count two or fewer over the bubble and throw it.",
+  "Doubles · Sparrow": "CHAIN: take the cushion until they press. A pressed hitch becomes the GO, and that is six.",
+  "Doubles · Ram": "CHAIN: the counterpunch for downhill backers. After Ram gains twice, they stop playing Rhino honest, and after Ram SCORES, Rainbow is alive.",
+};
+/* v8: the diabolical layer. Tag combos that punish defenses for being right,
+   plus the once-a-game dagger. */
+function safariSeedPlaysV7() {
+  const mk = mkSeedPlay;
+  const note = (p, n) => ({ ...p, note: n });
+  return [
+    note(mk(59, "Doubles", "power", "Rt", false, 4, ["Now"]), "THE RPO. QB reads the man over the slot: he squeezes for Rhino, throw the bubble; he widens, hand Rhino. The defense is wrong before the snap."),
+    note(mk(60, "Doubles", "power", "Lt", false, 4, ["Now"]), "The RPO, left."),
+    note(mk(61, "Doubles", "power", "Rt", false, 5, ["Peek"]), "Rhino with Owl alive behind it. Backers bite even once on film, QB pops Y over their heads. The line never knows."),
+    note(mk(62, "Doubles", "jet", "Rt", false, 5, ["Orbit"]), "Rocket with the RB orbiting the OTHER way. Two fakes crossing at the snap: somebody on defense is always wrong."),
+    note(mk(63, "Doubles", "jet", "Lt", false, 5, ["Orbit"]), "Laser Orbit: the crossing fakes, left."),
+    note(mk(64, "Doubles", "hawk", "", false, 5, ["Wheel"]), "Hawk with the RB wheeling behind the flat. The flat defender cannot cover two levels: curl, flat, or wheel, one of them is naked."),
+    note(mk(65, "Nasty Rt", "jet", "Rt", false, 5, ["Zip"]), "Nasty jet with Z zipping down pre-snap: an extra wall right where the corner wants to force it."),
+    note(mk(66, "Nasty Lt", "jet", "Lt", false, 5, ["Zip"]), "Nasty jet Zip, left."),
+    note(mk(67, "Doubles", "rbpass", "Rt", false, 6), "THE DAGGER. Off the board only, never voiced, once a game, only after Ram has scored. The corner who finally comes up to stop Ram just gave up six."),
+    note(mk(68, "Doubles", "rbpass", "Lt", false, 6), "The dagger, left."),
   ];
 }
 function safariSeedPlays() {
@@ -898,7 +955,7 @@ const RAW_SEED = {
   ],
   practice: { date: "", start: "17:30", title: "Practice Plan", items: [] },
   savedPlans: [],
-  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6()],
+  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7()],
   callLog: [],
   gameLabel: "",
   script: [],
@@ -1046,7 +1103,8 @@ function generatePractice(data, totalMins = 75) {
 
 SEED.packages = seedPackages();
 applyKillPairs(SEED.plays);
-SEED.safariVersion = 7;
+SEED.plays.forEach((p) => { if (!p.note && CHAIN_NOTES[p.name]) p.note = CHAIN_NOTES[p.name]; });
+SEED.safariVersion = 8;
 SEED.savedPlans = [
   { id: uid(), name: "Day 1 · Helmets (Routes + Formations)", savedAt: "library", plan: day1Plan(SEED.drills) },
   { id: uid(), name: "Week 2 · Jet Series Install (Rocket, Raccoon, Owl)", savedAt: "library", plan: week2Plan(SEED.drills) },
@@ -1188,6 +1246,14 @@ function normalizeData(parsed) {
     let n7 = 0;
     plays = [...plays, ...safariSeedPlaysV6().filter((p) => !haveV7.has(p.name)).map((p) => ({ ...p, id: uid(), num: base7 + (++n7) }))];
   }
+  // v8: the diabolical layer (tag combos, chain notes, the dagger).
+  if (!(parsed.safariVersion >= 8)) {
+    const haveV8 = new Set(plays.map((p) => p.name));
+    const base8 = plays.reduce((m, p) => Math.max(m, Number(p.num) || 0), 0);
+    let n8 = 0;
+    plays = [...plays, ...safariSeedPlaysV7().filter((p) => !haveV8.has(p.name)).map((p) => ({ ...p, id: uid(), num: base8 + (++n8) }))];
+    plays = plays.map((p) => (!p.note && CHAIN_NOTES[p.name] ? { ...p, note: CHAIN_NOTES[p.name] } : p));
+  }
   // Concept play names are derived, so vocabulary updates flow through automatically.
   plays = plays.map((p) =>
     p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
@@ -1216,7 +1282,7 @@ function normalizeData(parsed) {
     gameLabel: parsed.gameLabel || "",
     script: parsed.script || [],
     scriptPos: parsed.scriptPos || 0,
-    safariVersion: 7,
+    safariVersion: 8,
     seasonWeek: parsed.seasonWeek || 1,
     pgOverrides: parsed.pgOverrides || {},
     packages,
