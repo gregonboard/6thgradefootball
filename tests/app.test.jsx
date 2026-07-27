@@ -652,6 +652,14 @@ describe("supabase sync", () => {
     expect([...document.querySelectorAll(".print-layer .p-cs-linecall")].map((el) => el.textContent)).toContain("HAMMER");
   });
 
+  it("Print Cards works from inside Formation View", async () => {
+    await load();
+    fireEvent.click(screen.getByText("Formation View"));
+    await waitFor(() => expect(document.querySelector(".fv-layer")).toBeTruthy());
+    fireEvent.click(screen.getByText("Print Cards"));
+    await waitFor(() => expect(document.querySelectorAll(".print-layer .fp-card").length).toBeGreaterThan(0));
+  });
+
   it("has no manual Backup/Restore buttons (cloud sync replaced them)", async () => {
     await load();
     expect(screen.queryByText("Backup")).toBeNull();

@@ -3715,13 +3715,13 @@ tbody tr { cursor: pointer; }
 .btn.gold { background: var(--gold, #EAAA00); border-color: var(--gold, #EAAA00); color: #1C2430; }
 .fp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .fp-card { border: 1.5px solid var(--ink); border-radius: 8px; overflow: hidden; break-inside: avoid; }
-.fp-title { font-family: var(--disp); letter-spacing: 1.5px; background: var(--ink); color: #fff; padding: 3px 8px; font-size: 13px; }
+.fp-title { font-family: var(--disp); font-weight: 700; letter-spacing: 1.5px; background: #fff; color: var(--ink); border-bottom: 1.5px solid var(--ink); padding: 3px 8px; font-size: 13px; }
 .fp-field { position: relative; height: 150px; background: #FBF7EE; }
 .fp-los { position: absolute; left: 4%; right: 4%; top: 14%; border-top: 1.5px dashed #9AA0A8; }
 .fp-dot { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 1px; }
 .fp-label { width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 1.5px solid var(--ink); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 9px; }
-.fp-dot.ol .fp-label { background: #9AA0A8; color: #fff; width: 16px; height: 16px; font-size: 8px; }
-.fp-dot.trav .fp-label { background: var(--gold, #EAAA00); }
+.fp-dot.ol .fp-label { background: #fff; color: var(--ink); border-radius: 2px; width: 16px; height: 16px; font-size: 8px; }
+.fp-dot.trav .fp-label { background: #fff; border-width: 2.5px; border-style: double; }
 .fp-name { font-size: 8.5px; font-weight: 700; white-space: nowrap; background: rgba(255,255,255,0.85); padding: 0 3px; border-radius: 3px; }
 
 /* ---- week dial ---- */
@@ -4087,7 +4087,7 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 }
 
 /* ---- print layer ---- */
-.print-layer { position: fixed; inset: 0; background: #4A4D53; overflow-y: auto; z-index: 50; }
+.print-layer { position: fixed; inset: 0; background: #4A4D53; overflow-y: auto; z-index: 80; }
 .print-toolbar { position: sticky; top: 0; background: var(--ink); color: #fff; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 20px; font-size: 12.5px; z-index: 2; flex-wrap: wrap; }
 .print-toolbar .btn { margin-left: 8px; }
 .print-page { display: flex; justify-content: center; padding: 24px; }
