@@ -173,6 +173,14 @@ function resolvePlayPos(data, label) {
 /* Spread crowded cards apart so nothing overlaps. OL and QB stay planted;
    skill players get nudged outward until same-row neighbors have room. */
 const PG_FIXED = new Set(["LT", "LG", "C", "RG", "RT", "QB"]);
+/* Formation View projection: play formations use tight true splits (6 units
+   between linemen) but the roster cards are ~7.6% wide, so the core of the
+   field is stretched (x1.25) and the flanks compressed to compensate. */
+function fvx(x) {
+  if (x <= 30) return x * (25 / 30);
+  if (x >= 70) return 100 - (100 - x) * (25 / 30);
+  return 50 + (x - 50) * 1.25;
+}
 function fvSpread(spots, rowEps, minGap) {
   const es = Object.entries(spots).map(([k, [x, y]]) => ({ k, x, y, fixed: PG_FIXED.has(k) }));
   for (let pass = 0; pass < 4; pass++) {
@@ -1736,7 +1744,7 @@ function FormationView({ data, up, onClose, onPrintFormations }) {
   const usePlayForm = side === "offense" && activeForm !== "base";
   /* Play-diagram space: y23 = LOS, deeper = bigger. Stretch onto the field view. */
   const playSpots = usePlayForm
-    ? fvSpread(Object.fromEntries(Object.entries(formSpots(activeForm)).map(([k, [x, y]]) => [k, [x, 16 + (y - 23) * 3.2]])), 6, 9)
+    ? fvSpread(Object.fromEntries(Object.entries(formSpots(activeForm)).map(([k, [x, y]]) => [k, [fvx(x), 16 + (y - 23) * 3.2]])), 6, 9)
     : null;
   const playMap = usePlayForm ? resolvePlayMap(data) : null;
   const spots = usePlayForm ? playSpots : side === "offense" ? OFF_SCHEMES[offScheme(data)].spots : DEF_SCHEMES[defScheme(data)].spots;
