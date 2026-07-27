@@ -3238,6 +3238,7 @@ function WristCard({ plays, title, cols }) {
   const perCol = Math.ceil(plays.length / cols) || 1;
   const columns = Array.from({ length: cols }, (_, c) => plays.slice(c * perCol, (c + 1) * perCol));
   const dense = perCol > 8;
+  const roomy = perCol <= 5; /* few plays = big letters for 11-year-old eyes */
   return (
     <div className="wrist-card">
       <div className="wrist-title">{title || "PLAYS"}</div>
@@ -3245,11 +3246,11 @@ function WristCard({ plays, title, cols }) {
         {columns.map((col, i) => (
           <div key={i} className="wrist-col">
             {col.map((p) => (
-              <div key={p.id} className={"wrist-play" + (dense ? " dense" : "")}>
+              <div key={p.id} className={"wrist-play" + (dense ? " dense" : "") + (roomy ? " roomy" : "")}>
                 <span className="wp-num">{p.num}</span>
                 <span className="wp-name">
                   {p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
-                    ? <>{p.formation} · <span className="wp-line">{lineCallFor(p)}</span> · {callWord(p.concept, p.dir, p.tags || [])}</>
+                    ? <>{p.formation !== "Doubles" && <>{p.formation} · </>}<span className="wp-line">{lineCallFor(p)}</span> · {callWord(p.concept, p.dir, p.tags || [])}</>
                     : <>{lineCallFor(p) && <span className="wp-line">{lineCallFor(p)} · </span>}{p.name}</>}
                 </span>
                 {p._kill != null && <span className="wp-kill">K{p._kill}</span>}
@@ -3995,7 +3996,7 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .check-row { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 5px 6px; border-bottom: 1px dotted var(--line); cursor: pointer; }
 .type-dot, .key-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 .wrist-warn { margin: 0 16px 10px; padding: 8px 10px; background: #FFF3CD; border: 1.5px dashed #b8860b; font-size: 12px; line-height: 1.4; }
-.wrist-preview-wrap { padding: 20px; display: flex; justify-content: center; background: repeating-linear-gradient(45deg, #F4F2ED, #F4F2ED 12px, #EFEDE6 12px, #EFEDE6 24px); }
+.wrist-preview-wrap { padding: 20px; display: flex; justify-content: flex-start; overflow-x: auto; background: repeating-linear-gradient(45deg, #F4F2ED, #F4F2ED 12px, #EFEDE6 12px, #EFEDE6 24px); }
 .wrist-card { width: 5in; height: 3in; background: #fff; border: 2px solid var(--ink); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
 .wrist-title { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 3px; text-align: center; background: var(--ink); color: #fff; padding: 2px 0; text-transform: uppercase; }
 .wrist-cols { flex: 1; display: grid; }
@@ -4004,8 +4005,11 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .wrist-play { display: flex; align-items: center; gap: 5px; border-bottom: 1px solid #C9CBCF; padding: 1px 4px; flex: 1; min-height: 0; }
 .wrist-play:last-child { border-bottom: none; }
 .wp-num { font-family: var(--mono); font-weight: 700; font-size: 13px; color: var(--red); min-width: 20px; text-align: right; }
-.wp-name { font-family: var(--disp); font-weight: 600; font-size: 14px; letter-spacing: .5px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wp-name { font-family: var(--disp); font-weight: 600; font-size: 14px; letter-spacing: .5px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
 .wrist-play.dense .wp-name { font-size: 11.5px; }
+.wrist-play.roomy .wp-name { font-size: 16px; letter-spacing: .3px; }
+.wrist-play.roomy .wp-num { font-size: 16px; min-width: 24px; }
+.wrist-play.roomy .wp-line { font-size: 10px; }
 .wrist-play.dense .wp-num { font-size: 11px; }
 @media (max-width: 640px) { .wrist-preview-wrap { transform-origin: top left; overflow-x: auto; } }
 
