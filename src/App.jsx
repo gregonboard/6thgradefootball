@@ -830,6 +830,15 @@ function safariSeedPlaysV8() {
     note(mk(70, "I Rt", "sneak", "", false, 4), "The REAL Moose: under center, hands under the big C, surge. This is the goal-line and wet-ball sneak; the Tank version stays for tempo."),
   ];
 }
+/* v11: the reverse gets its band numbers (it was doctrine with no play). */
+function safariSeedPlaysV9() {
+  const mk = mkSeedPlay;
+  const note = (p, n) => ({ ...p, note: n });
+  return [
+    note(mk(71, "Doubles", "reverse", "Rt", false, 5), "Off the board only, once a game, after the jets have them flying. QB owns both exchanges."),
+    note(mk(72, "Doubles", "reverse", "Lt", false, 5), "The reverse, left."),
+  ];
+}
 function safariSeedPlays() {
   const mk = mkSeedPlay;
   return [
@@ -992,7 +1001,7 @@ const RAW_SEED = {
   ],
   practice: { date: "", start: "17:30", title: "Practice Plan", items: [] },
   savedPlans: [],
-  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7(), ...safariSeedPlaysV8()],
+  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7(), ...safariSeedPlaysV8(), ...safariSeedPlaysV9()],
   callLog: [],
   gameLabel: "",
   script: [],
@@ -1141,7 +1150,7 @@ function generatePractice(data, totalMins = 75) {
 SEED.packages = seedPackages();
 applyKillPairs(SEED.plays);
 SEED.plays.forEach((p) => { if (!p.note && CHAIN_NOTES[p.name]) p.note = CHAIN_NOTES[p.name]; });
-SEED.safariVersion = 10;
+SEED.safariVersion = 11;
 SEED.savedPlans = [
   { id: uid(), name: "Day 1 · Helmets (Routes + Formations)", savedAt: "library", plan: day1Plan(SEED.drills) },
   { id: uid(), name: "Week 2 · Jet Series Install (Rocket, Raccoon, Owl)", savedAt: "library", plan: week2Plan(SEED.drills) },
@@ -1303,6 +1312,13 @@ function normalizeData(parsed) {
     let n10 = 0;
     plays = [...plays, ...safariSeedPlaysV8().filter((p) => !haveV10.has(p.name)).map((p) => ({ ...p, id: uid(), num: base10 + (++n10) }))];
   }
+  // v11: Rewind/Loop get band numbers (Greg's explicit ask).
+  if (!(parsed.safariVersion >= 11)) {
+    const haveV11 = new Set(plays.map((p) => p.name));
+    const base11 = plays.reduce((m, p) => Math.max(m, Number(p.num) || 0), 0);
+    let n11 = 0;
+    plays = [...plays, ...safariSeedPlaysV9().filter((p) => !haveV11.has(p.name)).map((p) => ({ ...p, id: uid(), num: base11 + (++n11) }))];
+  }
   // Concept play names are derived, so vocabulary updates flow through automatically.
   plays = plays.map((p) =>
     p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
@@ -1331,7 +1347,7 @@ function normalizeData(parsed) {
     gameLabel: parsed.gameLabel || "",
     script: parsed.script || [],
     scriptPos: parsed.scriptPos || 0,
-    safariVersion: 10,
+    safariVersion: 11,
     seasonWeek: parsed.seasonWeek || 1,
     pgOverrides: parsed.pgOverrides || {},
     packages,
@@ -3051,6 +3067,29 @@ function SignalsPrint({ data }) {
 /* ============================================================
    CALL SHEET
    ============================================================ */
+/* ---- call sheet generator: fills EMPTY situations from installed plays ---- */
+const CALL_SHEET_RECIPE = {
+  openers: ["Doubles · Rhino", "Doubles · Rocket", "Doubles · Sparrow", "Doubles · Lion", "Doubles · Raccoon", "Doubles · Owl"],
+  run: ["Doubles · Rhino", "Doubles · Lion", "Doubles · Rocket", "Doubles · Laser", "Doubles · Ram", "Doubles · Leopard", "Doubles · Rabbit", "Doubles · Lynx"],
+  pass: ["Doubles · Sparrow", "Doubles · Robin", "Doubles · Hawk", "Doubles · Owl", "Doubles · Raven", "Doubles · Lark"],
+  third_short: ["I Rt · Moose", "Tank Rt · Moose", "I Rt · Rhino", "Tank Rt · Rhino", "Doubles · Rabbit"],
+  third_long: ["Doubles · Raven", "Doubles · Lark", "Doubles · Hawk", "Doubles · Rolo", "Doubles · Lifesaver"],
+  redzone: ["Doubles · Rhino", "Tank Rt · Owl", "Doubles · Reese's", "Doubles · Rocket"],
+  goalline: ["I Rt · Moose", "I Rt · Rhino", "I Lt · Lion", "Tank Rt · Owl"],
+  special: ["Doubles · Rewind", "Doubles · Loop", "Doubles · Rainbow", "Doubles · Lightning", "Doubles · Rhino Peek"],
+};
+function buildCallSheet(data) {
+  const wk = data.seasonWeek || 1;
+  const installed = data.plays.filter((p) => wk >= 9 || !p.week || p.week <= wk);
+  const idByName = Object.fromEntries(installed.map((p) => [p.name, p.id]));
+  const cs = { ...(data.callSheet || {}) };
+  for (const [key, names] of Object.entries(CALL_SHEET_RECIPE)) {
+    if ((cs[key] || []).length > 0) continue; /* the coach's picks always win */
+    cs[key] = names.map((n) => idByName[n]).filter(Boolean).slice(0, 6);
+  }
+  return cs;
+}
+
 function CallSheetTab({ data, up, onPrint }) {
   const cs = data.callSheet || {};
   const plays = data.plays;
@@ -3070,7 +3109,10 @@ function CallSheetTab({ data, up, onPrint }) {
     <section className="panel">
       <div className="panel-head">
         <h2>Call Sheet Builder</h2>
-        <button className="btn" onClick={onPrint} disabled={!anyAssigned}>Print Call Sheet</button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="btn ghost" onClick={() => up({ callSheet: buildCallSheet(data) })} title="Fills every EMPTY situation from what's installed. Boxes you already filled are never touched.">⚡ Fill It For Me</button>
+          <button className="btn" onClick={onPrint} disabled={!anyAssigned}>Print Call Sheet</button>
+        </div>
       </div>
       <p className="hint">Slot plays into game situations. A play can live in more than one box. Print, laminate, call the game.</p>
       <div className="cs-grid">
@@ -3107,8 +3149,10 @@ function CallSheetTab({ data, up, onPrint }) {
    ============================================================ */
 function WristTab({ data, up, onPrint, onPrintRoutes }) {
   const w = data.wrist;
-  const plays = [...data.plays].sort((a, b) => a.num - b.num);
-  const selected = w.selected; // null = all
+  const wk = data.seasonWeek || 1;
+  /* the band shows what's installed (WEEK dial), same as every other tab */
+  const plays = [...data.plays].sort((a, b) => a.num - b.num).filter((p) => wk >= 9 || !p.week || p.week <= wk);
+  const selected = w.selected; // null = all installed
   const setW = (patch) => up({ wrist: { ...w, ...patch } });
 
   const isOn = (id) => selected === null || selected.includes(id);
@@ -3143,11 +3187,16 @@ function WristTab({ data, up, onPrint, onPrintRoutes }) {
         <p className="hint">Cards print at 5" × 3", the standard triple-window youth wristband insert. Cut on the dashed lines and slide into the sleeve. Print one card per player who wears a band, plus spares.</p>
         <div className="check-head">
           <b>Plays on the band ({active.length})</b>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button className="btn ghost small" onClick={() => setW({ selected: null })}>All</button>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button className="btn ghost small" onClick={() => setW({ selected: null })} title="Everything installed thru the WEEK dial">All installed</button>
+            <button className="btn ghost small" onClick={() => setW({ selected: plays.filter((p) => p.core).map((p) => p.id) })} title="Just the starred one-word calls">Core only</button>
+            <button className="btn ghost small" onClick={() => setW({ selected: [...new Set(Object.values(data.callSheet || {}).flat())].filter((id) => plays.some((p) => p.id === id)) })} title="Exactly what's on this week's call sheet">Call sheet</button>
             <button className="btn ghost small" onClick={() => setW({ selected: [] })}>None</button>
           </div>
         </div>
+        {Math.ceil(active.length / (w.cols || 3)) > 12 && (
+          <div className="wrist-warn">Heads up: {active.length} plays means {Math.ceil(active.length / (w.cols || 3))} rows per column, too small for 6th grade eyes on a 3-inch card. Use Core only or Call sheet, or turn the WEEK dial down. 12 rows per column is the readable limit.</div>
+        )}
         <div className="check-list">
           {plays.map((p) => (
             <label key={p.id} className="check-row">
@@ -3470,7 +3519,10 @@ function CallSheetPrint({ data }) {
 
 function WristPrint({ data }) {
   const w = data.wrist;
-  const plays = [...data.plays].sort((a, b) => a.num - b.num).filter((p) => w.selected === null || w.selected.includes(p.id));
+  const wk = data.seasonWeek || 1;
+  const plays = [...data.plays].sort((a, b) => a.num - b.num)
+    .filter((p) => wk >= 9 || !p.week || p.week <= wk)
+    .filter((p) => w.selected === null || w.selected.includes(p.id));
   return (
     <div className="sheet">
       <div className="wrist-print-grid">
@@ -3928,6 +3980,7 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .check-list { max-height: 380px; overflow-y: auto; padding: 4px 16px 16px; display: grid; gap: 2px; }
 .check-row { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 5px 6px; border-bottom: 1px dotted var(--line); cursor: pointer; }
 .type-dot, .key-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.wrist-warn { margin: 0 16px 10px; padding: 8px 10px; background: #FFF3CD; border: 1.5px dashed #b8860b; font-size: 12px; line-height: 1.4; }
 .wrist-preview-wrap { padding: 20px; display: flex; justify-content: center; background: repeating-linear-gradient(45deg, #F4F2ED, #F4F2ED 12px, #EFEDE6 12px, #EFEDE6 24px); }
 .wrist-card { width: 5in; height: 3in; background: #fff; border: 2px solid var(--ink); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
 .wrist-title { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 3px; text-align: center; background: var(--ink); color: #fff; padding: 2px 0; text-transform: uppercase; }
@@ -4055,4 +4108,4 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
   );
 }
 
-export { normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, genPlayElements, generatePractice, drillMatchesBucket, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots };
+export { normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, genPlayElements, generatePractice, drillMatchesBucket, buildCallSheet, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots };

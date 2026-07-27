@@ -2,6 +2,7 @@ import React from "react";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within, cleanup } from "@testing-library/react";
 import App, {
+  buildCallSheet,
   normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord,
   LINE_CALLS, ASSIGNMENTS, genPlayElements, generatePractice, drillMatchesBucket, SEED, seedPackages, day1Plan, applyKillPairs,
   installedForms, resolvePlayPos, FORM_WEEKS, formSpots,
@@ -56,7 +57,7 @@ describe("vocabulary", () => {
     for (const want of ["Doubles · Raven", "Trips Rt · Raven", "Doubles · Hawk", "Empty · Robin", "Empty · Reese's", "Empty · Laffy"]) {
       expect(names, want + " is seeded").toContain(want);
     }
-    expect(SEED.plays.length).toBe(70);
+    expect(SEED.plays.length).toBe(72);
   });
   it("never installs a formation before its first play", () => {
     for (const f of Object.keys(FORM_WEEKS)) {
@@ -124,6 +125,27 @@ describe("vocabulary", () => {
     expect(ASSIGNMENTS.owl.OL).toMatch(/RIGHT, every time/);
     expect(CONCEPTS.owl.how).toMatch(/Lion Peek/); // the left-action answer exists
   });
+  it("Rewind and Loop finally have band numbers", () => {
+    const names = SEED.plays.map((p) => p.name);
+    expect(names).toContain("Doubles · Rewind");
+    expect(names).toContain("Doubles · Loop");
+  });
+  it("Fill It For Me builds a call sheet from installed plays, never clobbering picks", () => {
+    const data = { ...SEED, seasonWeek: 9, callSheet: {} };
+    const cs = buildCallSheet(data);
+    for (const key of ["openers", "run", "pass", "third_short", "third_long", "redzone", "goalline", "special"]) {
+      expect((cs[key] || []).length, key + " gets plays").toBeGreaterThan(0);
+      for (const id of cs[key]) expect(SEED.plays.some((p) => p.id === id), "every id is a real play").toBe(true);
+    }
+    // coach's existing picks always win
+    const mine = [SEED.plays[0].id];
+    const cs2 = buildCallSheet({ ...data, callSheet: { run: mine } });
+    expect(cs2.run).toEqual(mine);
+    // week gating: at week 2 the goal-line box only offers installed plays
+    const wk2 = buildCallSheet({ ...SEED, seasonWeek: 2, callSheet: {} });
+    const wk2names = wk2.goalline.map((id) => SEED.plays.find((p) => p.id === id).name);
+    expect(wk2names.every((n) => { const p = SEED.plays.find((x) => x.name === n); return !p.week || p.week <= 2; })).toBe(true);
+  });
   it("I formation: legal, under center, FB leads instead of jet motion", () => {
     const spots = formSpots("I Rt");
     const onLine = Object.entries(spots).filter(([, [, y]]) => y === 23).map(([k]) => k).sort();
@@ -182,7 +204,7 @@ describe("seeds", () => {
     for (const want of ["Bunch Rt · Rocket", "Nasty Rt · Ram", "Tank Rt · Ram", "Trips Rt · Rhino", "Tank Lt · Leopard"]) {
       expect(names, want + " is seeded").toContain(want);
     }
-    expect(SEED.plays.length).toBe(70);
+    expect(SEED.plays.length).toBe(72);
   });
   it("renames the jet drill in place so saved plans keep their links", () => {
     const old = { players: [], drills: [{ id: "d-keep", name: "Jet Touch Pass Timing", cat: "Group", group: "Skill (QB/RB/WR/TE)", mins: 12, notes: "old" }], libVersion: 4, safariVersion: 6, day1Seeded: true, week2Seeded: true, savedPlans: [], plays: SEED.plays.map((p) => ({ ...p })) };
@@ -231,15 +253,15 @@ describe("seeds", () => {
     const names = v3.plays.map((p) => p.name);
     expect(names).toContain("Tank Rt · Owl");
     expect(names.filter((n) => n === "Tank Rt · Owl").length).toBe(1);
-    expect(v3.plays.length).toBe(70); // 30 + v4 looks + Ram/Leopard + v6 costumes + QB tree
-    expect(v3.safariVersion).toBe(10);
+    expect(v3.plays.length).toBe(72); // 30 + v4 looks + Ram/Leopard + v6 costumes + QB tree
+    expect(v3.safariVersion).toBe(11);
     expect(v3.packages.map((p) => p.name)).toContain("CHEETAH");
     const rocket = v3.plays.find((p) => p.name === "Doubles · Rocket");
     const reeses = v3.plays.find((p) => p.name === "Doubles · Reese's");
     expect(rocket.killId).toBe(reeses.id);
     // running it again must change nothing (Greg's live data reloads every session)
     const again = normalizeData(JSON.parse(JSON.stringify(v3)));
-    expect(again.plays.length).toBe(70);
+    expect(again.plays.length).toBe(72);
     expect(again.packages.length).toBe(v3.packages.length);
   });
   it("seeds the elite drill library with coaching detail", () => {
@@ -319,7 +341,7 @@ describe("normalizeData migration", () => {
     expect(keepLt.name).toContain("Longhorn"); // derived names propagate the rename
     expect(d.savedPlans.some((s) => /day 1/i.test(s.name))).toBe(true);
     expect(d.players[0].name).toBe("Old Kid"); // user data untouched
-    expect(d.safariVersion).toBe(10);
+    expect(d.safariVersion).toBe(11);
   });
   it("does not double-seed on a second load", () => {
     const once = normalizeData({ safariVersion: 2, plays: SEED.plays.map((p) => ({ ...p })) });
