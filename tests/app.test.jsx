@@ -636,6 +636,22 @@ describe("supabase sync", () => {
     expect(document.querySelector(".print-layer .p-meta").textContent).toMatch(/thru week 1/);
   });
 
+  it("every call surface includes the line word (Greg's July 27 catch)", async () => {
+    await load();
+    // Caller buttons carry the line word
+    fireEvent.click(screen.getByText("Caller"));
+    await waitFor(() => expect(document.querySelectorAll(".cb-line").length).toBeGreaterThan(0));
+    expect([...document.querySelectorAll(".cb-line")].some((el) => el.textContent === "HAMMER")).toBe(true);
+    // Call sheet chips and print carry it too
+    fireEvent.click(screen.getByText("Call Sheet"));
+    fireEvent.click(screen.getByText(/Fill It For Me/));
+    await waitFor(() => expect(document.querySelectorAll(".cs-chip").length).toBeGreaterThan(0));
+    expect([...document.querySelectorAll(".cs-chip")].some((el) => /HAMMER/.test(el.textContent))).toBe(true);
+    fireEvent.click(screen.getByText("Print Call Sheet"));
+    await waitFor(() => expect(document.querySelectorAll(".print-layer .p-cs-linecall").length).toBeGreaterThan(0));
+    expect([...document.querySelectorAll(".print-layer .p-cs-linecall")].map((el) => el.textContent)).toContain("HAMMER");
+  });
+
   it("has no manual Backup/Restore buttons (cloud sync replaced them)", async () => {
     await load();
     expect(screen.queryByText("Backup")).toBeNull();

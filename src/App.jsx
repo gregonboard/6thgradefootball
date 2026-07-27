@@ -662,6 +662,13 @@ const CONCEPTS = {
 const LINE_CALLS = { power: "HAMMER", owl: "HAMMER", trap: "TRAP", counter: "WRAP", jet: "REACH", keep: "REACH", stretch: "REACH", rbpass: "REACH", reverse: "REACH", sneak: "SURGE", sparrow: "QUICK", robin: "QUICK", bubble: "QUICK", hawk: "WALL", falcon: "WALL", eagle: "WALL", flood: "WALL", slip: "GATE" };
 const LINE_WORDS = ["HAMMER", "TRAP", "WRAP", "REACH", "SURGE", "QUICK", "WALL", "GATE"];
 const lineCallFor = (p) => (p && (p.lineCall || LINE_CALLS[p.concept])) || "";
+/* the full spoken call: Formation (unless Doubles) · LINE WORD · play word */
+const playCallLabel = (p) => {
+  const line = lineCallFor(p);
+  const word = p.concept && CONCEPTS[p.concept] && p.concept !== "blank" ? callWord(p.concept, p.dir, p.tags || []) : p.name;
+  const form = p.formation && p.formation !== "Doubles" ? p.formation + " · " : "";
+  return `${form}${line ? line + " · " : ""}${word}`;
+};
 const lineListenText = (p) => {
   const line = lineCallFor(p);
   if (!line) return "";
@@ -2582,7 +2589,7 @@ function CallerTab({ data, up }) {
         <div className="tempo-row">
           <button className="tempo-btn turbo" disabled={!last || (last.label || "").startsWith("TURBO")} onClick={turbo} title="Same play again, snap it now. Never twice in a row.">TURBO</button>
           <button className="tempo-btn mirror" disabled={!last} onClick={mirror} title="Same play, other direction">MIRROR</button>
-          {last && <span className="last-call">Last: <b>{last.word || last.label}</b></span>}
+          {last && (() => { const lp = plays.find((x) => x.id === last.playId); return <span className="last-call">Last: <b>{lp ? playCallLabel(lp) : last.word || last.label}</b></span>; })()}
           <label className="tag-check" style={{ marginLeft: "auto" }} title="Tapping a play flashes its giant number to hold up. The board IS the call.">
             <input type="checkbox" checked={boardMode} onChange={(e) => setBoardMode(e.target.checked)} />Board mode
           </label>
@@ -2599,7 +2606,7 @@ function CallerTab({ data, up }) {
           return kp ? (
             <div className="result-row">
               <span className="hint" style={{ margin: 0 }}>Box heavy?</span>
-              <button className="tempo-btn kill" onClick={() => logCall(kp, "KILL")}>KILL → {kp.concept ? callWord(kp.concept, kp.dir, kp.tags || []) : kp.name} #{kp.num}</button>
+              <button className="tempo-btn kill" onClick={() => logCall(kp, "KILL")}>KILL → {playCallLabel(kp)} #{kp.num}</button>
             </div>
           ) : null;
         })()}
@@ -2619,7 +2626,7 @@ function CallerTab({ data, up }) {
               const p = plays.find((x) => x.id === pkgRun.ids[pkgRun.pos]);
               return (
                 <div className="script-bar pkg-run">
-                  <span className="script-next">{pkgRun.name} · {pkgRun.pos + 1} of {pkgRun.ids.length} · NEXT: <b>{p ? (p.concept ? callWord(p.concept, p.dir, p.tags || []) : p.name) : "?"}</b> <span className="mono">#{p ? p.num : ""}</span></span>
+                  <span className="script-next">{pkgRun.name} · {pkgRun.pos + 1} of {pkgRun.ids.length} · NEXT: <b>{p ? playCallLabel(p) : "?"}</b> <span className="mono">#{p ? p.num : ""}</span></span>
                   <button className="btn" onClick={callPkgNext}>CALL IT</button>
                   <button className="btn ghost small" onClick={() => setPkgRun(null)}>✕</button>
                 </div>
@@ -2630,7 +2637,7 @@ function CallerTab({ data, up }) {
               {pkgPicks.map((v, i) => (
                 <select key={i} className="cell" value={v} onChange={(e) => setPkgPicks(pkgPicks.map((x, j) => (j === i ? e.target.value : x)))}>
                   <option value="">{i + 1}…</option>
-                  {plays.map((p) => <option key={p.id} value={p.id}>#{p.num} {p.name}</option>)}
+                  {plays.map((p) => <option key={p.id} value={p.id}>#{p.num} {playCallLabel(p)}</option>)}
                 </select>
               ))}
               <button className="btn small" disabled={!pkgName.trim() || pkgPicks.some((x) => !x)} onClick={addPkg}>+ Package</button>
@@ -2650,7 +2657,7 @@ function CallerTab({ data, up }) {
             <div className="script-bar">
               {nextScripted ? (
                 <>
-                  <span className="script-next">NEXT: <b>{nextScripted.concept ? callWord(nextScripted.concept, nextScripted.dir, nextScripted.tags || []) : nextScripted.name}</b> <span className="mono">#{nextScripted.num}</span></span>
+                  <span className="script-next">NEXT: <b>{playCallLabel(nextScripted)}</b> <span className="mono">#{nextScripted.num}</span></span>
                   <button className="btn" onClick={callScripted}>Call It</button>
                 </>
               ) : (
@@ -2663,7 +2670,7 @@ function CallerTab({ data, up }) {
             <div className="script-chips">
               {scriptPlays.map((p, i) => (
                 <span key={i} className={"script-chip" + (i < scriptPos ? " done" : i === scriptPos ? " up" : "")}>
-                  {i + 1}. {p.concept ? callWord(p.concept, p.dir, p.tags || []) : p.name}
+                  {i + 1}. {playCallLabel(p)}
                   <button onClick={() => removeFromScript(i)}>✕</button>
                 </span>
               ))}
@@ -2671,7 +2678,7 @@ function CallerTab({ data, up }) {
             <div className="script-bar">
               <select value="" onChange={(e) => addToScript(e.target.value)}>
                 <option value="">+ add play to script…</option>
-                {plays.map((p) => <option key={p.id} value={p.id}>#{p.num} {p.name}</option>)}
+                {plays.map((p) => <option key={p.id} value={p.id}>#{p.num} {playCallLabel(p)}</option>)}
               </select>
             </div>
           </>
@@ -2680,7 +2687,7 @@ function CallerTab({ data, up }) {
         <div className="caller-grid">
           {core.map((p) => (
             <button key={p.id} className="call-btn core" onClick={() => logCall(p)}>
-              <span className="cb-num">{p.num}</span>
+              <span className="cb-num">{p.num} <span className="cb-line">{lineCallFor(p)}</span></span>
               <span className="cb-word">{p.concept ? callWord(p.concept, p.dir, p.tags || []) : p.name}</span>
             </button>
           ))}
@@ -2695,8 +2702,8 @@ function CallerTab({ data, up }) {
               <div className="caller-grid">
                 {list.map((p) => (
                   <button key={p.id} className="call-btn" onClick={() => logCall(p)}>
-                    <span className="cb-num">{p.num}</span>
-                    <span className="cb-word small">{p.name}</span>
+                    <span className="cb-num">{p.num} <span className="cb-line">{lineCallFor(p)}</span></span>
+                    <span className="cb-word small">{playCallLabel(p)}</span>
                   </button>
                 ))}
               </div>
@@ -3130,7 +3137,7 @@ function CallSheetTab({ data, up, onPrint }) {
                 if (!p) return null;
                 return (
                   <span key={pid} className="cs-chip" style={{ borderColor: TYPE_COLORS[p.type] }}>
-                    <b>{p.num}</b> {p.name}
+                    <b>{p.num}</b> {playCallLabel(p)}
                     <button onClick={() => removeFrom(s.key, pid)}>✕</button>
                   </span>
                 );
@@ -3140,7 +3147,7 @@ function CallSheetTab({ data, up, onPrint }) {
               <option value="">+ Add play…</option>
               {[...plays].sort((a, b) => a.num - b.num)
                 .filter((p) => !(cs[s.key] || []).includes(p.id))
-                .map((p) => <option key={p.id} value={p.id}>#{p.num} {p.name} ({p.type})</option>)}
+                .map((p) => <option key={p.id} value={p.id}>#{p.num} {playCallLabel(p)} ({p.type})</option>)}
             </select>
           </div>
         ))}
@@ -3505,7 +3512,7 @@ function CallSheetPrint({ data }) {
               return (
                 <div key={pid} className="p-cs-play">
                   <span className="p-cs-num" style={{ background: TYPE_COLORS[p.type] }}>{p.num}</span>
-                  <span className="p-cs-name">{p.name}</span>
+                  <span className="p-cs-name"><span className="p-cs-linecall">{lineCallFor(p)}</span> {p.concept && CONCEPTS[p.concept] && p.concept !== "blank" ? callWord(p.concept, p.dir, p.tags || []) : p.name}</span>
                   <span className="p-cs-form">{p.formation}</span>
                 </div>
               );
@@ -3657,6 +3664,8 @@ tbody tr { cursor: pointer; }
 .call-btn:active { background: #FDF3F4; }
 .call-btn.core { border-color: #B7791F; background: #FFFBF2; }
 .cb-num { font-family: var(--mono); font-weight: 700; font-size: 11px; color: var(--muted); }
+.cb-line { font-family: var(--disp); font-weight: 700; font-size: 10px; letter-spacing: 1px; color: #B7791F; }
+.p-cs-linecall { font-family: var(--disp); font-weight: 700; letter-spacing: .5px; color: var(--red); }
 .cb-word { font-family: var(--disp); font-weight: 700; font-size: 19px; letter-spacing: 1px; text-transform: uppercase; text-align: center; line-height: 1; }
 .cb-word.small { font-size: 13px; letter-spacing: .5px; text-transform: none; }
 .touch-row { display: flex; gap: 8px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--line); }
