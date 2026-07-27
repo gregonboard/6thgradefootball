@@ -65,7 +65,7 @@ Eight words compress to four techniques (down+pull family, reach, pass set, rele
 - Sub = QB sneak
 
 **Passes (birds; bigger bird = deeper ball):**
-- Sparrow = hitches at 5 (QB: pick widest cushion pre-snap)
+- Sparrow = hitches at 5, H slant behind them, Y stick (QB: pick widest cushion pre-snap; pressed hitch becomes a GO). July 27 ruling from Greg: H's route is a SLANT, not an out; the out collided with X's hitch at youth splits. Do not change back.
 - Robin = slant-flat (QB: flat first, slant behind it)
 - Hawk = curl-flat with Y on the WHEEL (July 26: restored from last year's tree where the TE wheel scored repeatedly with these same kids; the triangle is curl, flat, wheel and one defender cannot cover it). QB read is still one man: the man over the slot; a squatting flat defender means the wheel is six.
 - Owl = TE seam pop off a perfect Rhino fake (the most unfair play at this level; line hears HAMMER and blocks run). DIRECTION RULING (Greg's catch, July 27): Owl starts with O, so the line's "HAMMER plus R or L" rule had no answer. Owl is ALWAYS Rhino action to the RIGHT, all season; line teach is one sentence: "No R or L after HAMMER means Owl: Rhino rules, block it right." The left-action seam already exists as Lion Peek. The diagram now draws true HAMMER blocking (backside guard pull included), which it previously lacked.
