@@ -136,7 +136,7 @@ function assignmentsFor(data, side, id) {
    Single source of truth: PLAY_FORM_NAMES / formSpots drive both the
    Play Lab and the Formation View, so the two can never drift apart.
    FORM_WEEKS staggers the install to match the WEEK dial. */
-const FORM_WEEKS = { "Doubles": 1, "Doubles Lt": 1, "Trips Rt": 1, "Trips Lt": 1, "Tank Rt": 4, "Tank Lt": 4, "Bunch Rt": 5, "Bunch Lt": 5, "Empty": 6, "Stack": 5, "Nasty Rt": 5, "Nasty Lt": 5 };
+const FORM_WEEKS = { "Doubles": 1, "Doubles Lt": 1, "Trips Rt": 1, "Trips Lt": 1, "Tank Rt": 4, "Tank Lt": 4, "I Rt": 4, "I Lt": 4, "Bunch Rt": 5, "Bunch Lt": 5, "Empty": 6, "Stack": 5, "Nasty Rt": 5, "Nasty Lt": 5 };
 const installedForms = (week) => PLAY_FORM_NAMES.filter((f) => (FORM_WEEKS[f] || 1) <= week);
 /* Map play diagram labels to depth chart positions JOINTLY: each label
    has a preference list, resolved in order, and nobody gets used twice.
@@ -304,10 +304,11 @@ const PLAY_FORMS = {
   "Empty":   { X: [6, 23], H: [15, 25], RB: [24, 26], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [88, 25], QB: [50, 30] },
   "Tank":    { X: [8, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [73, 26], Z: [86, 25], QB: [50, 30], RB: [50, 35] },
   "Bunch":   { X: [6, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [72, 27], Z: [77, 25], QB: [50, 30], RB: [43, 30] },
+  "I":       { X: [8, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [84, 25], QB: [50, 26.5], H: [50, 31], RB: [50, 35] },
   "Stack":   { X: [8, 23], H: [9, 27], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [88, 23], Z: [87, 27], QB: [50, 30], RB: [43, 30] },
   "Nasty":   { X: [26, 23], H: [32, 26], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [74, 25], QB: [50, 30], RB: [43, 30] },
 };
-const PLAY_FORM_NAMES = ["Doubles", "Doubles Lt", "Trips Rt", "Trips Lt", "Bunch Rt", "Bunch Lt", "Stack", "Nasty Rt", "Nasty Lt", "Empty", "Tank Rt", "Tank Lt"];
+const PLAY_FORM_NAMES = ["Doubles", "Doubles Lt", "Trips Rt", "Trips Lt", "Bunch Rt", "Bunch Lt", "Stack", "Nasty Rt", "Nasty Lt", "Empty", "Tank Rt", "Tank Lt", "I Rt", "I Lt"];
 
 function formSpots(formName) {
   const lt = / Lt$/.test(formName);
@@ -341,8 +342,10 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
     for (const L of ["X", "Z"]) if (has(L) && !skip.includes(L)) add(L, "block", [at(L), [at(L)[0], at(L)[1] - 4]]);
     if (has("Y") && !skip.includes("Y")) add("Y", "block", [at("Y"), [at("Y")[0] - s * 2, at("Y")[1] - 4]]);
   };
+  const hIsFB = has("H") && Math.abs(at("H")[0] - 50) < 8 && at("H")[1] > 26;
+  const fbLead = () => hIsFB && add("H", "block", [at("H"), [50 + s * 8, 27], [50 + s * 13, 22]]);
   const jetMotion = (thenFake = true) => {
-    if (!has("H")) return;
+    if (!has("H") || hIsFB) return fbLead();
     const [hx, hy] = at("H");
     const across = hx < 50 ? [[hx, hy], [42, 29], [56, 29]] : [[hx, hy], [58, 29], [44, 29]];
     add("H", "motion", across);
@@ -621,7 +624,7 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
 
 /* ---- the dictionary ---- */
 const CONCEPTS = {
-  power:   { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Rhino", Lt: "Lion" }, carrier: "RB", signal: "Fist to the nose like a horn, then point", how: "Playside blocks down, backside guard pulls and leads. RB downhill off the edge of the double team. Jet motion dresses it up.", read: "None. This is the hammer." },
+  power:   { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Rhino", Lt: "Lion" }, carrier: "RB", signal: "Fist to the nose like a horn, then point", how: "Playside blocks down, backside guard pulls and leads. RB downhill off the edge of the double team. Jet motion dresses it up; from the I, the FB leads through the same hole instead.", read: "None. This is the hammer." },
   trap:    { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Rabbit", Lt: "Lynx" }, carrier: "RB", signal: "Two-finger bunny hops, then point", how: "Quick hitter. Backside guard traps the first man past center. No motion: this is the changeup that punishes upfield tackles.", read: "None. Hits before they blink." },
   jet:     { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Rocket", Lt: "Laser" }, carrier: "H", signal: "Arm launches off the palm, then point", how: "H sprints off motion and NEVER slows: he makes a basket and the QB presses the ball into it. The QB owns the exchange completely; if the mesh feels wrong he keeps it and runs the Raccoon path. Playside reaches, Y arcs to the safety. From Doubles, Laser is a return motion; rep it, or call it from Doubles Lt for the natural cross.", read: "None. Speed to the edge." },
   keep:    { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Raccoon", Lt: "Longhorn" }, carrier: "QB", signal: "Wash the paws, then point", how: "Identical picture to the jet. QB keeps behind the chase with the RB leading. Call it AFTER Rocket has scared them.", read: "Pre-called. The defense pays for chasing Rocket." },
@@ -802,6 +805,17 @@ function safariSeedPlaysV7() {
     note(mk(67, "Doubles", "rbpass", "Lt", false, 6), "The dagger, left."),
   ];
 }
+/* v10 (Greg's explicit ask, July 27): the rain and goal-line package.
+   Under center, fullback leads, nothing about the words changes. */
+function safariSeedPlaysV8() {
+  const mk = mkSeedPlay;
+  const note = (p, n) => ({ ...p, note: n });
+  return [
+    note(mk(68, "I Rt", "power", "Rt", false, 4), "Rain and goal line. Under center: no wet gun snaps. H is the FB here: lead through the hole, hit the first wrong-colored jersey. Same HAMMER, same word, new muscle."),
+    note(mk(69, "I Lt", "power", "Lt", false, 4), "The rain hammer, left. FB leads, TB follows."),
+    note(mk(70, "I Rt", "sneak", "", false, 4), "The REAL Moose: under center, hands under the big C, surge. This is the goal-line and wet-ball sneak; the Tank version stays for tempo."),
+  ];
+}
 function safariSeedPlays() {
   const mk = mkSeedPlay;
   return [
@@ -964,7 +978,7 @@ const RAW_SEED = {
   ],
   practice: { date: "", start: "17:30", title: "Practice Plan", items: [] },
   savedPlans: [],
-  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7()],
+  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7(), ...safariSeedPlaysV8()],
   callLog: [],
   gameLabel: "",
   script: [],
@@ -1113,7 +1127,7 @@ function generatePractice(data, totalMins = 75) {
 SEED.packages = seedPackages();
 applyKillPairs(SEED.plays);
 SEED.plays.forEach((p) => { if (!p.note && CHAIN_NOTES[p.name]) p.note = CHAIN_NOTES[p.name]; });
-SEED.safariVersion = 9;
+SEED.safariVersion = 10;
 SEED.savedPlans = [
   { id: uid(), name: "Day 1 · Helmets (Routes + Formations)", savedAt: "library", plan: day1Plan(SEED.drills) },
   { id: uid(), name: "Week 2 · Jet Series Install (Rocket, Raccoon, Owl)", savedAt: "library", plan: week2Plan(SEED.drills) },
@@ -1268,6 +1282,13 @@ function normalizeData(parsed) {
   if (!(parsed.safariVersion >= 9)) {
     plays = plays.filter((p) => !(p.name === "Doubles · Hawk Wheel" && !p.custom));
   }
+  // v10: the I-formation rain/goal-line package (Greg's explicit ask).
+  if (!(parsed.safariVersion >= 10)) {
+    const haveV10 = new Set(plays.map((p) => p.name));
+    const base10 = plays.reduce((m, p) => Math.max(m, Number(p.num) || 0), 0);
+    let n10 = 0;
+    plays = [...plays, ...safariSeedPlaysV8().filter((p) => !haveV10.has(p.name)).map((p) => ({ ...p, id: uid(), num: base10 + (++n10) }))];
+  }
   // Concept play names are derived, so vocabulary updates flow through automatically.
   plays = plays.map((p) =>
     p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
@@ -1296,7 +1317,7 @@ function normalizeData(parsed) {
     gameLabel: parsed.gameLabel || "",
     script: parsed.script || [],
     scriptPos: parsed.scriptPos || 0,
-    safariVersion: 9,
+    safariVersion: 10,
     seasonWeek: parsed.seasonWeek || 1,
     pgOverrides: parsed.pgOverrides || {},
     packages,

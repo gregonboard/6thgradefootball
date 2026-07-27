@@ -2,7 +2,7 @@
 ### Read this first. It contains everything needed to work on this project with full context.
 Last updated: July 21, 2026 (post full-system confusion audit)
 
-**Formation legality rules (now enforced by tests):** X is the split end, ALWAYS on the line; Z is the flanker, ALWAYS off it; every formation has exactly seven on the line (OL5 + X + Y) and eleven total. The Lt mirror flips which SIDE kids stand on but never their on/off-line identity (the old mirror wrongly swapped the X and Z labels). Nasty's X was a step off the line (an illegal 6-man front) and Stack's front man on the right is Y, not Z. All fixed July 21; tests/app.test.jsx asserts legality for all twelve formation names so geometry errors of this class cannot recur.
+**Formation legality rules (now enforced by tests):** X is the split end, ALWAYS on the line; Z is the flanker, ALWAYS off it; every formation has exactly seven on the line (OL5 + X + Y) and eleven total. The Lt mirror flips which SIDE kids stand on but never their on/off-line identity (the old mirror wrongly swapped the X and Z labels). Nasty's X was a step off the line (an illegal 6-man front) and Stack's front man on the right is Y, not Z. All fixed July 21; tests/app.test.jsx asserts legality for all fourteen formation names so geometry errors of this class cannot recur.
 
 **Terminology ruling:** Doubles is NOT Twins. Doubles = 2x2 (two receivers each side, our base). Twins = both wideouts on the SAME side, which we do not run. Staff says Doubles, always. Other audit outcomes: sneak word Sub -> Moose (runs are animals, and "Sub" sounded like a substitution), Eagle Max -> Eagle (one word per kid; max protection is built into the concept), slip screen -> Rolo/Lifesaver. Vocabulary rule-integrity tests now enforce: every directional word pair starts R/L, every word is a single word. TRAP/WRAP rhyme is kept deliberately and taught as a mnemonic: WRAP is TRAP's big brother (one puller vs two). Rewind vs Reese's are phonetically close (REE-): reverses come off the board with the number, never voice alone.
 
@@ -79,7 +79,7 @@ Eight words compress to four techniques (down+pull family, reach, pass set, rele
 **Receiver rule:** X always left outside, Z always right outside, H slot, Y tight end. Routes are keyed to letters, never formations, so every formation is free learning. Not a bird, not candy: block the man over you.
 
 ### Formations (12 selectable looks, kids learn nothing new per look)
-Doubles (home base, 2x2 with Y attached), Doubles Lt, Trips Rt/Lt, Bunch Rt/Lt (3-man cluster, rub routes), Stack (stacked receivers, beats press), Nasty Rt/Lt (condensed splits, crack blocks), Empty, Tank Rt/Lt (heavy short yardage).
+Doubles (home base, 2x2 with Y attached), Doubles Lt, Trips Rt/Lt, Bunch Rt/Lt (3-man cluster, rub routes), Stack (stacked receivers, beats press), Nasty Rt/Lt (condensed splits, crack blocks), Empty, Tank Rt/Lt (heavy short yardage), I Rt/Lt (July 27, Greg's explicit freeze exception: the rain and goal-line package; QB UNDER CENTER so no wet gun snaps, H is the fullback and LEADS through the hole instead of jet motion, RB deep tailback; seeded plays are I Rhino/Lion and I Moose, the true under-center sneak; installs week 4; the diagram engine treats any backfield-aligned H as a lead blocker automatically).
 
 **Formation direction rule (Greg asked July 22):** the Rt/Lt in a formation name ALWAYS points at Y, the strength side. Doubles Lt = Y attached LEFT, which pushes the two-man open side (X on the line, H in the slot) to the RIGHT. Same rule everywhere: Trips Rt = Y plus two more right, Tank Rt = extra beef right. Teach coaches "the direction is where Y lives"; the kids never need it because jobs key off letters, not formations.
 
@@ -141,7 +141,7 @@ The Formation View dropdown now includes every playbook formation (single source
 6. **Wristbands**: printable QB bands (reading order: number, formation, LINE word in red, play word) and Bird Route Cards (all birds × all letters so any kid can slide positions).
 
 ### Data model (top-level keys in the single persisted object, storage key `vh6-coach-data-v1`)
-`players, depth {off, def}, offScheme, defScheme, drills, practice, savedPlans, plays [{id,num,name,formation,concept,dir,tags,core,week,custom,lineCall,type,note,killId}], callSheet, wrist, callLog, gameLabel, script, scriptPos, seasonWeek, pgOverrides, packages [{id,name,steps|ids}], day1Seeded, week2Seeded, libVersion (6), depthVersion (2), safariVersion (9)`
+`players, depth {off, def}, offScheme, defScheme, drills, practice, savedPlans, plays [{id,num,name,formation,concept,dir,tags,core,week,custom,lineCall,type,note,killId}], callSheet, wrist, callLog, gameLabel, script, scriptPos, seasonWeek, pgOverrides, packages [{id,name,steps|ids}], day1Seeded, week2Seeded, libVersion (6), depthVersion (2), safariVersion (10)`
 
 libVersion 4 adds the jet-series install drills (Motion Landmark Races, Jet Touch Pass Timing, Owl Fake & Pop, Reach & Run) and week2Seeded gates a one-time "Week 2 · Jet Series Install (Rocket, Raccoon, Owl)" saved practice plan.
 

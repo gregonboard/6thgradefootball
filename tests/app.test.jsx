@@ -56,7 +56,7 @@ describe("vocabulary", () => {
     for (const want of ["Doubles · Raven", "Trips Rt · Raven", "Doubles · Hawk", "Empty · Robin", "Empty · Reese's", "Empty · Laffy"]) {
       expect(names, want + " is seeded").toContain(want);
     }
-    expect(SEED.plays.length).toBe(67);
+    expect(SEED.plays.length).toBe(70);
   });
   it("never installs a formation before its first play", () => {
     for (const f of Object.keys(FORM_WEEKS)) {
@@ -124,6 +124,20 @@ describe("vocabulary", () => {
     expect(ASSIGNMENTS.owl.OL).toMatch(/RIGHT, every time/);
     expect(CONCEPTS.owl.how).toMatch(/Lion Peek/); // the left-action answer exists
   });
+  it("I formation: legal, under center, FB leads instead of jet motion", () => {
+    const spots = formSpots("I Rt");
+    const onLine = Object.entries(spots).filter(([, [, y]]) => y === 23).map(([k]) => k).sort();
+    expect(onLine).toEqual(["C", "LG", "LT", "RG", "RT", "X", "Y"]);
+    expect(spots.QB[1]).toBeLessThan(27); // under center, not gun
+    expect(spots.H[0]).toBe(50); // H is the fullback
+    const els = genPlayElements("power", spots, "Rt");
+    const h = els.H.find((e) => e.kind === "block");
+    expect(h, "FB lead blocks on I power").toBeTruthy();
+    expect(h.pts[h.pts.length - 1][0]).toBeGreaterThan(55); // leads playside
+    expect(els.H.some((e) => e.kind === "motion")).toBe(false); // no jet from the I
+    const names = SEED.plays.map((p) => p.name);
+    for (const want of ["I Rt · Rhino", "I Lt · Lion", "I Rt · Moose"]) expect(names, want).toContain(want);
+  });
   it("Hawk carries last year's TE wheel inside the base play", () => {
     expect(ASSIGNMENTS.hawk.Y).toMatch(/WHEEL/);
     expect(CONCEPTS.hawk.how).toMatch(/wheel/i);
@@ -159,7 +173,7 @@ describe("seeds", () => {
     for (const want of ["Bunch Rt · Rocket", "Nasty Rt · Ram", "Tank Rt · Ram", "Trips Rt · Rhino", "Tank Lt · Leopard"]) {
       expect(names, want + " is seeded").toContain(want);
     }
-    expect(SEED.plays.length).toBe(67);
+    expect(SEED.plays.length).toBe(70);
   });
   it("renames the jet drill in place so saved plans keep their links", () => {
     const old = { players: [], drills: [{ id: "d-keep", name: "Jet Touch Pass Timing", cat: "Group", group: "Skill (QB/RB/WR/TE)", mins: 12, notes: "old" }], libVersion: 4, safariVersion: 6, day1Seeded: true, week2Seeded: true, savedPlans: [], plays: SEED.plays.map((p) => ({ ...p })) };
@@ -208,15 +222,15 @@ describe("seeds", () => {
     const names = v3.plays.map((p) => p.name);
     expect(names).toContain("Tank Rt · Owl");
     expect(names.filter((n) => n === "Tank Rt · Owl").length).toBe(1);
-    expect(v3.plays.length).toBe(67); // 30 + v4 looks + Ram/Leopard + v6 costumes + QB tree
-    expect(v3.safariVersion).toBe(9);
+    expect(v3.plays.length).toBe(70); // 30 + v4 looks + Ram/Leopard + v6 costumes + QB tree
+    expect(v3.safariVersion).toBe(10);
     expect(v3.packages.map((p) => p.name)).toContain("CHEETAH");
     const rocket = v3.plays.find((p) => p.name === "Doubles · Rocket");
     const reeses = v3.plays.find((p) => p.name === "Doubles · Reese's");
     expect(rocket.killId).toBe(reeses.id);
     // running it again must change nothing (Greg's live data reloads every session)
     const again = normalizeData(JSON.parse(JSON.stringify(v3)));
-    expect(again.plays.length).toBe(67);
+    expect(again.plays.length).toBe(70);
     expect(again.packages.length).toBe(v3.packages.length);
   });
   it("seeds the elite drill library with coaching detail", () => {
@@ -296,7 +310,7 @@ describe("normalizeData migration", () => {
     expect(keepLt.name).toContain("Longhorn"); // derived names propagate the rename
     expect(d.savedPlans.some((s) => /day 1/i.test(s.name))).toBe(true);
     expect(d.players[0].name).toBe("Old Kid"); // user data untouched
-    expect(d.safariVersion).toBe(9);
+    expect(d.safariVersion).toBe(10);
   });
   it("does not double-seed on a second load", () => {
     const once = normalizeData({ safariVersion: 2, plays: SEED.plays.map((p) => ({ ...p })) });
@@ -354,7 +368,7 @@ describe("practiceGroupsFor", () => {
 describe("formations", () => {
   it("staggers formation installs on the week dial", () => {
     expect(installedForms(1)).toEqual(["Doubles", "Doubles Lt", "Trips Rt", "Trips Lt"]);
-    expect(installedForms(6).length).toBe(12);
+    expect(installedForms(6).length).toBe(14); // 12 + the I Rt/Lt rain package
     expect(FORM_WEEKS["Empty"]).toBe(6);
   });
   it("mirrors Lt formations: kids flip sides, identities never change", () => {
