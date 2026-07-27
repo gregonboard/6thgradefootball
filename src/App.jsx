@@ -480,7 +480,11 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       rt("X", [[0, -10], [2, -8]]);
       rt("Z", [[0, -10], [2, -8]]);
       rt("H", [[-6, -5], [-11, -6]]);
-      rt("Y", [[8, -2], [13, -6], [14, -18]]); /* wheel: flat, then up the sideline */
+      if (has("Y")) { /* wheel: flat toward the SIDELINE, then turn upfield */
+        const [yx, yy] = at("Y");
+        const m = yx > 50 ? 1 : -1;
+        add("Y", "route", [[yx, yy], [yx + m * 9, yy - 1], [yx + m * 14, yy - 5], [yx + m * 15, yy - 18]]);
+      }
       rbLeak();
       throwTo(s > 0 ? "Z" : "X");
       break;

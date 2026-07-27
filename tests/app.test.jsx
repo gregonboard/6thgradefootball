@@ -141,6 +141,15 @@ describe("vocabulary", () => {
   it("Hawk carries last year's TE wheel inside the base play", () => {
     expect(ASSIGNMENTS.hawk.Y).toMatch(/WHEEL/);
     expect(CONCEPTS.hawk.how).toMatch(/wheel/i);
+    // the wheel bends to the SIDELINE, never the middle (Greg's July 27 catch)
+    const els = genPlayElements("hawk", formSpots("Doubles"), "");
+    const wheel = els.Y.find((e) => e.kind === "route");
+    const [x0] = wheel.pts[0];
+    const [xEnd] = wheel.pts[wheel.pts.length - 1];
+    expect(Math.abs(xEnd - 50)).toBeGreaterThan(Math.abs(x0 - 50)); // moves toward the boundary
+    const elsLt = genPlayElements("hawk", formSpots("Doubles Lt"), "");
+    const wheelLt = elsLt.Y.find((e) => e.kind === "route");
+    expect(wheelLt.pts[wheelLt.pts.length - 1][0]).toBeLessThan(wheelLt.pts[0][0]); // left sideline in the mirror
     // and the redundant tagged play is gone from seed and from migrated data
     expect(SEED.plays.some((p) => p.name === "Doubles · Hawk Wheel")).toBe(false);
     const migrated = normalizeData({ players: [], safariVersion: 8, plays: [...SEED.plays.map((p) => ({ ...p })), { id: "hw", num: 99, name: "Doubles · Hawk Wheel", formation: "Doubles", concept: "hawk", dir: "", tags: ["Wheel"], week: 5 }] });
