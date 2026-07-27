@@ -332,6 +332,11 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
   const add = (L, kind, pts) => { if (spots[L]) (el[L] = el[L] || []).push({ kind, pts }); };
   const at = (L) => spots[L];
   const has = (L) => !!spots[L];
+  const outsideAt = (side) => {
+    const cands = ["X", "Z"].filter(has);
+    if (!cands.length) return null;
+    return cands.reduce((best, L) => ((at(L)[0] - 50) * side > (at(best)[0] - 50) * side ? L : best), cands[0]);
+  };
   const guards = ["LG", "RG"].filter(has);
   const backG = guards.find((g) => (at(g)[0] - 50) * s < 0);
   const backT = ["LT", "RT"].filter(has).find((t) => (at(t)[0] - 50) * s < 0);
@@ -354,8 +359,8 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       add("H", "fake", [last, [last[0] + (across[0][0] < 50 ? 26 : -26), last[1] - 2]]);
     }
   };
-  const qbFake = () => has("QB") && add("QB", "fake", [at("QB"), [at("QB")[0] - 3, at("QB")[1]]]);
-  const rbLeak = () => has("RB") && add("RB", "route", [at("RB"), [at("RB")[0] - 8, at("RB")[1] - 3], [at("RB")[0] - 14, at("RB")[1] - 8]]);
+  const qbFake = () => has("QB") && add("QB", "fake", [at("QB"), [at("QB")[0] - s * 3, at("QB")[1]]]);
+  const rbLeak = () => { if (!has("RB")) return; const m = at("RB")[0] <= 50 ? -1 : 1; add("RB", "route", [at("RB"), [at("RB")[0] + m * 8, at("RB")[1] - 3], [at("RB")[0] + m * 14, at("RB")[1] - 8]]); };
   const olPass = () => { for (const L of ["LT", "LG", "C", "RG", "RT"]) if (has(L)) add(L, "block", [at(L), [at(L)[0], at(L)[1] - 3]]); };
   /* REACH: every lineman leans playside and runs (blockAll leans backside, the down-block look) */
   const reachOL = () => { for (const L of ["LT", "LG", "C", "RG", "RT"]) if (has(L)) add(L, "block", [at(L), [at(L)[0] + s * 2.5, at(L)[1] - 3.5]]); };
@@ -387,8 +392,8 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
     case "jet":
       reachOL();
       if (has("Y")) add("Y", "block", [at("Y"), [at("Y")[0] + s * 5, at("Y")[1] - 7], [at("Y")[0] + s * 7, at("Y")[1] - 12]]);
-      if (has(s > 0 ? "Z" : "X")) { const L = s > 0 ? "Z" : "X"; add(L, "block", [at(L), [at(L)[0] - s * 5, at(L)[1] - 5]]); }
-      if (has(s > 0 ? "X" : "Z")) { const L = s > 0 ? "X" : "Z"; add(L, "block", [at(L), [at(L)[0], at(L)[1] - 4]]); }
+      { const P = outsideAt(s); if (P) add(P, "block", [at(P), [at(P)[0] - s * 5, at(P)[1] - 5]]); }
+      { const B = outsideAt(-s); if (B) add(B, "block", [at(B), [at(B)[0], at(B)[1] - 4]]); }
       if (has("H")) {
         const [hx, hy] = at("H");
         const mesh = [50 + s * 2, 29];
@@ -405,14 +410,14 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       if (has("Y")) add("Y", "block", [at("Y"), [at("Y")[0] + s * 5, at("Y")[1] - 7], [at("Y")[0] + s * 7, at("Y")[1] - 12]]);
       for (const L of ["X", "Z"]) if (has(L)) add(L, "block", [at(L), [at(L)[0], at(L)[1] - 4]]);
       jetMotion(false);
-      if (has("H")) add("H", "fake", [[52, 29], [edge, 26]]);
+      if (has("H")) add("H", "fake", [[50 + s * 2, 29], [edge, 26]]);
       if (has("QB")) add("QB", "carry", [at("QB"), [50 + s * 10, 28], [50 + s * 22, 23], [50 + s * 26, 10]]);
       if (has("RB")) add("RB", "block", [at("RB"), [50 + s * 12, 27]]);
       break;
     case "counter":
       blockAll([backG, backT]);
       el[backG] = [{ kind: "route", pts: [at(backG), [50, 27], [50 + s * 14, 25], [50 + s * 18, 19]] }];
-      if (backT) el[backT] = [{ kind: "route", pts: [at(backT), [48, 29], [50 + s * 11, 26], [50 + s * 13, 12]] }];
+      if (backT) el[backT] = [{ kind: "route", pts: [at(backT), [50 - s * 2, 29], [50 + s * 11, 26], [50 + s * 13, 12]] }];
       if (has("RB")) add("RB", "carry", [at("RB"), [50 - s * 4, 32], [50 + s * 8, 27], [50 + s * 15, 20], [50 + s * 16, 8]]);
       qbFake();
       break;
@@ -420,8 +425,8 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       /* every blocker leans playside (reach); H's jet motion becomes the lead */
       reachOL();
       if (has("Y")) add("Y", "block", [at("Y"), [at("Y")[0] + s * 4, at("Y")[1] - 3]]);
-      if (has(s > 0 ? "Z" : "X")) { const L = s > 0 ? "Z" : "X"; add(L, "block", [at(L), [at(L)[0], at(L)[1] - 4]]); }
-      if (has(s > 0 ? "X" : "Z")) { const L = s > 0 ? "X" : "Z"; add(L, "route", [at(L), [at(L)[0] - s * 2, at(L)[1] - 9]]); }
+      { const P = outsideAt(s); if (P) add(P, "block", [at(P), [at(P)[0], at(P)[1] - 4]]); }
+      { const B = outsideAt(-s); if (B) add(B, "route", [at(B), [at(B)[0] - s * 2, at(B)[1] - 9]]); }
       if (has("H")) {
         const [hx, hy] = at("H");
         const turn = [50 + s * 4, 29];
@@ -436,8 +441,8 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       /* Ram costume: same reach picture, but the RB pulls up and throws deep */
       reachOL();
       if (has("Y")) add("Y", "block", [at("Y"), [at("Y")[0] + s * 4, at("Y")[1] - 3]]);
-      const deep = s > 0 ? "Z" : "X";
-      const back = s > 0 ? "X" : "Z";
+      const deep = outsideAt(s);
+      const back = outsideAt(-s);
       if (has(deep)) add(deep, "route", [at(deep), [at(deep)[0], at(deep)[1] - 3], [at(deep)[0] + s * 3, at(deep)[1] - 20]]);
       if (has(back)) add(back, "block", [at(back), [at(back)[0], at(back)[1] - 4]]);
       if (has("H")) {
@@ -454,14 +459,16 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       break;
     }
     case "sneak":
-      blockAll();
+      /* SURGE: everyone fires straight ahead, low. One yard war. */
+      for (const L of ["LT", "LG", "C", "RG", "RT", "Y"]) if (has(L)) add(L, "block", [at(L), [at(L)[0], at(L)[1] - 4]]);
+      for (const L of ["X", "Z"]) if (has(L)) add(L, "block", [at(L), [at(L)[0], at(L)[1] - 4]]);
       if (has("QB")) add("QB", "carry", [at("QB"), [50, 24], [50, 16]]);
       break;
     case "sparrow":
       olPass();
       rt("X", [[0, -9], [1.5, -7]]);
       rt("Z", [[0, -9], [1.5, -7]]);
-      rt("H", [[1, -6], [8, -7]]);
+      rt("H", [[-2, -5], [-9, -6]]); /* quick out: negative dx = toward the sideline */
       rt("Y", [[0, -8], [3, -7]]);
       rbLeak();
       throwTo(s > 0 ? "Z" : "X");
@@ -471,7 +478,7 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       rt("X", [[2, -5], [10, -12]]);
       rt("Z", [[2, -5], [10, -12]]);
       rt("H", [[-6, -5], [-12, -7]]);
-      rt("Y", [[6, -4], [12, -5]]);
+      rt("Y", [[-6, -3], [-13, -4]]); /* flat: to the sideline */
       rbLeak();
       throwTo(s > 0 ? "Y" : "H");
       break;
@@ -504,13 +511,13 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       rt("Z", [[0, -19]]);
       rt("H", [[4, -13], [6, -21]]);
       rt("Y", [[-2, -12], [-4, -19]]);
-      if (has("RB")) add("RB", "route", [at("RB"), [at("RB")[0] + 3, at("RB")[1] - 6], [at("RB")[0] + 3, at("RB")[1] - 10]]);
+      if (has("RB")) { const m = at("RB")[0] <= 50 ? 1 : -1; add("RB", "route", [at("RB"), [at("RB")[0] + m * 3, at("RB")[1] - 6], [at("RB")[0] + m * 3, at("RB")[1] - 10]]); }
       break;
     case "flood": {
       /* sprint-out: line slides with the QB, three levels stacked call-side */
       for (const L of ["LT", "LG", "C", "RG", "RT"]) if (has(L)) add(L, "block", [at(L), [at(L)[0] + s * 1.5, at(L)[1] - 2.5]]);
-      const goSide = s > 0 ? "Z" : "X";
-      const backSide = s > 0 ? "X" : "Z";
+      const goSide = outsideAt(s);
+      const backSide = outsideAt(-s);
       if (has(goSide)) add(goSide, "route", [at(goSide), [at(goSide)[0], at(goSide)[1] - 19]]);
       if (has(backSide)) add(backSide, "route", [at(backSide), [at(backSide)[0], at(backSide)[1] - 8], [at(backSide)[0] + s * 9, at(backSide)[1] - 15]]);
       if (has("H")) { const [hx, hy] = at("H"); add("H", "route", [[hx, hy], [50 + s * 10, hy - 8], [50 + s * 21, hy - 9]]); }
@@ -524,16 +531,16 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       olPass();
       rt("X", [[0, -11], [8, -19]]);
       rt("Z", [[0, -19]]);
-      if (has("Y")) add("Y", "route", [at("Y"), [at("Y")[0] - 8, at("Y")[1] - 6], [at("Y")[0] - 28, at("Y")[1] - 8]]);
+      if (has("Y")) { const m = at("Y")[0] > 50 ? -1 : 1; add("Y", "route", [at("Y"), [at("Y")[0] + m * 8, at("Y")[1] - 6], [at("Y")[0] + m * 28, at("Y")[1] - 8]]); }
       if (has("H")) add("H", "block", [at("H"), [at("H")[0], at("H")[1] - 3]]);
       if (has("RB")) add("RB", "block", [at("RB"), [at("RB")[0], at("RB")[1] - 3]]);
-      qbFake();
-      throwTo(s > 0 ? "Z" : "X");
+      if (has("QB")) add("QB", "fake", [at("QB"), [at("QB")[0], at("QB")[1] + 3]]);
+      throwTo("Z"); /* the GO is Z's job by rule, wherever he aligns */
       break;
     case "bubble": {
       olPass();
-      const T = s > 0 ? "Z" : "X";
-      const B = s > 0 ? "X" : "Z";
+      const T = outsideAt(s);
+      const B = outsideAt(-s);
       if (has(T)) add(T, "route", [at(T), [at(T)[0] + s * 4, at(T)[1] + 3], [at(T)[0] + s * 9, at(T)[1] + 1]]);
       if (has(B)) add(B, "block", [at(B), [at(B)[0], at(B)[1] - 4]]);
       if (has("Y")) add("Y", "block", [at("Y"), [at("Y")[0] + s * 3, at("Y")[1] - 5]]);
@@ -543,8 +550,10 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       break;
     }
     case "slip":
-      for (const L of ["LT", "LG"]) if (has(L)) add(L, "block", [at(L), [at(L)[0], at(L)[1] - 3]]);
-      for (const L of ["C", "RG", "RT"]) if (has(L)) { add(L, "block", [at(L), [at(L)[0], at(L)[1] - 2]]); add(L, "fake", [[at(L)[0], at(L)[1] - 2], [at(L)[0] + s * 5, at(L)[1] - 7]]); }
+      { const setters = s > 0 ? ["LT", "LG"] : ["RG", "RT"];
+        const releasers = s > 0 ? ["C", "RG", "RT"] : ["LT", "LG", "C"];
+        for (const L of setters) if (has(L)) add(L, "block", [at(L), [at(L)[0], at(L)[1] - 3]]);
+        for (const L of releasers) if (has(L)) { add(L, "block", [at(L), [at(L)[0], at(L)[1] - 2]]); add(L, "fake", [[at(L)[0], at(L)[1] - 2], [at(L)[0] + s * 5, at(L)[1] - 7]]); } }
       for (const L of ["X", "Z"]) if (has(L)) add(L, "fake", [at(L), [at(L)[0], at(L)[1] - 16]]);
       if (has("Y")) add("Y", "fake", [at("Y"), [at("Y")[0], at("Y")[1] - 12]]);
       if (has("QB")) add("QB", "fake", [at("QB"), [at("QB")[0] - s * 3, at("QB")[1] + 4]]);
@@ -556,12 +565,13 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       blockAll(["X", "Z"]);
       if (has("H")) {
         const [hx, hy] = at("H");
-        add("H", "motion", hx * -s < 50 * -s ? [[hx, hy], [44, 29], [52, 29]] : [[hx, hy], [56, 29], [50, 29]]);
-        add("H", "fake", [[50, 29], [50 - s * 22, 26]]);
+        const mesh = [50 - s * 2, 29];
+        add("H", "motion", hx < 50 ? [[hx, hy], [44, 29], mesh] : [[hx, hy], [56, 29], mesh]);
+        add("H", "fake", [mesh, [50 - s * 22, 26]]);
       }
-      const R = s > 0 ? "X" : "Z";
-      const F = s > 0 ? "Z" : "X";
-      if (has(R)) add(R, "carry", [at(R), [at(R)[0] + s * 10, at(R)[1] + 6], [46, 32], [50 + s * 16, 29], [edge + s * 6, 22], [edge + s * 8, 8]]);
+      const R = outsideAt(-s);
+      const F = outsideAt(s);
+      if (has(R)) add(R, "carry", [at(R), [at(R)[0] + s * 10, at(R)[1] + 6], [50 - s * 4, 32], [50 + s * 16, 29], [edge + s * 6, 22], [edge + s * 8, 8]]);
       if (has(F)) add(F, "block", [at(F), [at(F)[0] - s * 4, at(F)[1] - 5]]);
       if (has("Y")) add("Y", "block", [at("Y"), [at("Y")[0] + s * 4, at("Y")[1] - 7]]);
       if (has("RB")) add("RB", "fake", [at("RB"), [50 - s * 8, 27]]);
