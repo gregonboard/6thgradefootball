@@ -482,7 +482,9 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       throwTo(s > 0 ? "Z" : "X");
       break;
     case "owl":
-      blockAll(["Y"]);
+      /* the line blocks RHINO identically: playside down, backside guard pulls */
+      blockAll([backG, "Y"]);
+      if (backG) el[backG] = [{ kind: "route", pts: [at(backG), [50, 27], [50 + s * 14, 26], [50 + s * 20, 20]] }];
       jetMotion();
       qbFake();
       if (has("Y")) add("Y", "carry", [at("Y"), [at("Y")[0] - 1, at("Y")[1] - 11], [at("Y")[0] - 2, 4]]);
@@ -629,7 +631,7 @@ const CONCEPTS = {
   sparrow: { fam: "Pass",   dirs: [""],         words: { "": "Sparrow" }, carrier: "WR", signal: "Pinch fingers, small bird", how: "Hitches outside, quick outs from the slots, Y sticks at 5. Ball out now. Against press, the pressed hitch automatically becomes a GO.", read: "Pick the widest cushion before the snap and throw it on rhythm. No cushion anywhere means they pressed: throw the GO over the presser or take Y at 5." },
   robin:   { fam: "Pass",   dirs: [""],         words: { "": "Robin" }, carrier: "WR", signal: "Flap the elbows", how: "Slants outside, arrows to the flats. The 6th grade money concept.", read: "Flat first. Covered means the slant is open behind it." },
   hawk:    { fam: "Pass",   dirs: [""],         words: { "": "Hawk" }, carrier: "WR", signal: "One arm soars", how: "Curls at 8 outside, flats underneath, Y WHEELS up the sideline: the same wheel these kids scored on last year. Curl, flat, wheel is a triangle one defender cannot cover.", read: "Watch the man over the slot: chases the flat, throw the curl; sits, throw the flat. And when the flat defender starts squatting on both, the wheel behind him is six." },
-  owl:     { fam: "Pass",   dirs: [""],         words: { "": "Owl" }, carrier: "Y", signal: "Circles over the eyes", how: "Everyone sells Rhino. Y slips into the seam behind the linebackers. QB fakes and pops it over their heads.", read: "Fake, find Y, throw it now. Covered? Tuck it and run the Rhino path. The most unfair play we own." },
+  owl:     { fam: "Pass",   dirs: [""],         words: { "": "Owl" }, carrier: "Y", signal: "Circles over the eyes", how: "Everyone sells Rhino, and Owl is ALWAYS Rhino action to the right: the line hears HAMMER with no R or L word and that means Rhino rules, every time. Y slips into the seam behind the linebackers, QB fakes and pops it over their heads. Want the seam off LEFT action? That play already exists: Lion Peek.", read: "Fake, find Y, throw it now. Covered? Tuck it and run the Rhino path. The most unfair play we own." },
   falcon:  { fam: "Pass",   dirs: [""],         words: { "": "Falcon" }, carrier: "WR", signal: "Both arms soar", how: "Four verticals, slots bend to the seams, RB checks down.", read: "Coach picks the target before the snap." },
   flood:   { fam: "Pass",   dirs: ["Rt", "Lt"], words: { Rt: "Raven", Lt: "Lark" }, carrier: "WR", signal: "Wing out flat, run the fingers sideways, then point", how: "Sprint-out flood: QB moves the launch point to the call side with the RB leading. Three levels stacked in front of him: go to clear it, deep out at 10, flat at 4. Half the field, one look at a time, and his legs are the third answer.", read: "Deep out first. Covered? Flat. Both covered? RUN for the sticks and get down or get out of bounds." },
   eagle:   { fam: "Pass",   dirs: [""],         words: { "": "Eagle" }, carrier: "WR", signal: "Full wingspan flex", how: "The shot. Post and go outside, Y drags underneath, H and RB stay in to protect seven strong.", read: "One look deep for two seconds, then take the drag." },
@@ -643,6 +645,14 @@ const CONCEPTS = {
 const LINE_CALLS = { power: "HAMMER", owl: "HAMMER", trap: "TRAP", counter: "WRAP", jet: "REACH", keep: "REACH", stretch: "REACH", rbpass: "REACH", reverse: "REACH", sneak: "SURGE", sparrow: "QUICK", robin: "QUICK", bubble: "QUICK", hawk: "WALL", falcon: "WALL", eagle: "WALL", flood: "WALL", slip: "GATE" };
 const LINE_WORDS = ["HAMMER", "TRAP", "WRAP", "REACH", "SURGE", "QUICK", "WALL", "GATE"];
 const lineCallFor = (p) => (p && (p.lineCall || LINE_CALLS[p.concept])) || "";
+const lineListenText = (p) => {
+  const line = lineCallFor(p);
+  if (!line) return "";
+  if (p.dir) return `The line only listens for ${line} plus R or L.`;
+  if (line === "HAMMER") return `No R or L after HAMMER means Owl: RHINO rules, block it right, every time.`;
+  return `${line} needs no direction: same set both ways.`;
+};
+
 
 const callWord = (c, dir, tags = []) => {
   const base = CONCEPTS[c] ? CONCEPTS[c].words[dir || ""] || CONCEPTS[c].words.Rt : "";
@@ -671,7 +681,7 @@ const ASSIGNMENTS = {
   sparrow: { OL: "Set and punch. Ball is out fast.", QB: "Pick the widest cushion before the snap. Catch, throw, done.", RB: "Check the rush, leak to the flat.", H: "Quick out at 4.", Y: "Stick at 5, sit in the window.", XZ: "Hitch at 5. Turn around, show your numbers. Pressed? Nod and GO: your hitch just became a fly route." },
   robin:   { OL: "Set and punch. Ball out quick.", QB: "Flat first. If he jumps it, the slant is behind him.", RB: "Check, leak to the flat.", H: "Arrow to the flat right now.", Y: "Flat.", XZ: "Slant. Three steps, cut across his face." },
   hawk:    { OL: "Real pass set. Stay square.", QB: "Man over the slot chases the flat: throw curl. He sits: throw flat. Flat defender squatting? The wheel is behind him.", RB: "Check, leak.", H: "Flat.", Y: "WHEEL: flat for three steps, then turn up the sideline and GO. Last year's touchdown route.", XZ: "Push to 8, snap around. Curl." },
-  owl:     { OL: "Block Rhino. Make it look exactly the same.", QB: "Fake Rhino big, pop it to Y over their heads. Covered? Tuck and run the Rhino path: your line is already run blocking.", RB: "Fake Rhino, run angry without the ball.", H: "Jet motion, sell it.", Y: "Sell the block one count, slip behind the linebackers, eyes up fast.", XZ: "Block like it's a run." },
+  owl:     { OL: "Block Rhino, RIGHT, every time: no R or L after HAMMER means Owl, and Owl means Rhino rules. Make it look exactly the same.", QB: "Fake Rhino big, pop it to Y over their heads. Covered? Tuck and run the Rhino path: your line is already run blocking.", RB: "Fake Rhino, run angry without the ball.", H: "Jet motion, sell it.", Y: "Sell the block one count, slip behind the linebackers, eyes up fast.", XZ: "Block like it's a run." },
   falcon:  { OL: "Best pass set of the day. Give him time.", QB: "Coach picks the target before the snap. Trust it.", RB: "Checkdown at 5.", H: "Seam.", Y: "Seam.", XZ: "Go. Run through his shoulder." },
   flood:   { OL: "Pass set, then slide with the QB. He is moving; move with him. Nobody crosses your face.", QB: "Sprint to the call, shoulders square so you can still throw. Deep out, then flat, then RUN. First down, then down or out of bounds.", RB: "You are his bodyguard. Lead the sprint and block the first color off the edge.", H: "Cross to the call side, deep out at 10. Snap your head around fast.", Y: "Flat at 4 on the call side. Be his easy answer.", XZ: "Called side runs the GO to pull the top off. Backside runs the post: stay alive, he might find you." },
   eagle:   { OL: "Max protect. Nobody touches him.", QB: "One look deep for two counts, then take the drag.", RB: "Block first. Always.", H: "Stay in and block. You are the bodyguard.", Y: "Drag at 10. Be the answer.", XZ: "X runs the post. Z runs the go." },
@@ -2360,7 +2370,7 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
                       </select>
                     </div>
                   ) : (
-                    <div className="pc-line"><b>Call it:</b> "{selected.formation === "Doubles" ? "" : selected.formation + "... "}{lineCallFor(selected)}... {callWord(selected.concept, selected.dir, selected.tags || [])}." The line only listens for {lineCallFor(selected) || "their word"} plus R or L.</div>
+                    <div className="pc-line"><b>Call it:</b> "{selected.formation === "Doubles" ? "" : selected.formation + "... "}{lineCallFor(selected)}... {callWord(selected.concept, selected.dir, selected.tags || [])}." {lineListenText(selected)}</div>
                   )}
                   <div className="pc-line"><b>Signal:</b> {CONCEPTS[selected.concept].signal}</div>
                   <div className="pc-line"><b>How it works:</b> {CONCEPTS[selected.concept].how}</div>
@@ -2903,7 +2913,7 @@ function PlayCardPrint({ data, playId }) {
       <PlayDiagram play={p} size="book" />
       {c && (
         <div style={{ margin: "10px 0" }}>
-          <div className="pc-line"><b>Call it:</b> "{p.formation !== "Doubles" ? p.formation + "... " : ""}{line}... {word}." The line only listens for {line} plus R or L.</div>
+          <div className="pc-line"><b>Call it:</b> "{p.formation !== "Doubles" ? p.formation + "... " : ""}{line}... {word}." {lineListenText(p)}</div>
           <div className="pc-line"><b>Signal:</b> {c.signal}</div>
           <div className="pc-line"><b>How it works:</b> {c.how}</div>
           <div className="pc-line"><b>QB:</b> {c.read}</div>

@@ -68,7 +68,7 @@ Eight words compress to four techniques (down+pull family, reach, pass set, rele
 - Sparrow = hitches at 5 (QB: pick widest cushion pre-snap)
 - Robin = slant-flat (QB: flat first, slant behind it)
 - Hawk = curl-flat with Y on the WHEEL (July 26: restored from last year's tree where the TE wheel scored repeatedly with these same kids; the triangle is curl, flat, wheel and one defender cannot cover it). QB read is still one man: the man over the slot; a squatting flat defender means the wheel is six.
-- Owl = TE seam pop off a perfect Rhino fake (the most unfair play at this level; line hears HAMMER and blocks run)
+- Owl = TE seam pop off a perfect Rhino fake (the most unfair play at this level; line hears HAMMER and blocks run). DIRECTION RULING (Greg's catch, July 27): Owl starts with O, so the line's "HAMMER plus R or L" rule had no answer. Owl is ALWAYS Rhino action to the RIGHT, all season; line teach is one sentence: "No R or L after HAMMER means Owl: Rhino rules, block it right." The left-action seam already exists as Lion Peek. The diagram now draws true HAMMER blocking (backside guard pull included), which it previously lacked.
 - Falcon = four verticals (coach picks target pre-snap)
 - Eagle Max = the deep shot, seven blocking
 - Raven / Lark = sprint-out flood (July 22, built for the QB, who is Greg's son; make him very successful): QB moves the launch point with the RB as bodyguard, three levels stacked call-side (go clears, deep out at 10, flat at 4), and his legs are the third answer with a hard "get down or out of bounds" rule. The only directional bird pair; birds stay direction-less otherwise. Line hears WALL.

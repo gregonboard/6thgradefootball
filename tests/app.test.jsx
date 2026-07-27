@@ -111,6 +111,19 @@ describe("vocabulary", () => {
     const rhino = SEED.plays.find((p) => p.name === "Doubles · Rhino");
     expect(rhino.note).toMatch(/CHAIN:/);
   });
+  it("Owl draws real HAMMER blocking and owns its direction", () => {
+    /* Greg's July 27 catch: the card showed generic blocks (no pull), and the
+       line's "HAMMER plus R or L" rule had no answer for a word starting with O. */
+    const els = genPlayElements("owl", formSpots("Doubles"), "");
+    const pull = (els.LG || []).find((e) => e.kind === "route");
+    expect(pull, "backside guard pulls, exactly like Rhino").toBeTruthy();
+    expect(pull.pts[pull.pts.length - 1][0]).toBeGreaterThan(55); // pulls playside right
+    const rtBlock = els.RT.find((e) => e.kind === "block");
+    expect(rtBlock.pts[1][0]).toBeLessThan(rtBlock.pts[0][0]); // down block lean
+    expect((els.Y || []).some((e) => e.kind === "carry")).toBe(true); // seam
+    expect(ASSIGNMENTS.owl.OL).toMatch(/RIGHT, every time/);
+    expect(CONCEPTS.owl.how).toMatch(/Lion Peek/); // the left-action answer exists
+  });
   it("Hawk carries last year's TE wheel inside the base play", () => {
     expect(ASSIGNMENTS.hawk.Y).toMatch(/WHEEL/);
     expect(CONCEPTS.hawk.how).toMatch(/wheel/i);
