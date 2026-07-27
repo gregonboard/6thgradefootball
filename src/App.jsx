@@ -3234,6 +3234,8 @@ function WristTab({ data, up, onPrint, onPrintRoutes }) {
   );
 }
 
+/* band-only formation shorthand: every character on a 1.6in column counts */
+const WRIST_FORM_ABBR = { "Doubles Lt": "DBLS LT", "Trips Rt": "TRIPS RT", "Trips Lt": "TRIPS LT", "Bunch Rt": "BUNCH RT", "Bunch Lt": "BUNCH LT", "Nasty Rt": "NASTY RT", "Nasty Lt": "NASTY LT", "Tank Rt": "TANK RT", "Tank Lt": "TANK LT", "Stack": "STACK", "Empty": "EMPTY", "I Rt": "I RT", "I Lt": "I LT" };
 function WristCard({ plays, title, cols }) {
   const perCol = Math.ceil(plays.length / cols) || 1;
   const columns = Array.from({ length: cols }, (_, c) => plays.slice(c * perCol, (c + 1) * perCol));
@@ -3250,7 +3252,7 @@ function WristCard({ plays, title, cols }) {
                 <span className="wp-num">{p.num}</span>
                 <span className="wp-name">
                   {p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
-                    ? <>{p.formation !== "Doubles" && <>{p.formation} · </>}<span className="wp-line">{lineCallFor(p)}</span> · {callWord(p.concept, p.dir, p.tags || [])}</>
+                    ? <>{p.formation !== "Doubles" && <span className="wp-form">{WRIST_FORM_ABBR[p.formation] || p.formation} </span>}<span className="wp-line">{lineCallFor(p)}</span> · {callWord(p.concept, p.dir, p.tags || [])}</>
                     : <>{lineCallFor(p) && <span className="wp-line">{lineCallFor(p)} · </span>}{p.name}</>}
                 </span>
                 {p._kill != null && <span className="wp-kill">K{p._kill}</span>}
@@ -3773,6 +3775,7 @@ tbody tr { cursor: pointer; }
 .line-chip { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 1.5px; padding: 3px 9px; background: var(--ink); color: #EAAA00; }
 .line-chip.dark { background: transparent; border: 1px solid #4A4D53; }
 .wp-line { font-family: var(--disp); font-weight: 700; font-size: 8px; letter-spacing: .5px; color: var(--red); flex-shrink: 0; }
+.wp-form { font-size: .78em; letter-spacing: 0; color: var(--def-blue); }
 
 .row-line { font-family: var(--mono); font-weight: 700; font-size: 9.5px; letter-spacing: .5px; color: var(--muted); margin-right: 6px; }
 
