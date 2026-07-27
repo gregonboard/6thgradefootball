@@ -141,6 +141,9 @@ describe("vocabulary", () => {
     const mine = [SEED.plays[0].id];
     const cs2 = buildCallSheet({ ...data, callSheet: { run: mine } });
     expect(cs2.run).toEqual(mine);
+    // no situation is ever empty: early weeks fall back to safe installed plays
+    const wk2all = buildCallSheet({ ...SEED, seasonWeek: 2, callSheet: {} });
+    for (const key of Object.keys(wk2all)) expect(wk2all[key].length, key + ' non-empty at wk2').toBeGreaterThan(0);
     // week gating: at week 2 the goal-line box only offers installed plays
     const wk2 = buildCallSheet({ ...SEED, seasonWeek: 2, callSheet: {} });
     const wk2names = wk2.goalline.map((id) => SEED.plays.find((p) => p.id === id).name);

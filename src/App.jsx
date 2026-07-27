@@ -3083,9 +3083,14 @@ function buildCallSheet(data) {
   const installed = data.plays.filter((p) => wk >= 9 || !p.week || p.week <= wk);
   const idByName = Object.fromEntries(installed.map((p) => [p.name, p.id]));
   const cs = { ...(data.callSheet || {}) };
+  const FALLBACK = ["Doubles · Rhino", "Doubles · Lion", "Doubles · Sparrow", "Doubles · Owl"];
   for (const [key, names] of Object.entries(CALL_SHEET_RECIPE)) {
     if ((cs[key] || []).length > 0) continue; /* the coach's picks always win */
-    cs[key] = names.map((n) => idByName[n]).filter(Boolean).slice(0, 6);
+    let picks = names.map((n) => idByName[n]).filter(Boolean).slice(0, 6);
+    /* early season: the situation's plays aren't installed yet, so hand the
+       coach the safest installed answers instead of an empty box */
+    if (!picks.length) picks = FALLBACK.map((n) => idByName[n]).filter(Boolean).slice(0, 3);
+    cs[key] = picks;
   }
   return cs;
 }
