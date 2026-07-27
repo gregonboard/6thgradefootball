@@ -3234,8 +3234,6 @@ function WristTab({ data, up, onPrint, onPrintRoutes }) {
   );
 }
 
-/* band-only formation shorthand: every character on a 1.6in column counts */
-const WRIST_FORM_ABBR = { "Doubles Lt": "DBLS LT", "Trips Rt": "TRIPS RT", "Trips Lt": "TRIPS LT", "Bunch Rt": "BUNCH RT", "Bunch Lt": "BUNCH LT", "Nasty Rt": "NASTY RT", "Nasty Lt": "NASTY LT", "Tank Rt": "TANK RT", "Tank Lt": "TANK LT", "Stack": "STACK", "Empty": "EMPTY", "I Rt": "I RT", "I Lt": "I LT" };
 function WristCard({ plays, title, cols }) {
   const perCol = Math.ceil(plays.length / cols) || 1;
   const columns = Array.from({ length: cols }, (_, c) => plays.slice(c * perCol, (c + 1) * perCol));
@@ -3252,7 +3250,7 @@ function WristCard({ plays, title, cols }) {
                 <span className="wp-num">{p.num}</span>
                 <span className="wp-name">
                   {p.concept && CONCEPTS[p.concept] && p.concept !== "blank" && p.formation !== "Doubles" && (
-                    <span className="wp-form">{WRIST_FORM_ABBR[p.formation] || p.formation}</span>
+                    <span className="wp-form">{p.formation}</span>
                   )}
                   <span className="wp-call">
                     {p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
