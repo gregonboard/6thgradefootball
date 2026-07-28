@@ -85,7 +85,16 @@ describe("vocabulary", () => {
     expect(ASSIGNMENTS.sparrow.XZ).toMatch(/Pressed\? Nod and GO/i);
     expect(CONCEPTS.owl.read).toMatch(/Tuck it and run the Rhino path/i); // backers who don't bite
     expect(ASSIGNMENTS.stretch.RB).toMatch(/slam it NORTH/i);             // edge strung out
-    expect(CONCEPTS.bubble.read).toMatch(/MIRROR/);                       // press over the bubble
+    expect(CONCEPTS.bubble.read).toMatch(/MIRROR/);                       // press over the screen
+    // smoke, not bubble: the target never drifts wide (Greg: "pick six every time")
+    {
+      const els = genPlayElements("bubble", formSpots("Doubles"), "Rt");
+      const smoke = els.Z.find((e) => e.kind === "route");
+      expect(Math.abs(smoke.pts[1][0] - smoke.pts[0][0]), "catch point stays put").toBeLessThan(1);
+      expect(smoke.pts[1][1]).toBeGreaterThan(smoke.pts[0][1]); // one step BACK
+      expect(smoke.pts[2][1]).toBeLessThan(smoke.pts[0][1]);    // then NORTH
+      expect(CONCEPTS.bubble.read).toMatch(/forward/i);          // forward throw: a drop is dead
+    }
     expect(ASSIGNMENTS.jet.QB).toMatch(/Raccoon path/);                   // broken mesh
   });
   it("REACH plays draw reach blocks (playside lean), HAMMER draws down blocks", () => {
