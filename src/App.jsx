@@ -495,9 +495,13 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       rt("X", [[0, -10], [2, -8]]);
       rt("Z", [[0, -10], [2, -8]]);
       const ySide = has("Y") && at("Y")[0] > 50 ? 1 : -1;
-      if (has("H")) { /* bubble sell away, then shallow cross behind Y */
+      if (has("H")) { /* sell the bubble toward H's OWN sideline, then settle in the
+        hook zone the wheel vacated; works whether H starts opposite Y (Doubles,
+        a true cross) or beside him (Trips, a short sit) */
         const [hx, hy] = at("H");
-        add("H", "route", [[hx, hy], [hx - ySide * 4, hy + 2], [50, hy - 5], [50 + ySide * 14, hy - 7]]);
+        const sellX = hx + (hx <= 50 ? -4 : 4);
+        const settleX = 50 + ySide * 9;
+        add("H", "route", [[hx, hy], [sellX, hy + 2], [(sellX + settleX) / 2, hy - 5], [settleX, hy - 7]]);
       }
       if (has("Y")) { /* wheel: flat toward the SIDELINE, then turn upfield */
         const [yx, yy] = at("Y");

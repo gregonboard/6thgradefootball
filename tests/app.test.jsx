@@ -177,10 +177,21 @@ describe("vocabulary", () => {
     expect(CONCEPTS.hawk.how).toMatch(/wheel/i);
     // Greg's July 28 design: H sells the bubble away, then crosses BEHIND Y
     expect(ASSIGNMENTS.hawk.H).toMatch(/bubble ONE hard step/i);
-    const elsH = genPlayElements("hawk", formSpots("Doubles"), "");
-    const cross = elsH.H.find((e) => e.kind === "route");
-    expect(cross.pts[1][0]).toBeLessThan(cross.pts[0][0]); // first step sells AWAY (left)
-    expect(cross.pts[cross.pts.length - 1][0]).toBeGreaterThan(55); // ends behind Y's side
+    for (const form of ["Doubles", "Doubles Lt", "Trips Rt", "Trips Lt"]) {
+      const els = genPlayElements("hawk", formSpots(form), "");
+      const cross = els.H.find((e) => e.kind === "route");
+      const [hx] = cross.pts[0];
+      const sellDir = Math.sign(cross.pts[1][0] - hx);
+      expect(sellDir, form + ": sell step goes toward H's own sideline").toBe(hx <= 50 ? -1 : 1);
+      // after the sell, the path never boomerangs (Greg's Trips Lt catch)
+      const d1 = Math.sign(cross.pts[2][0] - cross.pts[1][0]);
+      const d2 = Math.sign(cross.pts[3][0] - cross.pts[2][0]);
+      expect(d1 === d2 || d2 === 0, form + ": no direction reversal after the sell").toBe(true);
+      // and he settles on Y's side of center
+      const spots = formSpots(form);
+      const ySide = spots.Y[0] > 50 ? 1 : -1;
+      expect(Math.sign(cross.pts[3][0] - 50), form + ": settles in the wheel-side hook").toBe(ySide);
+    }
     // Robin's RB settles the middle instead of crowding H's arrow
     expect(ASSIGNMENTS.robin.RB).toMatch(/MIDDLE/);
     const elsR = genPlayElements("robin", formSpots("Doubles"), "");
