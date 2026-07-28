@@ -337,7 +337,8 @@ function formSpots(formName) {
 function genPlayElements(conceptKey, spots, dir, tags = []) {
   const s = dir === "Lt" ? -1 : 1;
   const el = {};
-  const add = (L, kind, pts) => { if (spots[L]) (el[L] = el[L] || []).push({ kind, pts }); };
+  const clampX = (x) => Math.max(1.5, Math.min(98.5, x));
+  const add = (L, kind, pts) => { if (spots[L] && pts) (el[L] = el[L] || []).push({ kind, pts: pts.map(([x, y]) => [clampX(x), y]) }); };
   const at = (L) => spots[L];
   const has = (L) => !!spots[L];
   const outsideAt = (side) => {
@@ -426,7 +427,7 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       blockAll([backG, backT]);
       el[backG] = [{ kind: "route", pts: [at(backG), [50, 27], [50 + s * 14, 25], [50 + s * 18, 19]] }];
       if (backT) el[backT] = [{ kind: "route", pts: [at(backT), [50 - s * 2, 29], [50 + s * 11, 26], [50 + s * 13, 12]] }];
-      if (has("RB")) add("RB", "carry", [at("RB"), [50 - s * 4, 32], [50 + s * 8, 27], [50 + s * 15, 20], [50 + s * 16, 8]]);
+      if (has("RB")) { const rx = at("RB")[0]; add("RB", "carry", [[rx, at("RB")[1]], [rx - s * 3, 32], [50 + s * 8, 27], [50 + s * 15, 20], [50 + s * 16, 8]]); }
       qbFake();
       break;
     case "stretch": {
