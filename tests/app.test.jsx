@@ -69,7 +69,7 @@ describe("vocabulary", () => {
   it("keeps the line-call channel intact", () => {
     expect(LINE_CALLS.owl).toBe("HAMMER");
     expect(LINE_CALLS.slip).toBe("GATE");
-    expect(LINE_CALLS.stretch).toBe("REACH"); // Ram/Leopard reuse the word the line already knows
+    expect(LINE_CALLS.stretch).toBe("STRETCH"); // renamed from REACH July 28 (coach: too close to the R play words)
   });
   it("answers the down-block key with a true reach play", () => {
     expect(CONCEPTS.stretch.words).toEqual({ Rt: "Ram", Lt: "Leopard" });
@@ -106,7 +106,7 @@ describe("vocabulary", () => {
       expect(names, want + " is seeded").toContain(want);
     }
     expect(CONCEPTS.rbpass.words).toEqual({ Rt: "Rainbow", Lt: "Lightning" });
-    expect(LINE_CALLS.rbpass).toBe("REACH"); // it must smell exactly like Ram
+    expect(LINE_CALLS.rbpass).toBe("STRETCH"); // it must smell exactly like Ram
     expect(ASSIGNMENTS.rbpass.RB).toMatch(/Never force it/);
     expect(ASSIGNMENTS.rbpass.OL).toMatch(/Nobody drifts downfield/i);
     const rhino = SEED.plays.find((p) => p.name === "Doubles · Rhino");
@@ -184,7 +184,7 @@ describe("vocabulary", () => {
     // the assistant-coach fix: a DL keying the pulling guard gets walled by the tackle
     expect(ASSIGNMENTS.power.OL).toMatch(/walls the man over the pulled guard/i);
     expect(ASSIGNMENTS.stretch.H).toMatch(/lead/i); // jet motion becomes the lead block
-    expect(ASSIGNMENTS.stretch.OL).toMatch(/reach/i);
+    expect(ASSIGNMENTS.stretch.OL).toMatch(/stretch/i);
   });
 });
 
@@ -233,14 +233,14 @@ describe("seeds", () => {
     expect(w2).toBeTruthy();
     const byId = Object.fromEntries(SEED.drills.map((d) => [d.id, d.name]));
     const names = w2.plan.items.flatMap((it) => it.stations.map((s) => byId[s.drillId]));
-    for (const want of ["Jet Mesh & Basket", "Motion Landmark Races", "Owl Fake & Pop", "Reach & Run (REACH steps)"]) {
+    for (const want of ["Jet Mesh & Basket", "Motion Landmark Races", "Owl Fake & Pop", "Stretch & Run (STRETCH steps)"]) {
       expect(names, want + " is in the plan").toContain(want);
     }
   });
   it("adds the jet drills and Week 2 plan to an existing program once", () => {
     const old = {
       players: [],
-      drills: SEED.drills.filter((d) => !/Jet Mesh|Motion Landmark|Owl Fake|Reach & Run/.test(d.name)).map((d) => ({ ...d })),
+      drills: SEED.drills.filter((d) => !/Jet Mesh|Motion Landmark|Owl Fake|Stretch & Run/.test(d.name)).map((d) => ({ ...d })),
       libVersion: 3, safariVersion: 4, day1Seeded: true, savedPlans: [],
       plays: SEED.plays.map((p) => ({ ...p })),
     };
@@ -257,7 +257,7 @@ describe("seeds", () => {
     expect(names).toContain("Tank Rt · Owl");
     expect(names.filter((n) => n === "Tank Rt · Owl").length).toBe(1);
     expect(v3.plays.length).toBe(72); // 30 + v4 looks + Ram/Leopard + v6 costumes + QB tree
-    expect(v3.safariVersion).toBe(11);
+    expect(v3.safariVersion).toBe(12);
     expect(v3.packages.map((p) => p.name)).toContain("CHEETAH");
     const rocket = v3.plays.find((p) => p.name === "Doubles · Rocket");
     const reeses = v3.plays.find((p) => p.name === "Doubles · Reese's");
@@ -344,7 +344,7 @@ describe("normalizeData migration", () => {
     expect(keepLt.name).toContain("Longhorn"); // derived names propagate the rename
     expect(d.savedPlans.some((s) => /day 1/i.test(s.name))).toBe(true);
     expect(d.players[0].name).toBe("Old Kid"); // user data untouched
-    expect(d.safariVersion).toBe(11);
+    expect(d.safariVersion).toBe(12);
   });
   it("does not double-seed on a second load", () => {
     const once = normalizeData({ safariVersion: 2, plays: SEED.plays.map((p) => ({ ...p })) });

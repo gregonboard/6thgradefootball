@@ -370,7 +370,7 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
   const qbFake = () => has("QB") && add("QB", "fake", [at("QB"), [at("QB")[0] - s * 3, at("QB")[1]]]);
   const rbLeak = () => { if (!has("RB")) return; const m = at("RB")[0] <= 50 ? -1 : 1; add("RB", "route", [at("RB"), [at("RB")[0] + m * 8, at("RB")[1] - 3], [at("RB")[0] + m * 14, at("RB")[1] - 8]]); };
   const olPass = () => { for (const L of ["LT", "LG", "C", "RG", "RT"]) if (has(L)) add(L, "block", [at(L), [at(L)[0], at(L)[1] - 3]]); };
-  /* REACH: every lineman leans playside and runs (blockAll leans backside, the down-block look) */
+  /* STRETCH (the line word): every lineman leans playside and runs (blockAll leans backside, the down-block look) */
   const reachOL = () => { for (const L of ["LT", "LG", "C", "RG", "RT"]) if (has(L)) add(L, "block", [at(L), [at(L)[0] + s * 2.5, at(L)[1] - 3.5]]); };
   const throwTo = (L, i = 1) => { if (has("QB") && el[L]) { const r = el[L].find((e) => e.kind === "route" || e.kind === "carry"); if (r) add("QB", "throw", [at("QB"), r.pts[Math.min(i, r.pts.length - 1)]]); } };
 
@@ -667,8 +667,8 @@ const CONCEPTS = {
   blank:   { fam: "Special", dirs: [""],         words: { "": "Custom" }, carrier: null, signal: "Your call", how: "A blank canvas. Use Customize to draw every path yourself.", read: "Your design." },
 };
 /* ---- line calls: the O-line's own channel, spoken first ---- */
-const LINE_CALLS = { power: "HAMMER", owl: "HAMMER", trap: "TRAP", counter: "WRAP", jet: "REACH", keep: "REACH", stretch: "REACH", rbpass: "REACH", reverse: "REACH", sneak: "SURGE", sparrow: "QUICK", robin: "QUICK", bubble: "QUICK", hawk: "WALL", falcon: "WALL", eagle: "WALL", flood: "WALL", slip: "GATE" };
-const LINE_WORDS = ["HAMMER", "TRAP", "WRAP", "REACH", "SURGE", "QUICK", "WALL", "GATE"];
+const LINE_CALLS = { power: "HAMMER", owl: "HAMMER", trap: "TRAP", counter: "WRAP", jet: "STRETCH", keep: "STRETCH", stretch: "STRETCH", rbpass: "STRETCH", reverse: "STRETCH", sneak: "SURGE", sparrow: "QUICK", robin: "QUICK", bubble: "QUICK", hawk: "WALL", falcon: "WALL", eagle: "WALL", flood: "WALL", slip: "GATE" };
+const LINE_WORDS = ["HAMMER", "TRAP", "WRAP", "STRETCH", "SURGE", "QUICK", "WALL", "GATE"];
 const lineCallFor = (p) => (p && (p.lineCall || LINE_CALLS[p.concept])) || "";
 /* the full spoken call: Formation (unless Doubles) · LINE WORD · play word */
 const playCallLabel = (p) => {
@@ -705,9 +705,9 @@ const playCarrier = (p) => {
 const ASSIGNMENTS = {
   power:   { OL: "Playside blocks down. Backside guard pulls and leads through the hole. Backside tackle steps DOWN first and walls the man over the pulled guard, then hinges on any chaser.", QB: "Open playside, hand it deep, fake the keep after.", RB: "Downhill off Y's hip. Follow the pulling guard.", H: "Jet motion full speed. Sell it like you have the ball.", Y: "Block down hard. You are the edge of the wall.", XZ: "Block the man over you." },
   trap:    { OL: "Center and playside block down. Backside guard traps the first man past center.", QB: "Quick handoff, then fake a rollout.", RB: "One step, hit the A gap NOW. It will be open.", H: "Stay wide, block your man.", Y: "Climb to the linebacker.", XZ: "Block the man over you." },
-  jet:     { OL: "Everybody reach playside and run.", QB: "YOU own the ball. Press it into H's basket as he crosses. If the mesh feels wrong, keep it and run the Raccoon path. Never chase him with the ball.", RB: "Fake the power away. Sell it.", H: "Make a basket, NEVER slow down, squeeze when you feel it. Your only job is speed.", Y: "Arc release, go find the safety.", XZ: "Playside walls off inside: get in the way, stay high, no kill shots. Backside blocks his man." },
-  keep:    { OL: "Reach playside just like Rocket.", QB: "Fake the flip, tuck it, follow the RB around the edge. Score or get down: never take the second hit.", RB: "Lead through the edge, block the first color you see.", H: "Motion full speed, fake it, keep sprinting.", Y: "Arc to the safety.", XZ: "Block the man over you." },
-  stretch: { OL: "Reach playside and RUN. Cover him up, stay on your feet, do not win a wrestling match.", QB: "Open playside, hand it WIDE to the RB, fake the keep after.", RB: "Take it flat, race to the numbers, one cut upfield the moment you see grass. No grass at the numbers? Plant and slam it NORTH inside: their whole defense just overran you.", H: "Jet motion full speed, but this one is not yours: turn up at the edge and lead. Block the first color outside Y.", Y: "Reach the end and run him where he wants to go. The RB cuts off your butt.", XZ: "Playside stalks the corner. Backside sprints his man deep and away." },
+  jet:     { OL: "Everybody stretch playside and run.", QB: "YOU own the ball. Press it into H's basket as he crosses. If the mesh feels wrong, keep it and run the Raccoon path. Never chase him with the ball.", RB: "Fake the power away. Sell it.", H: "Make a basket, NEVER slow down, squeeze when you feel it. Your only job is speed.", Y: "Arc release, go find the safety.", XZ: "Playside walls off inside: get in the way, stay high, no kill shots. Backside blocks his man." },
+  keep:    { OL: "Stretch playside just like Rocket.", QB: "Fake the flip, tuck it, follow the RB around the edge. Score or get down: never take the second hit.", RB: "Lead through the edge, block the first color you see.", H: "Motion full speed, fake it, keep sprinting.", Y: "Arc to the safety.", XZ: "Block the man over you." },
+  stretch: { OL: "Stretch playside and RUN. Cover him up, stay on your feet, do not win a wrestling match.", QB: "Open playside, hand it WIDE to the RB, fake the keep after.", RB: "Take it flat, race to the numbers, one cut upfield the moment you see grass. No grass at the numbers? Plant and slam it NORTH inside: their whole defense just overran you.", H: "Jet motion full speed, but this one is not yours: turn up at the edge and lead. Block the first color outside Y.", Y: "Reach the end and run him where he wants to go. The RB cuts off your butt.", XZ: "Playside stalks the corner. Backside sprints his man deep and away." },
   counter: { OL: "Playside blocks down and seals anyone chasing the pullers. Backside guard kicks, backside tackle wraps and leads. Center walls the backside A gap behind them.", QB: "Open away first, then hand it back.", RB: "Jab step away, be patient, then hit it behind the wrappers.", H: "Jet motion away. Sell it.", Y: "Block down hard.", XZ: "Block the man over you." },
   sneak:   { OL: "Fire out low. One yard war.", QB: "Snap and surge behind the center. Two hands on the ball.", RB: "Push the pile.", H: "Get big, wall off.", Y: "Get big, wall off.", XZ: "Block the man over you." },
   sparrow: { OL: "Set and punch. Ball is out fast.", QB: "Pick the widest cushion before the snap. Catch, throw, done.", RB: "Check the rush, leak to the flat.", H: "Slant at 4: three steps, cut across his face.", Y: "Stick at 5, sit in the window.", XZ: "Hitch at 5. Turn around, show your numbers. Pressed? Nod and GO: your hitch just became a fly route." },
@@ -719,8 +719,8 @@ const ASSIGNMENTS = {
   eagle:   { OL: "Max protect. Nobody touches him.", QB: "One look deep for two counts, then take the drag.", RB: "Block first. Always.", H: "Stay in and block. You are the bodyguard.", Y: "Drag at 10. Be the answer.", XZ: "X runs the post. Z runs the go." },
   bubble:  { OL: "Set and punch. Do not go downfield.", QB: "Catch and throw it NOW.", RB: "Fake.", H: "Jet motion, sell it.", Y: "Wall the first defender inside: get in his way, stay high.", XZ: "Called side bubbles back and out. Other side blocks his man." },
   slip:    { OL: "Block one count, let them through, release flat.", QB: "Drift back, let them come, dump it over their heads.", RB: "Let the rush go by, slip out behind them, eyes up fast.", H: "Run your man off deep.", Y: "Run him off.", XZ: "Run them off deep." },
-  reverse: { OL: "Reach like Rocket, then wall off.", QB: "Fake to H, then YOU own the second exchange too: press it deep into the reverse man's basket.", RB: "Fake away.", H: "Full Rocket fake. Best acting on the team.", Y: "Arc, find the safety.", XZ: "Backside man comes around deep, makes a basket, and sprints. Called side blocks down." },
-  rbpass:  { OL: "Reach like Ram but STAY GLUED to your man. Nobody drifts downfield, ever.", QB: "Hand it wide exactly like Ram, then sneak to the flat as his safety valve.", RB: "Run Ram HARD for three steps, pull up behind the line, throw it HIGH to the deep man or tuck and run Ram. Never force it.", H: "Jet motion, turn up and lead exactly like Ram. You are the bait.", Y: "Reach the end exactly like Ram.", XZ: "Called side stalks the corner two counts, then sprints past him deep. Backside blocks his man like always." },
+  reverse: { OL: "Stretch like Rocket, then wall off.", QB: "Fake to H, then YOU own the second exchange too: press it deep into the reverse man's basket.", RB: "Fake away.", H: "Full Rocket fake. Best acting on the team.", Y: "Arc, find the safety.", XZ: "Backside man comes around deep, makes a basket, and sprints. Called side blocks down." },
+  rbpass:  { OL: "Stretch like Ram but STAY GLUED to your man. Nobody drifts downfield, ever.", QB: "Hand it wide exactly like Ram, then sneak to the flat as his safety valve.", RB: "Run Ram HARD for three steps, pull up behind the line, throw it HIGH to the deep man or tuck and run Ram. Never force it.", H: "Jet motion, turn up and lead exactly like Ram. You are the bait.", Y: "Reach the end exactly like Ram.", XZ: "Called side stalks the corner two counts, then sprints past him deep. Backside blocks his man like always." },
   blank:   { OL: "Coach draws it. Know your line on the picture.", QB: "Coach draws it. Know your path.", RB: "Coach draws it. Know your path.", H: "Coach draws it. Know your path.", Y: "Coach draws it. Know your path.", XZ: "Coach draws it. Know your path." },
 };
 const JOB_GROUPS = [["OL", "O-Line"], ["QB", "Quarterback"], ["RB", "Running Back"], ["H", "H (Slot)"], ["Y", "Y (Tight End)"], ["XZ", "X and Z (Outside)"]];
@@ -767,8 +767,8 @@ function safariSeedPlaysV4() {
   const mk = mkSeedPlay;
   const note = (p, n) => ({ ...p, note: n });
   return [
-    note(mk(41, "Doubles", "stretch", "Rt", false, 3), "The counterpunch when they attack our down blocks. Same REACH the line knows from Rocket; H leads instead of taking it."),
-    note(mk(42, "Doubles", "stretch", "Lt", false, 3), "Reach left. Downhill linebackers seal themselves."),
+    note(mk(41, "Doubles", "stretch", "Rt", false, 3), "The counterpunch when they attack our down blocks. Same STRETCH the line knows from Rocket; H leads instead of taking it."),
+    note(mk(42, "Doubles", "stretch", "Lt", false, 3), "Stretch left. Downhill linebackers seal themselves."),
   ];
 }
 /* v6: more costumes for the plays that win. Options for the call sheet, not the kids. */
@@ -778,7 +778,7 @@ function safariSeedPlaysV5() {
   return [
     note(mk(43, "Bunch Rt", "jet", "Rt", false, 5), "Jet into the bunch: three blockers in a phone booth and the fastest kid outside them."),
     note(mk(44, "Bunch Lt", "jet", "Lt", false, 5), "Jet into the bunch, left."),
-    note(mk(45, "Nasty Rt", "stretch", "Rt", false, 5), "Reach from condensed splits. They pinch inside, RB has the whole field."),
+    note(mk(45, "Nasty Rt", "stretch", "Rt", false, 5), "Stretch from condensed splits. They pinch inside, RB has the whole field."),
     note(mk(46, "Nasty Lt", "stretch", "Lt", false, 5), "Nasty reach, left."),
     note(mk(47, "Tank Rt", "stretch", "Rt", false, 4), "The heavy sweep. They load the middle for Tank Rhino, we go around the pile."),
     note(mk(48, "Tank Lt", "stretch", "Lt", false, 4), "Heavy sweep, left."),
@@ -983,7 +983,7 @@ const RAW_SEED = {
     { id: uid(), name: "Motion Landmark Races", cat: "Individual", group: "Skill (QB/RB/WR/TE)", mins: 8, notes: "H starts on Set, hits the mesh cone at GO at FULL speed. Cone behind the QB spot. Race two H's, time them, same speed every rep." },
     { id: uid(), name: "Jet Mesh & Basket", cat: "Group", group: "Skill (QB/RB/WR/TE)", mins: 12, notes: "QB and H only: Set... GO, H makes a basket at full speed, QB presses it in. The QB owns the ball: a bad mesh is the QB's rep, and he keeps it on the Raccoon path instead of forcing it. 20 reps each way, both QBs." },
     { id: uid(), name: "Owl Fake & Pop", cat: "Group", group: "Skill (QB/RB/WR/TE)", mins: 10, notes: "QB, RB, Y. Big Rhino fake (RB runs angry), Y sells the block one count, slips, QB pops it over the cone linebackers. Rhythm: fake, find, throw." },
-    { id: uid(), name: "Reach & Run (REACH steps)", cat: "Individual", group: "OL", mins: 8, notes: "Playside reach step and RUN on the cadence. Cover him up, do not win a wrestling match. Jet and keep live behind this.", detail: "SETUP: line of 5 on a yard line, coach calls REACH R or L. COACH: first step gains ground playside at 45, second step covers his near number, then feet on fire. WIN: 5 straight reps where nobody crosses a face." },
+    { id: uid(), name: "Stretch & Run (STRETCH steps)", cat: "Individual", group: "OL", mins: 8, notes: "Playside stretch step and RUN on the cadence. Cover him up, do not win a wrestling match. Jet and keep live behind this.", detail: "SETUP: line of 5 on a yard line, coach calls STRETCH R or L. COACH: first step gains ground playside at 45, second step covers his near number, then feet on fire. WIN: 5 straight reps where nobody crosses a face." },
     /* ---- ELITE LIBRARY (libVersion 5): the highest-value youth drills, curated for this roster and scheme ---- */
     { id: uid(), name: "Ball Security Gauntlet", cat: "Warmup", group: "Skill (QB/RB/WR/TE)", mins: 8, notes: "High and tight through two lines of punching teammates. Fumbles are cheap here so they never happen Saturday.", detail: "SETUP: two facing lines 2 yds apart, carriers run the tunnel while teammates club and rip. COACH: eagle claw over the point, ball pinned to ribs, two hands in traffic. WIN: whole group through twice with zero balls on the ground." },
     { id: uid(), name: "Hawk Tackle Progression", cat: "Individual", group: "Defense", mins: 10, notes: "Shoulder tackle on bags: track, near-foot plant, shoulder through thigh, wrap and run the feet. Heads never in the fit.", detail: "SETUP: kneeling bag holders, tacklers 5 yds off. Progress fit -> walk -> jog -> thud. COACH: eyes through the near hip, head across never on, hug and drive. WIN: 10 clean fits per kid, zero head contact." },
@@ -1043,7 +1043,7 @@ const DRILL_DETAILS = {
   "Accuracy Targets": "SETUP: nets or hand-shields at 8, 12, 18 yds. COACH: feet set the throw; keep score out loud, losers pick up cones. WIN: QB1 hits 70 percent.",
   "Handoff Mesh Circuit": "SETUP: QB meshes with every back both directions, no defense. COACH: QB owns every ball, look it in, then carry out the fake with empty hands. WIN: zero balls on the ground for the period.",
   "Down Block Angles": "SETUP: bags angled inside, blocker washes the man down the line. COACH: head playside, hips through the crack, do not get pushed upfield. WIN: bag never crosses your face.",
-  "OL Stance & First Steps": "SETUP: five-man line steps every line word on cadence, no contact. COACH: HAMMER down steps, REACH playside steps, WALL kick-slide, one word one picture. WIN: whole line steps the same way on the same sound.",
+  "OL Stance & First Steps": "SETUP: five-man line steps every line word on cadence, no contact. COACH: HAMMER down steps, STRETCH playside steps, WALL kick-slide, one word one picture. WIN: whole line steps the same way on the same sound.",
   "Inside Run (O vs D)": "SETUP: OL/DL/QB/RB/LB between the hashes at thud; script 10 plays per side from this week's installs; pair with WR vs DB. COACH: fit and finish, no tackling to the ground. WIN: offense moves the chains on script, defense fits every gap.",
   "WR vs DB 1-on-1s": "SETUP: press and off looks on the numbers, QBs alternate live throws. COACH: receivers win with feet not push-offs; DBs play the pocket not the man. WIN: every kid gets 6 reps minimum.",
   "7-on-7 Skelly": "SETUP: skill vs LB/DB between the numbers, script this week's birds vs base coverage; OL runs 1-on-1s beside it. COACH: QB goes through his ladder out loud between reps. WIN: two scripted trips, under 2 incompletions each.",
@@ -1102,7 +1102,7 @@ function week2Plan(drills) {
   const per = (mins, names) => ({ id: uid(), mins, stations: names.map(idOf).filter(Boolean).map((drillId) => ({ id: uid(), drillId })) });
   const items = [
     per(10, ["Dynamic Warmup & Stretch"]),
-    per(8, ["Motion Landmark Races", "Reach & Run (REACH steps)", "LB Read Steps"]),
+    per(8, ["Motion Landmark Races", "Stretch & Run (STRETCH steps)", "LB Read Steps"]),
     per(12, ["Jet Mesh & Basket", "Down Block Angles", "Pedal & Break"]),
     per(10, ["Owl Fake & Pop", "OL Stance & First Steps", "Scrape & Fill"]),
     per(12, ["Perimeter Drill"]),
@@ -1118,7 +1118,7 @@ function week2Plan(drills) {
    ============================================================ */
 const GEN_POOLS = {
   skill: ["Routes on Air", "Catch Circuit", "Ball Security Gauntlet", "Settle & Noose", "Turn & Locate (deep ball)", "Jump-Cut Lane (RB)", "Pat & Go", "Bubble Catch & North", "Lead Block Strike (RB)", "Accuracy Targets"],
-  line: ["OL Stance & First Steps", "Down Block Angles", "Reach & Run (REACH steps)", "Double-Team Drive", "Pull & Kick (guards)", "Mirror Dodge (pass pro)", "Snap & Steps"],
+  line: ["OL Stance & First Steps", "Down Block Angles", "Stretch & Run (STRETCH steps)", "Double-Team Drive", "Pull & Kick (guards)", "Mirror Dodge (pass pro)", "Snap & Steps"],
   defense: ["LB Read Steps", "Hawk Tackle Progression", "Open-Field Corral", "Block Destruction", "Eyes Drill (run/pass keys)", "Pedal & Break", "Scrape & Fill", "Zone Drops & Landmarks"],
   group: [["Inside Run (O vs D)", "WR vs DB 1-on-1s"], ["7-on-7 Skelly"], ["Perimeter Drill"], ["Blitz Pickup Period", "WR vs DB 1-on-1s"]],
   situations: ["Kill Check Rehearsal", "Red Zone & Goal Line", "Backed Up / Coming Out", "Situations: 3rd Down", "2-Minute Drill"],
@@ -1165,7 +1165,7 @@ function generatePractice(data, totalMins = 75) {
 SEED.packages = seedPackages();
 applyKillPairs(SEED.plays);
 SEED.plays.forEach((p) => { if (!p.note && CHAIN_NOTES[p.name]) p.note = CHAIN_NOTES[p.name]; });
-SEED.safariVersion = 11;
+SEED.safariVersion = 12;
 SEED.savedPlans = [
   { id: uid(), name: "Day 1 · Helmets (Routes + Formations)", savedAt: "library", plan: day1Plan(SEED.drills) },
   { id: uid(), name: "Week 2 · Jet Series Install (Rocket, Raccoon, Owl)", savedAt: "library", plan: week2Plan(SEED.drills) },
@@ -1246,7 +1246,7 @@ function normalizeData(parsed) {
   // Older drills get a default group.
   let drills = (parsed.drills || []).map((d) => ({ group: "All", ...d }));
   // Renamed drills update in place (same id, so saved plans keep their links).
-  const DRILL_RENAMES = { "Jet Touch Pass Timing": "Jet Mesh & Basket" };
+  const DRILL_RENAMES = { "Jet Touch Pass Timing": "Jet Mesh & Basket", "Reach & Run (REACH steps)": "Stretch & Run (STRETCH steps)" };
   drills = drills.map((d) => {
     if (!DRILL_RENAMES[d.name]) return d;
     const fresh = SEED.drills.find((x) => x.name === DRILL_RENAMES[d.name]);
@@ -1327,6 +1327,10 @@ function normalizeData(parsed) {
     let n10 = 0;
     plays = [...plays, ...safariSeedPlaysV8().filter((p) => !haveV10.has(p.name)).map((p) => ({ ...p, id: uid(), num: base10 + (++n10) }))];
   }
+  // v12 (line-word rename, July 28): REACH is now STRETCH; play notes follow.
+  if (!(parsed.safariVersion >= 12)) {
+    plays = plays.map((p) => (p.note && /REACH/.test(p.note) ? { ...p, note: p.note.replace(/REACH/g, "STRETCH") } : p));
+  }
   // v11: Rewind/Loop get band numbers (Greg's explicit ask).
   if (!(parsed.safariVersion >= 11)) {
     const haveV11 = new Set(plays.map((p) => p.name));
@@ -1362,7 +1366,7 @@ function normalizeData(parsed) {
     gameLabel: parsed.gameLabel || "",
     script: parsed.script || [],
     scriptPos: parsed.scriptPos || 0,
-    safariVersion: 11,
+    safariVersion: 12,
     seasonWeek: parsed.seasonWeek || 1,
     pgOverrides: parsed.pgOverrides || {},
     packages,
@@ -3007,8 +3011,8 @@ function SystemPrint() {
   const dict = [
     ["HAMMER", "Rhino / Lion", "Power. Down blocks, backside guard pulls and leads, RB downhill."],
     ["TRAP", "Rabbit / Lynx", "Quick trap up the middle. Hits before they blink."],
-    ["REACH", "Rocket / Laser", "Jet sweep. H takes it at full speed."],
-    ["REACH", "Raccoon / Longhorn", "QB keeps behind the jet fake."],
+    ["STRETCH", "Rocket / Laser", "Jet sweep. H takes it at full speed."],
+    ["STRETCH", "Raccoon / Longhorn", "QB keeps behind the jet fake."],
     ["WRAP", "Renegade / Lizard", "Counter, opposite the flow. Week 6."],
     ["SURGE", "Moose", "QB sneak behind the big center."],
     ["QUICK", "Sparrow", "Hitches at 5. Ball out now."],
@@ -3019,7 +3023,7 @@ function SystemPrint() {
     ["WALL", "Eagle", "The deep shot, seven blocking."],
     ["QUICK", "Reese's / Laffy", "Bubble screen behind the jet fake."],
     ["GATE", "Rolo / Lifesaver", "Let the rush in, RB slips out behind it."],
-    ["REACH", "Rewind / Loop", "The reverse. Once a game."],
+    ["STRETCH", "Rewind / Loop", "The reverse. Once a game."],
   ];
   return (
     <div className="sheet">
