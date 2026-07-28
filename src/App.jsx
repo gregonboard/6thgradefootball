@@ -487,22 +487,27 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       rt("Z", [[2, -5], [10, -12]]);
       rt("H", [[-6, -5], [-12, -7]]);
       rt("Y", [[-6, -3], [-13, -4]]); /* flat: to the sideline */
-      rbLeak();
+      if (has("RB")) add("RB", "route", [at("RB"), [50, at("RB")[1] - 3], [50, at("RB")[1] - 8]]); /* settle the emptied middle */
       throwTo(s > 0 ? "Y" : "H");
       break;
-    case "hawk":
+    case "hawk": {
       olPass();
       rt("X", [[0, -10], [2, -8]]);
       rt("Z", [[0, -10], [2, -8]]);
-      rt("H", [[-6, -5], [-11, -6]]);
+      const ySide = has("Y") && at("Y")[0] > 50 ? 1 : -1;
+      if (has("H")) { /* bubble sell away, then shallow cross behind Y */
+        const [hx, hy] = at("H");
+        add("H", "route", [[hx, hy], [hx - ySide * 4, hy + 2], [50, hy - 5], [50 + ySide * 14, hy - 7]]);
+      }
       if (has("Y")) { /* wheel: flat toward the SIDELINE, then turn upfield */
         const [yx, yy] = at("Y");
         const m = yx > 50 ? 1 : -1;
         add("Y", "route", [[yx, yy], [yx + m * 9, yy - 1], [yx + m * 14, yy - 5], [yx + m * 15, yy - 18]]);
       }
       rbLeak();
-      throwTo(s > 0 ? "Z" : "X");
+      throwTo("H", 3);
       break;
+    }
     case "owl":
       /* the line blocks RHINO identically: playside down, backside guard pulls */
       blockAll([backG, "Y"]);
@@ -654,10 +659,10 @@ const CONCEPTS = {
   stretch: { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Ram", Lt: "Leopard" }, carrier: "RB", signal: "Head-butt the horns, then point", how: "The answer when they attack our down blocks downhill. Everybody reaches and RUNS, H's jet motion becomes the lead block, RB takes the wide give and cuts when he sees grass. Downhill linebackers seal themselves.", read: "None. Race them to the edge." },
   sneak:   { fam: "Run",    dirs: [""],         words: { "": "Moose" }, carrier: "QB", signal: "Flat hand dives under", how: "QB sneak behind the big center. Short yardage answer.", read: "None." },
   sparrow: { fam: "Pass",   dirs: [""],         words: { "": "Sparrow" }, carrier: "WR", signal: "Pinch fingers, small bird", how: "Hitches outside, H slants behind them, Y sticks at 5. Ball out now. Against press, the pressed hitch automatically becomes a GO. (H ran an out in v1; Greg ruled it collided with X's hitch.)", read: "Pick the widest cushion before the snap and throw it on rhythm. No cushion anywhere means they pressed: throw the GO over the presser or take Y at 5." },
-  robin:   { fam: "Pass",   dirs: [""],         words: { "": "Robin" }, carrier: "WR", signal: "Flap the elbows", how: "Slants outside, arrows to the flats. The 6th grade money concept.", read: "Flat first. Covered means the slant is open behind it." },
-  hawk:    { fam: "Pass",   dirs: [""],         words: { "": "Hawk" }, carrier: "WR", signal: "One arm soars", how: "Curls at 8 outside, flats underneath, Y WHEELS up the sideline: the same wheel these kids scored on last year. Curl, flat, wheel is a triangle one defender cannot cover.", read: "Watch the man over the slot: chases the flat, throw the curl; sits, throw the flat. And when the flat defender starts squatting on both, the wheel behind him is six." },
+  robin:   { fam: "Pass",   dirs: [""],         words: { "": "Robin" }, carrier: "WR", signal: "Flap the elbows", how: "Slants outside, arrows to the flats, and the RB settles in the middle the slants just emptied. The 6th grade money concept.", read: "Flat first. Covered means the slant is open behind it. Everything covered: the RB is sitting alone in the middle." },
+  hawk:    { fam: "Pass",   dirs: [""],         words: { "": "Hawk" }, carrier: "WR", signal: "One arm soars", how: "Three levels on Y's side: Z curls at 8, Y wheels up the sideline (last year's touchdown route), and H sells one hard bubble step AWAY, then crosses shallow behind Y. The backer who could sink under the wheel now has H arriving in his face. X curls backside as the escape.", read: "One man: the flat defender on Y's side. He runs deep with the wheel: throw H underneath. He jumps H: the wheel is six. Blitz: H's bubble is one step away. Scramble: X is curling behind you." },
   owl:     { fam: "Pass",   dirs: [""],         words: { "": "Owl" }, carrier: "Y", signal: "Circles over the eyes", how: "Everyone sells Rhino, and Owl is ALWAYS Rhino action to the right: the line hears HAMMER with no R or L word and that means Rhino rules, every time. Y slips into the seam behind the linebackers, QB fakes and pops it over their heads. Want the seam off LEFT action? That play already exists: Lion Peek.", read: "Fake, find Y, throw it now. Covered? Tuck it and run the Rhino path. The most unfair play we own." },
-  falcon:  { fam: "Pass",   dirs: [""],         words: { "": "Falcon" }, carrier: "WR", signal: "Both arms soar", how: "Four verticals, slots bend to the seams, RB checks down.", read: "Coach picks the target before the snap." },
+  falcon:  { fam: "Pass",   dirs: [""],         words: { "": "Falcon" }, carrier: "WR", signal: "Both arms soar", how: "Four verticals, slots bend to the seams, RB checks down.", read: "Coach picks the target before the snap. No pick, or one deep safety in the middle: throw the seam on the FAR side of him." },
   flood:   { fam: "Pass",   dirs: ["Rt", "Lt"], words: { Rt: "Raven", Lt: "Lark" }, carrier: "WR", signal: "Wing out flat, run the fingers sideways, then point", how: "Sprint-out flood: QB moves the launch point to the call side with the RB leading. Three levels stacked in front of him: go to clear it, deep out at 10, flat at 4. Half the field, one look at a time, and his legs are the third answer.", read: "Deep out first. Covered? Flat. Both covered? RUN for the sticks and get down or get out of bounds." },
   eagle:   { fam: "Pass",   dirs: [""],         words: { "": "Eagle" }, carrier: "WR", signal: "Full wingspan flex", how: "The shot. Post and go outside, Y drags underneath, H and RB stay in to protect seven strong.", read: "One look deep for two seconds, then take the drag." },
   bubble:  { fam: "Screen", dirs: ["Rt", "Lt"], words: { Rt: "Reese's", Lt: "Laffy" }, carrier: "WR", signal: "Rub the belly, then point", how: "Called-side outside WR bubbles behind the jet fake, Y and the backside crack down.", read: "Catch and throw now. Pressed over the bubble? MIRROR it the other way before the snap. Free yards when they chase the jet." },
@@ -711,10 +716,10 @@ const ASSIGNMENTS = {
   counter: { OL: "Playside blocks down and seals anyone chasing the pullers. Backside guard kicks, backside tackle wraps and leads. Center walls the backside A gap behind them.", QB: "Open away first, then hand it back.", RB: "Jab step away, be patient, then hit it behind the wrappers.", H: "Jet motion away. Sell it.", Y: "Block down hard.", XZ: "Block the man over you." },
   sneak:   { OL: "Fire out low. One yard war.", QB: "Snap and surge behind the center. Two hands on the ball.", RB: "Push the pile.", H: "Get big, wall off.", Y: "Get big, wall off.", XZ: "Block the man over you." },
   sparrow: { OL: "Set and punch. Ball is out fast.", QB: "Pick the widest cushion before the snap. Catch, throw, done.", RB: "Check the rush, leak to the flat.", H: "Slant at 4: three steps, cut across his face.", Y: "Stick at 5, sit in the window.", XZ: "Hitch at 5. Turn around, show your numbers. Pressed? Nod and GO: your hitch just became a fly route." },
-  robin:   { OL: "Set and punch. Ball out quick.", QB: "Flat first. If he jumps it, the slant is behind him.", RB: "Check, leak to the flat.", H: "Arrow to the flat right now.", Y: "Flat.", XZ: "Slant. Three steps, cut across his face." },
-  hawk:    { OL: "Real pass set. Stay square.", QB: "Man over the slot chases the flat: throw curl. He sits: throw flat. Flat defender squatting? The wheel is behind him.", RB: "Check, leak.", H: "Flat.", Y: "WHEEL: flat for three steps, then turn up the sideline and GO. Last year's touchdown route.", XZ: "Push to 8, snap around. Curl." },
+  robin:   { OL: "Set and punch. Ball out quick.", QB: "Flat first. If he jumps it, the slant is behind him. All covered: your RB is sitting in the middle.", RB: "Check the rush, then settle in the MIDDLE at 4. The slants just emptied it for you.", H: "Arrow to the flat right now.", Y: "Flat.", XZ: "Slant. Three steps, cut across his face." },
+  hawk:    { OL: "Real pass set. Stay square.", QB: "One man: the flat defender on Y's side. Runs with the wheel, throw H under. Jumps H, throw the wheel. Blitz, take H's bubble now.", RB: "Check the rush, then leak.", H: "Sell the bubble ONE hard step away, then slant across behind Y. Settle at 6 over the ball and keep drifting toward the wheel side.", Y: "WHEEL: flat for three steps, then turn up the sideline and GO. Last year's touchdown route.", XZ: "Push to 8, snap around. Curl. Backside man: you are his scramble answer." },
   owl:     { OL: "Block Rhino, RIGHT, every time: no R or L after HAMMER means Owl, and Owl means Rhino rules. Make it look exactly the same.", QB: "Fake Rhino big, pop it to Y over their heads. Covered? Tuck and run the Rhino path: your line is already run blocking.", RB: "Fake Rhino, run angry without the ball.", H: "Jet motion, sell it.", Y: "Sell the block one count, slip behind the linebackers, eyes up fast.", XZ: "Block like it's a run." },
-  falcon:  { OL: "Best pass set of the day. Give him time.", QB: "Coach picks the target before the snap. Trust it.", RB: "Checkdown at 5.", H: "Seam.", Y: "Seam.", XZ: "Go. Run through his shoulder." },
+  falcon:  { OL: "Best pass set of the day. Give him time.", QB: "Coach picks the target before the snap. Trust it. One safety deep? The seam on his far side wins.", RB: "Checkdown at 5.", H: "Seam.", Y: "Seam.", XZ: "Go. Run through his shoulder." },
   flood:   { OL: "Pass set, then slide with the QB. He is moving; move with him. Nobody crosses your face.", QB: "Sprint to the call, shoulders square so you can still throw. Deep out, then flat, then RUN. First down, then down or out of bounds.", RB: "You are his bodyguard. Lead the sprint and block the first color off the edge.", H: "Cross to the call side, deep out at 10. Snap your head around fast.", Y: "Flat at 4 on the call side. Be his easy answer.", XZ: "Called side runs the GO to pull the top off. Backside runs the post: stay alive, he might find you." },
   eagle:   { OL: "Max protect. Nobody touches him.", QB: "One look deep for two counts, then take the drag.", RB: "Block first. Always.", H: "Stay in and block. You are the bodyguard.", Y: "Drag at 10. Be the answer.", XZ: "X runs the post. Z runs the go." },
   bubble:  { OL: "Set and punch. Do not go downfield.", QB: "Catch and throw it NOW.", RB: "Fake.", H: "Jet motion, sell it.", Y: "Wall the first defender inside: get in his way, stay high.", XZ: "Called side bubbles back and out. Other side blocks his man." },

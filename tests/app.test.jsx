@@ -166,6 +166,17 @@ describe("vocabulary", () => {
   it("Hawk carries last year's TE wheel inside the base play", () => {
     expect(ASSIGNMENTS.hawk.Y).toMatch(/WHEEL/);
     expect(CONCEPTS.hawk.how).toMatch(/wheel/i);
+    // Greg's July 28 design: H sells the bubble away, then crosses BEHIND Y
+    expect(ASSIGNMENTS.hawk.H).toMatch(/bubble ONE hard step/i);
+    const elsH = genPlayElements("hawk", formSpots("Doubles"), "");
+    const cross = elsH.H.find((e) => e.kind === "route");
+    expect(cross.pts[1][0]).toBeLessThan(cross.pts[0][0]); // first step sells AWAY (left)
+    expect(cross.pts[cross.pts.length - 1][0]).toBeGreaterThan(55); // ends behind Y's side
+    // Robin's RB settles the middle instead of crowding H's arrow
+    expect(ASSIGNMENTS.robin.RB).toMatch(/MIDDLE/);
+    const elsR = genPlayElements("robin", formSpots("Doubles"), "");
+    const sit = elsR.RB.find((e) => e.kind === "route");
+    expect(sit.pts[sit.pts.length - 1][0]).toBe(50);
     // the wheel bends to the SIDELINE, never the middle (Greg's July 27 catch)
     const els = genPlayElements("hawk", formSpots("Doubles"), "");
     const wheel = els.Y.find((e) => e.kind === "route");
