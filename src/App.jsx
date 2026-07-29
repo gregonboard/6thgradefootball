@@ -1076,7 +1076,7 @@ const SEED = migrateDepth(RAW_SEED);
 /* ---- packages: one word, three snaps, all off the same picture ---- */
 function seedPackages() {
   return [
-    { id: uid(), name: "SAFARI", steps: [{ concept: "power", dir: "Rt" }, { concept: "jet", dir: "Rt" }, { concept: "owl", dir: "" }] },
+    { id: uid(), name: "WHITE", steps: [{ concept: "power", dir: "Rt" }, { concept: "jet", dir: "Rt" }, { concept: "owl", dir: "" }] },
     { id: uid(), name: "STAMPEDE", steps: [{ concept: "power", dir: "Rt" }, { concept: "power", dir: "Lt" }, { concept: "keep", dir: "Rt" }] },
     { id: uid(), name: "CHEETAH", steps: [{ concept: "jet", dir: "Rt" }, { concept: "bubble", dir: "Rt" }, { concept: "keep", dir: "Rt" }] },
   ];
@@ -1288,6 +1288,8 @@ function normalizeData(parsed) {
   }
   // v4: speed-in-space looks, jet kill pairs, CHEETAH tempo package.
   let packages = parsed.packages && parsed.packages.length ? parsed.packages : seedPackages();
+  // July 29: no Safari anywhere user-facing; the SAFARI package is now WHITE.
+  packages = packages.map((p) => (p.name === "SAFARI" ? { ...p, name: "WHITE" } : p));
   if (!(parsed.safariVersion >= 4)) {
     const haveV4 = new Set(plays.map((p) => p.name));
     const base4 = plays.reduce((m, p) => Math.max(m, Number(p.num) || 0), 0);
@@ -1477,7 +1479,7 @@ export default function App() {
             <div className="mark">VH</div>
             <div>
               <div className="team-line">VESTAVIA HILLS REBELS</div>
-              <div className="sub-line">6TH GRADE FOOTBALL · SIDELINE COMMAND</div>
+              <div className="sub-line">6TH GRADE WHITE TEAM · SIDELINE COMMAND</div>
             </div>
           </div>
           <div className="mast-right">
@@ -2957,7 +2959,7 @@ function PlaybookPrint({ data }) {
     .sort((a, z) => a.num - z.num);
   return (
     <div className="sheet">
-      <PrintHead title="Rebel Safari Playbook" right={<div className="p-meta">{list.length} plays{wk < 9 ? ` · thru week ${wk}` : ""} · {todayStr()}</div>} />
+      <PrintHead title="White Team Playbook" right={<div className="p-meta">{list.length} plays{wk < 9 ? ` · thru week ${wk}` : ""} · {todayStr()}</div>} />
       <div className="book-grid">
         {list.map((p) => (
           <div key={p.id} className="book-card">
@@ -3038,7 +3040,7 @@ function SystemPrint() {
   ];
   return (
     <div className="sheet">
-      <PrintHead title="The Rebel Safari on One Page" right={<div className="p-meta">Hand this to every coach. This is the whole offense.</div>} />
+      <PrintHead title="The White Team Offense on One Page" right={<div className="p-meta">Hand this to every coach. This is the whole offense.</div>} />
       <div className="sys-rules">
         <div className="sys-rule"><b>1</b><span><b>Bird = pass. Candy = screen. Everything else RUNS.</b> Six birds fly. Four candies trick. Any other word is an animal on the ground: run it, block your man. Not sure? Block your man.</span></div>
         <div className="sys-rule"><b>2</b><span><b>R goes right. L goes left.</b> Rhino runs right, Lion runs left. If a kid can spell, he knows the direction.</span></div>
@@ -3468,7 +3470,7 @@ function PrintHead({ title, right }) {
     <div className="p-head">
       <div className="p-mark">VH</div>
       <div className="p-head-text">
-        <div className="p-team">VESTAVIA HILLS REBELS · 6TH GRADE</div>
+        <div className="p-team">VESTAVIA HILLS REBELS · 6TH GRADE WHITE</div>
         <div className="p-title">{title}</div>
       </div>
       <div className="p-right">{right}</div>

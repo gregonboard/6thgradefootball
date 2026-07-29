@@ -221,9 +221,9 @@ describe("vocabulary", () => {
 
 /* ---------- unit: seeds ---------- */
 describe("seeds", () => {
-  it("seeds SAFARI, STAMPEDE, and CHEETAH packages", () => {
+  it("seeds WHITE, STAMPEDE, and CHEETAH packages", () => {
     const pk = seedPackages();
-    expect(pk.map((p) => p.name)).toEqual(["SAFARI", "STAMPEDE", "CHEETAH"]);
+    expect(pk.map((p) => p.name)).toEqual(["WHITE", "STAMPEDE", "CHEETAH"]);
     expect(pk.every((p) => p.steps.length === 3)).toBe(true);
   });
   it("jet exchange: QB owns the basket, H never has to catch", () => {
@@ -367,7 +367,7 @@ describe("normalizeData migration", () => {
     }));
     const d = normalizeData(old);
     expect(d.seasonWeek).toBe(1);
-    expect(d.packages.map((p) => p.name)).toContain("SAFARI");
+    expect(d.packages.map((p) => p.name)).toContain("WHITE");
     const rhino = d.plays.find((p) => p.concept === "power" && p.dir === "Rt");
     const bubble = d.plays.find((p) => p.concept === "bubble" && p.dir === "Rt");
     expect(rhino.killId).toBe(bubble.id);
@@ -504,12 +504,12 @@ describe("app end-to-end", () => {
     expect(screen.queryByText("QB / WR")).toBeNull();
   });
 
-  it("locks packages before week 3 and runs SAFARI at week 3", async () => {
+  it("locks packages before week 3 and runs WHITE at week 3", async () => {
     await load();
     fireEvent.click(screen.getByText("Caller"));
     expect(screen.getByText(/unlock at week 3/i)).toBeTruthy();
     setWeek(3);
-    const safari = await screen.findByText("SAFARI");
+    const safari = await screen.findByText("WHITE");
     fireEvent.click(safari);
     expect(screen.getByText(/1 of 3/)).toBeTruthy();
     fireEvent.click(screen.getByText("CALL IT")); // Rhino

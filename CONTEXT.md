@@ -27,7 +27,7 @@ Last updated: July 21, 2026 (post full-system confusion audit)
 
 ---
 
-## 2. THE OFFENSE: "THE REBEL SAFARI"
+## 2. THE OFFENSE (internally nicknamed "the Rebel Safari"; July 29 ruling: NO Safari branding anywhere user-facing. The team is the VESTAVIA HILLS REBELS 6TH GRADE WHITE TEAM: playbook prints say White Team, the masthead says 6TH GRADE WHITE TEAM, and the SAFARI tempo package was renamed WHITE. Internal code names like safariVersion are unchanged.)
 
 A gap-scheme, series-based, fast-tempo spread built specifically for this roster. The core philosophy: **the smartness lives in the structure, not in anyone's head.** Same few concepts, many costumes (the Lane Kiffin principle adapted for 11-year-olds).
 
@@ -101,7 +101,7 @@ Every core snap shows the same picture (jet motion, RB downhill, Y attached). Of
 - **TURBO** = same play again, snapped instantly. Never twice in a row (app enforces this).
 - **MIRROR** = same play, other direction (every word has a twin). QB can also call it at the line after counting hats.
 - **SWITCH** + any word = run its twin. Year-two doctrine: SWITCH lives on the board with a visual signal ONLY, never voice, never before week 5 (a kid who misses the word runs the mirror against ten teammates). It was removed from all kid-facing route cards.
-- **Packages** (week 3+) = one word, three snaps at tempo, all off the same picture. Seeded: SAFARI (Rhino, Rocket, Owl), STAMPEDE (Rhino, Lion, Raccoon), and CHEETAH (Rocket, Reese's, Raccoon: everything looks like jet right and hits edge, bubble, then QB). Real Kiffin tempo is next-play-fast, not same-play-fast.
+- **Packages** (week 3+) = one word, three snaps at tempo, all off the same picture. Seeded: WHITE (Rhino, Rocket, Owl; renamed from SAFARI July 29), STAMPEDE (Rhino, Lion, Raccoon), and CHEETAH (Rocket, Reese's, Raccoon: everything looks like jet right and hits edge, bubble, then QB). Real Kiffin tempo is next-play-fast, not same-play-fast.
 - **Kill checks** (week 4+) = paired plays on the band ("14 / K8"). Default is the first play; QB counts the box and yells KILL KILL to flip. Seeded pairs: Rhino/Lion AND Rocket/Laser kill to the same-side bubble.
 - **FREEZE** = cadence trick, once a game.
 - **Call security:** wristband numbers are the encrypted everyday channel, shown silently on a board (or the app's Board Mode), never yelled. One-word calls are reserved for Turbo, where tempo outruns decoding. The app can shuffle all play numbers in one click to re-encrypt mid-season.
