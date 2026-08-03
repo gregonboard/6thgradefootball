@@ -3244,7 +3244,7 @@ function WristTab({ data, up, onPrint, onPrintRoutes }) {
             </select>
           </label>
         </div>
-        <p className="hint">One 5" × 3" insert with {w.cols} windows, sized for the standard youth wristband sleeve. The plays split evenly across the windows and the text auto-sizes to fit however many you pick. Cut on the lines, slide into the {w.cols} slots. Print one per player, plus spares.</p>
+        <p className="hint">One 4" × 2" insert with {w.cols} windows, sized for the standard youth wristband sleeve. The plays split evenly across the windows and the text auto-sizes to fit however many you pick. Cut on the lines, slide into the {w.cols} slots. Print one per player, plus spares.</p>
         <div className="check-head">
           <b>Plays on the band ({active.length})</b>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -3283,13 +3283,21 @@ function WristTab({ data, up, onPrint, onPrintRoutes }) {
 function WristCard({ plays, title, cols }) {
   const perCol = Math.ceil(plays.length / cols) || 1;
   const columns = Array.from({ length: cols }, (_, c) => plays.slice(c * perCol, (c + 1) * perCol));
-  /* Fit the text to the window: a 3in card minus the title leaves ~2.65in of
-     column height. Size the play word to that row height so any count fits and
-     stays as large as it can be, clamped for 6th grade eyes. */
-  const rowH = (2.65 * 96) / perCol;
+  /* Fit the text to the window in BOTH directions on a 4"x2" card:
+     - vertical: 2in minus the title leaves ~1.7in of column height / rows
+     - horizontal: the card width / windows, minus the number lane, must hold
+       the longest call without clipping (Roboto Condensed ~0.47em per char)
+     take the smaller so nothing ever ellipsizes, clamped for kid eyes. */
   const hasEyebrow = plays.some((p) => p.concept && CONCEPTS[p.concept] && p.formation !== "Doubles");
-  const nameSize = Math.max(8, Math.min(19, Math.round(rowH * (hasEyebrow ? 0.42 : 0.5))));
-  const numSize = Math.max(9, Math.min(21, Math.round(rowH * 0.5)));
+  const rowH = (1.7 * 96) / perCol;
+  const vFont = rowH * (hasEyebrow ? 0.42 : 0.5);
+  const labelLen = (p) => ((lineCallFor(p) ? lineCallFor(p).length + 1 : 0) +
+    ((p.concept && CONCEPTS[p.concept] && p.concept !== "blank") ? callWord(p.concept, p.dir, p.tags || []).length : (p.name || "").length));
+  const maxChars = Math.max(6, ...plays.map(labelLen));
+  const textWpx = (4 * 96) / cols - 30; /* column width minus number lane, border, padding */
+  const hFont = textWpx / (maxChars * 0.6); /* Roboto Condensed ALL CAPS runs ~0.6em/char */
+  const nameSize = Math.max(8, Math.min(19, Math.floor(Math.min(vFont, hFont))));
+  const numSize = Math.max(9, Math.min(20, Math.round(rowH * 0.5)));
   return (
     <div className="wrist-card">
       <div className="wrist-title">{title || "PLAYS"}</div>
@@ -3600,7 +3608,7 @@ function WristPrint({ data }) {
           </div>
         ))}
       </div>
-      <div className="p-foot no-border"><span>Cut on dashed lines · fits 5" × 3" wristband inserts</span></div>
+      <div className="p-foot no-border"><span>Cut on the dashed 4" × 2" lines · slides into the wristband sleeve</span></div>
     </div>
   );
 }
@@ -4057,16 +4065,16 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .wrist-fitline b { color: var(--ink); }
 .wrist-warn { margin: 0 16px 10px; padding: 8px 10px; background: #FFF3CD; border: 1.5px dashed #b8860b; font-size: 12px; line-height: 1.4; }
 .wrist-preview-wrap { padding: 20px; display: flex; justify-content: flex-start; overflow-x: auto; background: repeating-linear-gradient(45deg, #F4F2ED, #F4F2ED 12px, #EFEDE6 12px, #EFEDE6 24px); }
-.wrist-card { width: 5in; height: 3in; background: #fff; border: 2px solid var(--ink); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+.wrist-card { width: 4in; height: 2in; background: #fff; border: 2px solid var(--ink); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
 .wrist-title { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 3px; text-align: center; background: var(--ink); color: #fff; padding: 2px 0; text-transform: uppercase; }
 .wrist-cols { flex: 1; display: grid; }
-.wrist-col { border-right: 1.5px solid var(--ink); display: flex; flex-direction: column; }
+.wrist-col { border-right: 1.5px solid var(--ink); display: flex; flex-direction: column; min-width: 0; }
 .wrist-col:last-child { border-right: none; }
 .wrist-play { display: flex; align-items: stretch; gap: 0; border-bottom: 1px solid #C9CBCF; padding: 0; flex: 1; min-height: 0; }
 .wrist-play:nth-child(even) { background: #F1F2F4; }
 .wrist-play:last-child { border-bottom: none; }
-.wp-num { font-family: var(--disp); font-weight: 500; font-size: 15px; color: var(--ink); border-right: 1px solid #C9CBCF; width: 26px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-.wp-name { font-family: var(--disp); font-weight: 500; font-size: 14px; letter-spacing: .5px; text-transform: uppercase; flex: 1; min-width: 0; color: var(--ink); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 0 5px; overflow: hidden; }
+.wp-num { font-family: var(--disp); font-weight: 500; font-size: 15px; color: var(--ink); border-right: 1px solid #C9CBCF; width: 22px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.wp-name { font-family: var(--disp); font-weight: 500; font-size: 14px; letter-spacing: 0; text-transform: uppercase; flex: 1; min-width: 0; color: var(--ink); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 0 4px; overflow: hidden; }
 .wp-name b { font-weight: 500; }
 .wp-call { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 @media (max-width: 640px) { .wrist-preview-wrap { transform-origin: top left; overflow-x: auto; } }
@@ -4106,9 +4114,9 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
   /* 16px controls stop iOS focus-zoom */
   input, select, textarea { font-size: 16px; }
 
-  /* the 5in wristband proof shrinks to fit the screen */
+  /* the wristband proof shrinks to fit the screen */
   .wrist-preview-wrap { padding: 10px; justify-content: flex-start; }
-  .wrist-card { transform: scale(.7); transform-origin: top left; margin-right: calc(-5in * .3); margin-bottom: calc(-3in * .3); }
+  .wrist-card { transform: scale(.85); transform-origin: top left; margin-right: calc(-4in * .15); margin-bottom: calc(-2in * .15); }
 
   /* play lab: diagram preview goes full width */
   .builder-preview { flex-wrap: wrap; }
@@ -4165,7 +4173,7 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .p-cs-form { font-size: 10px; color: var(--muted); }
 .p-cs-empty { padding: 8px; color: var(--line); }
 
-.wrist-print-grid { display: grid; grid-template-columns: repeat(auto-fill, 5in); gap: .25in; justify-content: center; }
+.wrist-print-grid { display: grid; grid-template-columns: repeat(auto-fill, 4in); gap: .25in; justify-content: center; }
 .wrist-cut { border: 1.5px dashed #9DA1A8; padding: .08in; width: fit-content; }
 .gd-row td { padding: 10px 6px; }
 .snap-cells { display: flex; gap: 4px; flex-wrap: wrap; }
