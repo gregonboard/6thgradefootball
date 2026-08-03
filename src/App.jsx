@@ -3233,18 +3233,18 @@ function WristTab({ data, up, onPrint, onPrintRoutes }) {
         <div className="panel-head"><h2>Wristband Setup</h2></div>
         <div className="plan-meta">
           <label>Card title <input value={w.title} onChange={(e) => setW({ title: e.target.value })} /></label>
-          <label>Columns
+          <label>Windows on the band
             <select value={w.cols} onChange={(e) => setW({ cols: Number(e.target.value) })}>
-              <option value={2}>2</option><option value={3}>3 (standard)</option><option value={4}>4</option>
+              <option value={2}>2 slots</option><option value={3}>3 slots (standard)</option><option value={4}>4 slots</option>
             </select>
           </label>
-          <label>Cards per page
+          <label>Bands per page
             <select value={w.copies} onChange={(e) => setW({ copies: Number(e.target.value) })}>
               {[1, 2, 4, 6].map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </label>
         </div>
-        <p className="hint">Cards print at 5" × 3", the standard triple-window youth wristband insert. Cut on the dashed lines and slide into the sleeve. Print one card per player who wears a band, plus spares.</p>
+        <p className="hint">One 5" × 3" insert with {w.cols} windows, sized for the standard youth wristband sleeve. The plays split evenly across the windows and the text auto-sizes to fit however many you pick. Cut on the lines, slide into the {w.cols} slots. Print one per player, plus spares.</p>
         <div className="check-head">
           <b>Plays on the band ({active.length})</b>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -3254,9 +3254,7 @@ function WristTab({ data, up, onPrint, onPrintRoutes }) {
             <button className="btn ghost small" onClick={() => setW({ selected: [] })}>None</button>
           </div>
         </div>
-        {Math.ceil(active.length / (w.cols || 3)) > 12 && (
-          <div className="wrist-warn">Heads up: {active.length} plays means {Math.ceil(active.length / (w.cols || 3))} rows per column, too small for 6th grade eyes on a 3-inch card. Use Core only or Call sheet, or turn the WEEK dial down. 12 rows per column is the readable limit.</div>
-        )}
+        <div className="wrist-fitline">{active.length} plays ÷ {w.cols} windows = <b>{Math.ceil(active.length / (w.cols || 3))} per slot</b>. {Math.ceil(active.length / (w.cols || 3)) > 13 ? "That is tiny on a wrist. Trim with Core only or the Call sheet button, or add a 4th window." : "Big and readable."}</div>
         <div className="check-list">
           {plays.map((p) => (
             <label key={p.id} className="check-row">
@@ -3285,8 +3283,13 @@ function WristTab({ data, up, onPrint, onPrintRoutes }) {
 function WristCard({ plays, title, cols }) {
   const perCol = Math.ceil(plays.length / cols) || 1;
   const columns = Array.from({ length: cols }, (_, c) => plays.slice(c * perCol, (c + 1) * perCol));
-  const dense = perCol > 8;
-  const roomy = perCol <= 5; /* few plays = big letters for 11-year-old eyes */
+  /* Fit the text to the window: a 3in card minus the title leaves ~2.65in of
+     column height. Size the play word to that row height so any count fits and
+     stays as large as it can be, clamped for 6th grade eyes. */
+  const rowH = (2.65 * 96) / perCol;
+  const hasEyebrow = plays.some((p) => p.concept && CONCEPTS[p.concept] && p.formation !== "Doubles");
+  const nameSize = Math.max(8, Math.min(19, Math.round(rowH * (hasEyebrow ? 0.42 : 0.5))));
+  const numSize = Math.max(9, Math.min(21, Math.round(rowH * 0.5)));
   return (
     <div className="wrist-card">
       <div className="wrist-title">{title || "PLAYS"}</div>
@@ -3294,9 +3297,9 @@ function WristCard({ plays, title, cols }) {
         {columns.map((col, i) => (
           <div key={i} className="wrist-col">
             {col.map((p) => (
-              <div key={p.id} className={"wrist-play" + (dense ? " dense" : "") + (roomy ? " roomy" : "")}>
-                <span className="wp-num">{p.num}</span>
-                <span className="wp-name">
+              <div key={p.id} className="wrist-play">
+                <span className="wp-num" style={{ fontSize: numSize }}>{p.num}</span>
+                <span className="wp-name" style={{ fontSize: nameSize }}>
                   {p.concept && CONCEPTS[p.concept] && p.concept !== "blank" && p.formation !== "Doubles" && (
                     <span className="wp-form">{p.formation}</span>
                   )}
@@ -4050,6 +4053,8 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .check-list { max-height: 380px; overflow-y: auto; padding: 4px 16px 16px; display: grid; gap: 2px; }
 .check-row { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 5px 6px; border-bottom: 1px dotted var(--line); cursor: pointer; }
 .type-dot, .key-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.wrist-fitline { margin: 0 16px 10px; font-size: 12.5px; color: var(--muted); }
+.wrist-fitline b { color: var(--ink); }
 .wrist-warn { margin: 0 16px 10px; padding: 8px 10px; background: #FFF3CD; border: 1.5px dashed #b8860b; font-size: 12px; line-height: 1.4; }
 .wrist-preview-wrap { padding: 20px; display: flex; justify-content: flex-start; overflow-x: auto; background: repeating-linear-gradient(45deg, #F4F2ED, #F4F2ED 12px, #EFEDE6 12px, #EFEDE6 24px); }
 .wrist-card { width: 5in; height: 3in; background: #fff; border: 2px solid var(--ink); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
@@ -4064,10 +4069,6 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .wp-name { font-family: var(--disp); font-weight: 500; font-size: 14px; letter-spacing: .5px; text-transform: uppercase; flex: 1; min-width: 0; color: var(--ink); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 0 5px; overflow: hidden; }
 .wp-name b { font-weight: 500; }
 .wp-call { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.wrist-play.dense .wp-name { font-size: 11.5px; }
-.wrist-play.roomy .wp-name { font-size: 17px; letter-spacing: .3px; }
-.wrist-play.roomy .wp-num { font-size: 19px; width: 32px; }
-.wrist-play.dense .wp-num { font-size: 11px; }
 @media (max-width: 640px) { .wrist-preview-wrap { transform-origin: top left; overflow-x: auto; } }
 
 /* ---- mobile (game-day phones) ---- */
