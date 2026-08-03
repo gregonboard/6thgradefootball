@@ -3224,7 +3224,7 @@ function WristTab({ data, up, onPrint, onPrintRoutes }) {
   const seasonWeek = data.seasonWeek || 1;
   const active = plays.filter((p) => isOn(p.id)).map((p) => ({
     ...p,
-    _kill: seasonWeek >= 4 && p.killId ? (plays.find((x) => x.id === p.killId) || {}).num ?? null : null,
+    _kill: w.kills && seasonWeek >= 4 && p.killId ? (plays.find((x) => x.id === p.killId) || {}).num ?? null : null,
   }));
 
   return (
@@ -3247,6 +3247,9 @@ function WristTab({ data, up, onPrint, onPrintRoutes }) {
             <select value={w.copies} onChange={(e) => setW({ copies: Number(e.target.value) })}>
               {[1, 2, 4, 6].map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
+          </label>
+          <label className="wrist-killtoggle" title="Prints each play's kill number (K8 = if the box is heavy, kill to #8). Week 4+ only.">
+            <input type="checkbox" checked={!!w.kills} onChange={(e) => setW({ kills: e.target.checked })} /> Show kill checks
           </label>
         </div>
         <p className="hint">Each card is a 4" × 2" insert for one slot on the band. Your {active.length} plays split evenly across {w.cols} card{w.cols > 1 ? "s" : ""} (card 1 gets the lowest numbers), and the text on each auto-sizes to fit. Print, cut, and load the cards in order. "Copies" repeats the whole set for more players.</p>
@@ -3306,7 +3309,7 @@ function WristCard({ plays, title, index, total, cols }) {
   const labelLen = (p) => ((lineCallFor(p) ? lineCallFor(p).length + 1 : 0) +
     ((p.concept && CONCEPTS[p.concept] && p.concept !== "blank") ? callWord(p.concept, p.dir, p.tags || []).length : (p.name || "").length));
   const maxChars = Math.max(6, ...plays.map(labelLen));
-  const textWpx = (4 * 96) / cols - 34; /* per-column width minus number lane + padding */
+  const textWpx = (4 * 96 - 38) / cols - 30; /* usable width (minus left/right sleeve margin) per column, minus the number lane */
   const hFont = textWpx / (maxChars * 0.6);
   const nameSize = Math.max(8, Math.min(22, Math.floor(Math.min(vFont, hFont))));
   const numSize = Math.max(9, Math.min(23, Math.round(rowH * 0.5)));
@@ -3608,9 +3611,11 @@ function CallSheetPrint({ data }) {
 function WristPrint({ data }) {
   const w = data.wrist;
   const wk = data.seasonWeek || 1;
-  const plays = [...data.plays].sort((a, b) => a.num - b.num)
+  const all = [...data.plays].sort((a, b) => a.num - b.num);
+  const plays = all
     .filter((p) => wk >= 9 || !p.week || p.week <= wk)
-    .filter((p) => w.selected === null || w.selected.includes(p.id));
+    .filter((p) => w.selected === null || w.selected.includes(p.id))
+    .map((p) => ({ ...p, _kill: w.kills && wk >= 4 && p.killId ? (all.find((x) => x.id === p.killId) || {}).num ?? null : null }));
   const cards = splitWristCards(plays, w.cols);
   const sets = Array.from({ length: w.copies }, () => cards).flat();
   return (
@@ -4075,13 +4080,14 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .check-list { max-height: 380px; overflow-y: auto; padding: 4px 16px 16px; display: grid; gap: 2px; }
 .check-row { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 5px 6px; border-bottom: 1px dotted var(--line); cursor: pointer; }
 .type-dot, .key-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.wrist-killtoggle { flex-direction: row; align-items: center; gap: 6px; text-transform: none; letter-spacing: 0; font-weight: 500; }
 .wrist-fitline { margin: 0 16px 10px; font-size: 12.5px; color: var(--muted); }
 .wrist-fitline b { color: var(--ink); }
 .wrist-warn { margin: 0 16px 10px; padding: 8px 10px; background: #FFF3CD; border: 1.5px dashed #b8860b; font-size: 12px; line-height: 1.4; }
 .wrist-preview-wrap { padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 16px; overflow-x: auto; background: repeating-linear-gradient(45deg, #F4F2ED, #F4F2ED 12px, #EFEDE6 12px, #EFEDE6 24px); }
 .wrist-card { width: 4in; height: 2in; background: #fff; border: 2px solid var(--ink); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
 .wrist-title { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 3px; text-align: center; background: var(--ink); color: #fff; padding: 2px 0; text-transform: uppercase; }
-.wrist-cols { flex: 1; display: grid; }
+.wrist-cols { flex: 1; display: grid; padding: 0 .12in 0 .28in; }
 .wrist-col.single { flex: 1; }
 .wrist-card-no { color: rgba(255,255,255,.7); font-weight: 500; margin-left: 4px; }
 .wrist-col { border-right: 1.5px solid var(--ink); display: flex; flex-direction: column; min-width: 0; }
