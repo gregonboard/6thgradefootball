@@ -3233,18 +3233,18 @@ function WristTab({ data, up, onPrint, onPrintRoutes }) {
         <div className="panel-head"><h2>Wristband Setup</h2></div>
         <div className="plan-meta">
           <label>Card title <input value={w.title} onChange={(e) => setW({ title: e.target.value })} /></label>
-          <label>Windows on the band
+          <label>Cards on the band
             <select value={w.cols} onChange={(e) => setW({ cols: Number(e.target.value) })}>
-              <option value={2}>2 slots</option><option value={3}>3 slots (standard)</option><option value={4}>4 slots</option>
+              <option value={1}>1 card</option><option value={2}>2 cards</option><option value={3}>3 cards (standard)</option>
             </select>
           </label>
-          <label>Bands per page
+          <label>Copies (players)
             <select value={w.copies} onChange={(e) => setW({ copies: Number(e.target.value) })}>
               {[1, 2, 4, 6].map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </label>
         </div>
-        <p className="hint">One 4" × 2" insert with {w.cols} windows, sized for the standard youth wristband sleeve. The plays split evenly across the windows and the text auto-sizes to fit however many you pick. Cut on the lines, slide into the {w.cols} slots. Print one per player, plus spares.</p>
+        <p className="hint">Each card is a 4" × 2" insert for one slot on the band. Your {active.length} plays split evenly across {w.cols} card{w.cols > 1 ? "s" : ""} (card 1 gets the lowest numbers), and the text on each auto-sizes to fit. Print, cut, and load the cards in order. "Copies" repeats the whole set for more players.</p>
         <div className="check-head">
           <b>Plays on the band ({active.length})</b>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -3254,7 +3254,7 @@ function WristTab({ data, up, onPrint, onPrintRoutes }) {
             <button className="btn ghost small" onClick={() => setW({ selected: [] })}>None</button>
           </div>
         </div>
-        <div className="wrist-fitline">{active.length} plays ÷ {w.cols} windows = <b>{Math.ceil(active.length / (w.cols || 3))} per slot</b>. {Math.ceil(active.length / (w.cols || 3)) > 13 ? "That is tiny on a wrist. Trim with Core only or the Call sheet button, or add a 4th window." : "Big and readable."}</div>
+        <div className="wrist-fitline">{active.length} plays across {w.cols} card{w.cols > 1 ? "s" : ""} = <b>{Math.ceil(active.length / (w.cols || 3))} per card</b>. {Math.ceil(active.length / (w.cols || 3)) > 14 ? "That is tight on a 4×2 card. Trim with Core only or the Call sheet button." : "Big and readable."}</div>
         <div className="check-list">
           {plays.map((p) => (
             <label key={p.id} className="check-row">
@@ -3273,53 +3273,54 @@ function WristTab({ data, up, onPrint, onPrintRoutes }) {
             <button className="btn" onClick={onPrint} disabled={active.length === 0}>Print Wristbands</button>
         </div>
         <div className="wrist-preview-wrap">
-          <WristCard plays={active} title={w.title} cols={w.cols} />
+          {splitWristCards(active, w.cols).map((cardPlays, i, arr) => (
+            <WristCard key={i} plays={cardPlays} title={w.title} index={i} total={arr.length} />
+          ))}
         </div>
       </section>
     </div>
   );
 }
 
-function WristCard({ plays, title, cols }) {
-  const perCol = Math.ceil(plays.length / cols) || 1;
-  const columns = Array.from({ length: cols }, (_, c) => plays.slice(c * perCol, (c + 1) * perCol));
-  /* Fit the text to the window in BOTH directions on a 4"x2" card:
-     - vertical: 2in minus the title leaves ~1.7in of column height / rows
-     - horizontal: the card width / windows, minus the number lane, must hold
-       the longest call without clipping (Roboto Condensed ~0.47em per char)
-     take the smaller so nothing ever ellipsizes, clamped for kid eyes. */
+/* Split the selected plays into N separate 4"x2" cards, one per slot on the
+   band, sequentially by number so card 1 holds the lowest numbers. */
+function splitWristCards(plays, cardCount) {
+  const per = Math.ceil(plays.length / cardCount) || 1;
+  return Array.from({ length: cardCount }, (_, c) => plays.slice(c * per, (c + 1) * per)).filter((c) => c.length);
+}
+
+/* One physical 4"x2" insert (one slot). Single column, auto-sized so however
+   many plays land on THIS card are as big as they can be and never clip. */
+function WristCard({ plays, title, index, total }) {
+  const rows = plays.length || 1;
   const hasEyebrow = plays.some((p) => p.concept && CONCEPTS[p.concept] && p.formation !== "Doubles");
-  const rowH = (1.7 * 96) / perCol;
-  const vFont = rowH * (hasEyebrow ? 0.42 : 0.5);
+  const rowH = (1.7 * 96) / rows;
+  const vFont = rowH * (hasEyebrow ? 0.46 : 0.56);
   const labelLen = (p) => ((lineCallFor(p) ? lineCallFor(p).length + 1 : 0) +
     ((p.concept && CONCEPTS[p.concept] && p.concept !== "blank") ? callWord(p.concept, p.dir, p.tags || []).length : (p.name || "").length));
   const maxChars = Math.max(6, ...plays.map(labelLen));
-  const textWpx = (4 * 96) / cols - 30; /* column width minus number lane, border, padding */
-  const hFont = textWpx / (maxChars * 0.6); /* Roboto Condensed ALL CAPS runs ~0.6em/char */
-  const nameSize = Math.max(8, Math.min(19, Math.floor(Math.min(vFont, hFont))));
-  const numSize = Math.max(9, Math.min(20, Math.round(rowH * 0.5)));
+  const textWpx = 4 * 96 - 40; /* full card width minus number lane + padding */
+  const hFont = textWpx / (maxChars * 0.6);
+  const nameSize = Math.max(9, Math.min(22, Math.floor(Math.min(vFont, hFont))));
+  const numSize = Math.max(10, Math.min(23, Math.round(rowH * 0.5)));
   return (
     <div className="wrist-card">
-      <div className="wrist-title">{title || "PLAYS"}</div>
-      <div className="wrist-cols" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
-        {columns.map((col, i) => (
-          <div key={i} className="wrist-col">
-            {col.map((p) => (
-              <div key={p.id} className="wrist-play">
-                <span className="wp-num" style={{ fontSize: numSize }}>{p.num}</span>
-                <span className="wp-name" style={{ fontSize: nameSize }}>
-                  {p.concept && CONCEPTS[p.concept] && p.concept !== "blank" && p.formation !== "Doubles" && (
-                    <span className="wp-form">{p.formation}</span>
-                  )}
-                  <span className="wp-call">
-                    {p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
-                      ? <><span className="wp-line">{lineCallFor(p)}</span> <b>{callWord(p.concept, p.dir, p.tags || [])}</b></>
-                      : <>{lineCallFor(p) && <span className="wp-line">{lineCallFor(p)} </span>}<b>{p.name}</b></>}
-                  </span>
-                </span>
-                {p._kill != null && <span className="wp-kill">K{p._kill}</span>}
-              </div>
-            ))}
+      <div className="wrist-title">{title || "PLAYS"}{total > 1 ? <span className="wrist-card-no"> {index + 1}/{total}</span> : null}</div>
+      <div className="wrist-col single">
+        {plays.map((p) => (
+          <div key={p.id} className="wrist-play">
+            <span className="wp-num" style={{ fontSize: numSize }}>{p.num}</span>
+            <span className="wp-name" style={{ fontSize: nameSize }}>
+              {p.concept && CONCEPTS[p.concept] && p.concept !== "blank" && p.formation !== "Doubles" && (
+                <span className="wp-form">{p.formation}</span>
+              )}
+              <span className="wp-call">
+                {p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
+                  ? <><span className="wp-line">{lineCallFor(p)}</span> <b>{callWord(p.concept, p.dir, p.tags || [])}</b></>
+                  : <>{lineCallFor(p) && <span className="wp-line">{lineCallFor(p)} </span>}<b>{p.name}</b></>}
+              </span>
+            </span>
+            {p._kill != null && <span className="wp-kill">K{p._kill}</span>}
           </div>
         ))}
       </div>
@@ -3599,16 +3600,18 @@ function WristPrint({ data }) {
   const plays = [...data.plays].sort((a, b) => a.num - b.num)
     .filter((p) => wk >= 9 || !p.week || p.week <= wk)
     .filter((p) => w.selected === null || w.selected.includes(p.id));
+  const cards = splitWristCards(plays, w.cols);
+  const sets = Array.from({ length: w.copies }, () => cards).flat();
   return (
     <div className="sheet">
       <div className="wrist-print-grid">
-        {Array.from({ length: w.copies }, (_, i) => (
+        {sets.map((cardPlays, i) => (
           <div key={i} className="wrist-cut">
-            <WristCard plays={plays} title={w.title} cols={w.cols} />
+            <WristCard plays={cardPlays} title={w.title} index={i % cards.length} total={cards.length} />
           </div>
         ))}
       </div>
-      <div className="p-foot no-border"><span>Cut on the dashed 4" × 2" lines · slides into the wristband sleeve</span></div>
+      <div className="p-foot no-border"><span>Cut on the dashed 4" × 2" lines · load the {cards.length} card{cards.length > 1 ? "s" : ""} in order into the wristband slots</span></div>
     </div>
   );
 }
@@ -4068,6 +4071,8 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .wrist-card { width: 4in; height: 2in; background: #fff; border: 2px solid var(--ink); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
 .wrist-title { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 3px; text-align: center; background: var(--ink); color: #fff; padding: 2px 0; text-transform: uppercase; }
 .wrist-cols { flex: 1; display: grid; }
+.wrist-col.single { flex: 1; }
+.wrist-card-no { color: rgba(255,255,255,.7); font-weight: 500; margin-left: 4px; }
 .wrist-col { border-right: 1.5px solid var(--ink); display: flex; flex-direction: column; min-width: 0; }
 .wrist-col:last-child { border-right: none; }
 .wrist-play { display: flex; align-items: stretch; gap: 0; border-bottom: 1px solid #C9CBCF; padding: 0; flex: 1; min-height: 0; }
