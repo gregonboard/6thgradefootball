@@ -4,7 +4,7 @@ import { render, screen, fireEvent, waitFor, within, cleanup } from "@testing-li
 import App, {
   buildCallSheet,
   normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord,
-  LINE_CALLS, ASSIGNMENTS, genPlayElements, generatePractice, drillMatchesBucket, SEED, seedPackages, day1Plan, applyKillPairs,
+  LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, SEED, seedPackages, day1Plan, applyKillPairs,
   installedForms, resolvePlayPos, FORM_WEEKS, formSpots,
 } from "../src/App.jsx";
 
@@ -150,6 +150,10 @@ describe("vocabulary", () => {
     const mine = [SEED.plays[0].id];
     const cs2 = buildCallSheet({ ...data, callSheet: { run: mine } });
     expect(cs2.run).toEqual(mine);
+    // installed variety: week 3 must offer the Trips looks, not all-Doubles
+    const wk3 = buildCallSheet({ ...SEED, seasonWeek: 3, callSheet: {} });
+    const wk3names = [...wk3.run, ...wk3.pass].map((id) => SEED.plays.find((p) => p.id === id).name);
+    expect(wk3names.some((n) => n.startsWith("Trips")), "Trips looks appear once installed").toBe(true);
     // no situation is ever empty: early weeks fall back to safe installed plays
     const wk2all = buildCallSheet({ ...SEED, seasonWeek: 2, callSheet: {} });
     for (const key of Object.keys(wk2all)) expect(wk2all[key].length, key + ' non-empty at wk2').toBeGreaterThan(0);
@@ -157,6 +161,15 @@ describe("vocabulary", () => {
     const wk2 = buildCallSheet({ ...SEED, seasonWeek: 2, callSheet: {} });
     const wk2names = wk2.goalline.map((id) => SEED.plays.find((p) => p.id === id).name);
     expect(wk2names.every((n) => { const p = SEED.plays.find((x) => x.name === n); return !p.week || p.week <= 2; })).toBe(true);
+  });
+  it("I formation cards speak fullback, never jet motion (Greg's catch)", () => {
+    for (const p of SEED.plays.filter((x) => /^I (Rt|Lt)$/.test(x.formation))) {
+      const jobs = jobsFor(p);
+      expect(jobs.H, p.name + ": H is the FB").not.toMatch(/jet motion/i);
+      expect(jobs.H, p.name + ": H's job says FB or pile").toMatch(/FB|pile/i);
+      expect(jobs.QB, p.name + ": QB knows he is under center").toMatch(/UNDER CENTER/);
+      expect(jobs.RB, p.name + ": RB knows he is the deep back").toMatch(/tailback/i);
+    }
   });
   it("I formation: legal, under center, FB leads instead of jet motion", () => {
     const spots = formSpots("I Rt");

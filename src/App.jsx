@@ -734,6 +734,28 @@ const ASSIGNMENTS = {
   rbpass:  { OL: "Stretch like Ram but STAY GLUED to your man. Nobody drifts downfield, ever.", QB: "Hand it wide exactly like Ram, then sneak to the flat as his safety valve.", RB: "Run Ram HARD for three steps, pull up behind the line, throw it HIGH to the deep man or tuck and run Ram. Never force it.", H: "Jet motion, turn up and lead exactly like Ram. You are the bait.", Y: "Reach the end exactly like Ram.", XZ: "Called side stalks the corner two counts, then sprints past him deep. Backside blocks his man like always." },
   blank:   { OL: "Coach draws it. Know your line on the picture.", QB: "Coach draws it. Know your path.", RB: "Coach draws it. Know your path.", H: "Coach draws it. Know your path.", Y: "Coach draws it. Know your path.", XZ: "Coach draws it. Know your path." },
 };
+/* Formation-aware jobs: in the I, H is the FB and the QB is under center.
+   The diagrams already adapt; the words on the cards must match them. */
+const I_FB_JOBS = {
+  power: "You are the FB: lead through the same hole as the pulling guard and hit the first wrong-colored jersey.",
+  sneak: "Get big behind the QB and push the pile.",
+  owl: "FB: pound the Rhino fake into the line. Sell it with your pads.",
+  trap: "FB: fill downhill behind the trap and wall the backside backer.",
+  counter: "FB: fill playside like it's Rhino. Hold the backers; the play goes behind you.",
+  stretch: "FB: lead flat to the edge and log the first color that shows.",
+  keep: "FB: lead around the edge, block for the QB.",
+  rbpass: "FB: lead flat exactly like Ram. You are the bait.",
+};
+const jobsFor = (play) => {
+  const base = ASSIGNMENTS[play.concept];
+  if (!base || !/^I (Rt|Lt)$/.test(play.formation || "")) return base;
+  return {
+    ...base,
+    QB: "UNDER CENTER: secure the snap with two hands first. " + base.QB,
+    H: I_FB_JOBS[play.concept] || "You are the FB in the I: lead where the play goes and hit the first wrong-colored jersey.",
+    RB: "Deep tailback: " + base.RB,
+  };
+};
 const JOB_GROUPS = [["OL", "O-Line"], ["QB", "Quarterback"], ["RB", "Running Back"], ["H", "H (Slot)"], ["Y", "Y (Tight End)"], ["XZ", "X and Z (Outside)"]];
 const jobKeyFor = (label) => (["LT", "LG", "C", "RG", "RT"].includes(label) ? "OL" : label === "X" || label === "Z" ? "XZ" : label);
 
@@ -2878,7 +2900,7 @@ function TeachMode({ plays, startId, onClose }) {
   if (!play) return null;
   const dimExcept = hl === null ? null : hl === "OL" ? ["LT", "LG", "C", "RG", "RT"] : hl === "XZ" ? ["X", "Z"] : [hl];
   const jobKey = hl === null ? null : jobKeyFor(hl === "OL" ? "LT" : hl === "XZ" ? "X" : hl);
-  const job = jobKey && ASSIGNMENTS[play.concept] ? ASSIGNMENTS[play.concept][jobKey] : null;
+  const job = jobKey && ASSIGNMENTS[play.concept] ? jobsFor(play)[jobKey] : null;
   const word = callWord(play.concept, play.dir, play.tags || []);
 
   return (
@@ -3009,7 +3031,7 @@ function PlayCardPrint({ data, playId }) {
           {JOB_GROUPS.map(([key, label]) => (
             <div key={key} className="jobs-card">
               <div className="routes-title">{label}</div>
-              <div className="pc-line" style={{ padding: "6px 8px" }}>{ASSIGNMENTS[p.concept][key]}</div>
+              <div className="pc-line" style={{ padding: "6px 8px" }}>{jobsFor(p)[key]}</div>
             </div>
           ))}
         </div>
@@ -3102,12 +3124,12 @@ function SignalsPrint({ data }) {
 /* ---- call sheet generator: fills EMPTY situations from installed plays ---- */
 const CALL_SHEET_RECIPE = {
   openers: ["Doubles · Rhino", "Doubles · Rocket", "Doubles · Sparrow", "Doubles · Lion", "Doubles · Raccoon", "Doubles · Owl"],
-  run: ["Doubles · Rhino", "Doubles · Lion", "Doubles · Rocket", "Doubles · Laser", "Doubles · Ram", "Doubles · Leopard", "Doubles · Rabbit", "Doubles · Lynx"],
-  pass: ["Doubles · Sparrow", "Doubles · Robin", "Doubles · Hawk", "Doubles · Owl", "Doubles · Raven", "Doubles · Lark"],
-  third_short: ["I Rt · Moose", "Tank Rt · Moose", "I Rt · Rhino", "Tank Rt · Rhino", "Doubles · Rabbit"],
-  third_long: ["Doubles · Raven", "Doubles · Lark", "Doubles · Hawk", "Doubles · Rolo", "Doubles · Lifesaver"],
-  redzone: ["Doubles · Rhino", "Tank Rt · Owl", "Doubles · Reese's", "Doubles · Rocket"],
-  goalline: ["I Rt · Moose", "I Rt · Rhino", "I Lt · Lion", "Tank Rt · Owl"],
+  run: ["Doubles · Rhino", "Trips Rt · Rhino", "Doubles · Lion", "Trips Lt · Lion", "Doubles · Rocket", "Doubles · Laser", "Doubles · Ram", "Doubles · Leopard", "Doubles · Rabbit", "Doubles · Lynx"],
+  pass: ["Doubles · Sparrow", "Doubles · Robin", "Trips Rt · Hawk", "Doubles · Hawk", "Trips Lt · Hawk", "Doubles · Owl", "Doubles · Raven", "Doubles · Lark"],
+  third_short: ["I Rt · Moose", "Tank Rt · Moose", "Doubles · Rabbit", "I Rt · Rhino", "Doubles · Lynx", "Tank Rt · Rhino"],
+  third_long: ["Doubles · Raven", "Doubles · Lark", "Trips Rt · Raven", "Doubles · Hawk", "Trips Rt · Hawk", "Doubles · Rolo", "Doubles · Lifesaver"],
+  redzone: ["Doubles · Rhino", "Tank Rt · Owl", "Trips Rt · Rhino", "Doubles · Reese's", "Doubles · Rocket", "I Rt · Rhino"],
+  goalline: ["I Rt · Moose", "I Rt · Rhino", "I Lt · Lion", "Tank Rt · Owl", "Doubles · Rhino", "Doubles · Lion"],
   special: ["Doubles · Rewind", "Doubles · Loop", "Doubles · Rainbow", "Doubles · Lightning", "Doubles · Rhino Peek"],
 };
 function buildCallSheet(data) {
@@ -4159,4 +4181,4 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
   );
 }
 
-export { normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, genPlayElements, generatePractice, drillMatchesBucket, buildCallSheet, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots };
+export { normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, buildCallSheet, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots };
