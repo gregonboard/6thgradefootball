@@ -2987,9 +2987,10 @@ function PlaybookPrint({ data }) {
           <div key={p.id} className="book-card">
             <div className="book-head">
               <span className="mono"><b>#{p.num}</b></span>
+              {p.formation !== "Doubles" && <span className="book-formpre">{p.formation} ·</span>}
               <span className="book-line">{lineCallFor(p)}</span>
               <b>{callWord(p.concept, p.dir, p.tags || [])}</b>
-              <span className="book-form">{p.formation}{p.core ? " · CORE" : ""}</span>
+              {p.core && <span className="book-form">CORE</span>}
             </div>
             <PlayDiagram play={p} size="book" />
             <div className="book-notes">{CONCEPTS[p.concept].how}{p.note ? ` · ${p.note}` : ""}</div>
@@ -3565,8 +3566,7 @@ function CallSheetPrint({ data }) {
               return (
                 <div key={pid} className="p-cs-play">
                   <span className="p-cs-num" style={{ background: TYPE_COLORS[p.type] }}>{p.num}</span>
-                  <span className="p-cs-name"><span className="p-cs-linecall">{lineCallFor(p)}</span> {p.concept && CONCEPTS[p.concept] && p.concept !== "blank" ? callWord(p.concept, p.dir, p.tags || []) : p.name}</span>
-                  <span className="p-cs-form">{p.formation}</span>
+                  <span className="p-cs-name">{p.formation !== "Doubles" && <span className="p-cs-formpre">{p.formation} · </span>}<span className="p-cs-linecall">{lineCallFor(p)}</span> {p.concept && CONCEPTS[p.concept] && p.concept !== "blank" ? callWord(p.concept, p.dir, p.tags || []) : p.name}</span>
                 </div>
               );
             })}
@@ -3816,6 +3816,8 @@ tbody tr { cursor: pointer; }
 .book-head b { font-family: var(--disp); font-size: 15px; letter-spacing: 1px; text-transform: uppercase; }
 .book-form { margin-left: auto; color: var(--muted); font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; }
 .book-line { font-family: var(--disp); font-weight: 700; font-size: 10px; letter-spacing: 1px; background: var(--ink); color: #EAAA00; padding: 1px 5px; }
+.book-formpre { font-family: var(--disp); font-weight: 600; font-size: 11px; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); }
+.p-cs-formpre { font-family: var(--disp); font-weight: 600; letter-spacing: .3px; text-transform: uppercase; color: #6B6F76; }
 .play-svg.book { width: 100%; border: none; }
 .book-notes { padding: 4px 8px; font-size: 10px; color: var(--muted); border-top: 1px solid var(--line); }
 

@@ -694,6 +694,9 @@ describe("supabase sync", () => {
     fireEvent.click(screen.getByText("Print Call Sheet"));
     await waitFor(() => expect(document.querySelectorAll(".print-layer .p-cs-linecall").length).toBeGreaterThan(0));
     expect([...document.querySelectorAll(".print-layer .p-cs-linecall")].map((el) => el.textContent)).toContain("HAMMER");
+    // spoken order: formation BEFORE the line word, Doubles silent (Greg's Aug 3 catch)
+    const rows = [...document.querySelectorAll(".print-layer .p-cs-play")].map((el) => el.textContent);
+    expect(rows.some((r) => /Doubles/.test(r)), "Doubles never printed in the call").toBe(false);
   });
 
   it("Print Cards works from inside Formation View", async () => {
