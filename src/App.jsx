@@ -3238,6 +3238,11 @@ function WristTab({ data, up, onPrint, onPrintRoutes }) {
               <option value={1}>1 card</option><option value={2}>2 cards</option><option value={3}>3 cards (standard)</option>
             </select>
           </label>
+          <label>Columns per card
+            <select value={w.cardCols || 1} onChange={(e) => setW({ cardCols: Number(e.target.value) })}>
+              <option value={1}>1 column</option><option value={2}>2 columns</option>
+            </select>
+          </label>
           <label>Copies (players)
             <select value={w.copies} onChange={(e) => setW({ copies: Number(e.target.value) })}>
               {[1, 2, 4, 6].map((n) => <option key={n} value={n}>{n}</option>)}
@@ -3254,7 +3259,7 @@ function WristTab({ data, up, onPrint, onPrintRoutes }) {
             <button className="btn ghost small" onClick={() => setW({ selected: [] })}>None</button>
           </div>
         </div>
-        <div className="wrist-fitline">{active.length} plays across {w.cols} card{w.cols > 1 ? "s" : ""} = <b>{Math.ceil(active.length / (w.cols || 3))} per card</b>. {Math.ceil(active.length / (w.cols || 3)) > 14 ? "That is tight on a 4×2 card. Trim with Core only or the Call sheet button." : "Big and readable."}</div>
+        <div className="wrist-fitline">{active.length} plays across {w.cols} card{w.cols > 1 ? "s" : ""}{(w.cardCols || 1) > 1 ? ` (${w.cardCols} cols each)` : ""} = <b>{Math.ceil(active.length / (w.cols || 3) / (w.cardCols || 1))} per column</b>. {Math.ceil(active.length / (w.cols || 3) / (w.cardCols || 1)) > 13 ? "That is tight on a 4×2 card. Trim, add a card, or use 2 columns." : "Big and readable."}</div>
         <div className="check-list">
           {plays.map((p) => (
             <label key={p.id} className="check-row">
@@ -3274,7 +3279,7 @@ function WristTab({ data, up, onPrint, onPrintRoutes }) {
         </div>
         <div className="wrist-preview-wrap">
           {splitWristCards(active, w.cols).map((cardPlays, i, arr) => (
-            <WristCard key={i} plays={cardPlays} title={w.title} index={i} total={arr.length} />
+            <WristCard key={i} plays={cardPlays} title={w.title} index={i} total={arr.length} cols={w.cardCols || 1} />
           ))}
         </div>
       </section>
@@ -3289,38 +3294,44 @@ function splitWristCards(plays, cardCount) {
   return Array.from({ length: cardCount }, (_, c) => plays.slice(c * per, (c + 1) * per)).filter((c) => c.length);
 }
 
-/* One physical 4"x2" insert (one slot). Single column, auto-sized so however
-   many plays land on THIS card are as big as they can be and never clip. */
-function WristCard({ plays, title, index, total }) {
-  const rows = plays.length || 1;
+/* One physical 4"x2" insert (one slot). Its plays lay out in `cols` internal
+   columns; the text auto-sizes to fit both the row height and the column
+   width so nothing ever clips, clamped for kid eyes. */
+function WristCard({ plays, title, index, total, cols }) {
+  const perCol = Math.ceil(plays.length / cols) || 1;
+  const columns = Array.from({ length: cols }, (_, c) => plays.slice(c * perCol, (c + 1) * perCol)).filter((c) => c.length);
   const hasEyebrow = plays.some((p) => p.concept && CONCEPTS[p.concept] && p.formation !== "Doubles");
-  const rowH = (1.7 * 96) / rows;
+  const rowH = (1.7 * 96) / perCol;
   const vFont = rowH * (hasEyebrow ? 0.46 : 0.56);
   const labelLen = (p) => ((lineCallFor(p) ? lineCallFor(p).length + 1 : 0) +
     ((p.concept && CONCEPTS[p.concept] && p.concept !== "blank") ? callWord(p.concept, p.dir, p.tags || []).length : (p.name || "").length));
   const maxChars = Math.max(6, ...plays.map(labelLen));
-  const textWpx = 4 * 96 - 40; /* full card width minus number lane + padding */
+  const textWpx = (4 * 96) / cols - 34; /* per-column width minus number lane + padding */
   const hFont = textWpx / (maxChars * 0.6);
-  const nameSize = Math.max(9, Math.min(22, Math.floor(Math.min(vFont, hFont))));
-  const numSize = Math.max(10, Math.min(23, Math.round(rowH * 0.5)));
+  const nameSize = Math.max(8, Math.min(22, Math.floor(Math.min(vFont, hFont))));
+  const numSize = Math.max(9, Math.min(23, Math.round(rowH * 0.5)));
   return (
     <div className="wrist-card">
       <div className="wrist-title">{title || "PLAYS"}{total > 1 ? <span className="wrist-card-no"> {index + 1}/{total}</span> : null}</div>
-      <div className="wrist-col single">
-        {plays.map((p) => (
-          <div key={p.id} className="wrist-play">
-            <span className="wp-num" style={{ fontSize: numSize }}>{p.num}</span>
-            <span className="wp-name" style={{ fontSize: nameSize }}>
-              {p.concept && CONCEPTS[p.concept] && p.concept !== "blank" && p.formation !== "Doubles" && (
-                <span className="wp-form">{p.formation}</span>
-              )}
-              <span className="wp-call">
-                {p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
-                  ? <><span className="wp-line">{lineCallFor(p)}</span> <b>{callWord(p.concept, p.dir, p.tags || [])}</b></>
-                  : <>{lineCallFor(p) && <span className="wp-line">{lineCallFor(p)} </span>}<b>{p.name}</b></>}
-              </span>
-            </span>
-            {p._kill != null && <span className="wp-kill">K{p._kill}</span>}
+      <div className="wrist-cols" style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr)` }}>
+        {columns.map((col, ci) => (
+          <div key={ci} className="wrist-col">
+            {col.map((p) => (
+              <div key={p.id} className="wrist-play">
+                <span className="wp-num" style={{ fontSize: numSize }}>{p.num}</span>
+                <span className="wp-name" style={{ fontSize: nameSize }}>
+                  {p.concept && CONCEPTS[p.concept] && p.concept !== "blank" && p.formation !== "Doubles" && (
+                    <span className="wp-form">{p.formation}</span>
+                  )}
+                  <span className="wp-call">
+                    {p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
+                      ? <><span className="wp-line">{lineCallFor(p)}</span> <b>{callWord(p.concept, p.dir, p.tags || [])}</b></>
+                      : <>{lineCallFor(p) && <span className="wp-line">{lineCallFor(p)} </span>}<b>{p.name}</b></>}
+                  </span>
+                </span>
+                {p._kill != null && <span className="wp-kill">K{p._kill}</span>}
+              </div>
+            ))}
           </div>
         ))}
       </div>
@@ -3607,7 +3618,7 @@ function WristPrint({ data }) {
       <div className="wrist-print-grid">
         {sets.map((cardPlays, i) => (
           <div key={i} className="wrist-cut">
-            <WristCard plays={cardPlays} title={w.title} index={i % cards.length} total={cards.length} />
+            <WristCard plays={cardPlays} title={w.title} index={i % cards.length} total={cards.length} cols={w.cardCols || 1} />
           </div>
         ))}
       </div>
@@ -4067,7 +4078,7 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .wrist-fitline { margin: 0 16px 10px; font-size: 12.5px; color: var(--muted); }
 .wrist-fitline b { color: var(--ink); }
 .wrist-warn { margin: 0 16px 10px; padding: 8px 10px; background: #FFF3CD; border: 1.5px dashed #b8860b; font-size: 12px; line-height: 1.4; }
-.wrist-preview-wrap { padding: 20px; display: flex; justify-content: flex-start; overflow-x: auto; background: repeating-linear-gradient(45deg, #F4F2ED, #F4F2ED 12px, #EFEDE6 12px, #EFEDE6 24px); }
+.wrist-preview-wrap { padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 16px; overflow-x: auto; background: repeating-linear-gradient(45deg, #F4F2ED, #F4F2ED 12px, #EFEDE6 12px, #EFEDE6 24px); }
 .wrist-card { width: 4in; height: 2in; background: #fff; border: 2px solid var(--ink); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
 .wrist-title { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 3px; text-align: center; background: var(--ink); color: #fff; padding: 2px 0; text-transform: uppercase; }
 .wrist-cols { flex: 1; display: grid; }
