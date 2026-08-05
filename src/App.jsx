@@ -1534,7 +1534,7 @@ export default function App() {
           {tab === "practice" && <PracticeTab data={data} up={up} onPrint={() => setPrintTarget("practice")} />}
           {tab === "playbook" && <PlaybookTab data={data} up={up} onPrintSignals={() => setPrintTarget("signals")} onPrintBook={() => setPrintTarget("playbook")} onPrintJobs={() => setPrintTarget("jobs")} onPrintSystem={() => setPrintTarget("system")} onPrintCard={(id) => setPrintTarget("playcard:" + id)} />}
           {tab === "caller" && <CallerTab data={data} up={up} />}
-          {tab === "callsheet" && <CallSheetTab data={data} up={up} onPrint={() => setPrintTarget("callsheet")} />}
+          {tab === "callsheet" && <CallSheetTab data={data} up={up} onPrint={() => setPrintTarget("callsheet")} onPrintScript={() => setPrintTarget("teamscript")} />}
           {tab === "wrist" && <WristTab data={data} up={up} onPrint={() => setPrintTarget("wrist")} onPrintRoutes={() => setPrintTarget("routes")} />}
         </main>
       </div>
@@ -3150,7 +3150,7 @@ function buildCallSheet(data) {
   return cs;
 }
 
-function CallSheetTab({ data, up, onPrint }) {
+function CallSheetTab({ data, up, onPrint, onPrintScript }) {
   const cs = data.callSheet || {};
   const plays = data.plays;
 
@@ -3171,6 +3171,7 @@ function CallSheetTab({ data, up, onPrint }) {
         <h2>Call Sheet Builder</h2>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button className="btn ghost" onClick={() => up({ callSheet: buildCallSheet(data) })} title="Fills every EMPTY situation from what's installed. Boxes you already filled are never touched.">⚡ Fill It For Me</button>
+          <button className="btn ghost" onClick={onPrintScript} disabled={!anyAssigned} title="Prints the call sheet as a numbered team-period script coaches read rep by rep">Print Team Script</button>
           <button className="btn" onClick={onPrint} disabled={!anyAssigned}>Print Call Sheet</button>
         </div>
       </div>
@@ -3499,6 +3500,7 @@ function PrintLayer({ target, data, onClose }) {
       <div className="print-page">
         {target === "practice" && <PracticePrint data={data} />}
         {target === "callsheet" && <CallSheetPrint data={data} />}
+        {target === "teamscript" && <TeamScriptPrint data={data} />}
         {target === "wrist" && <WristPrint data={data} />}
         {target === "gameday" && <GameDayPrint data={data} />}
         {target === "signals" && <SignalsPrint data={data} />}
@@ -3573,6 +3575,46 @@ function PracticePrint({ data }) {
         Default split: Skill (QB/RB/WR/TE + DBs) · Linemen (OL + DL) · Backers (LB/RB two-way kids).
         SETUP tells you cones and bags, COACH is what to yell, WIN is when to move on.
       </div>
+    </div>
+  );
+}
+
+/* Team-period practice script: the call sheet flattened into a numbered,
+   read-it-aloud sequence so coaches run the script without the HC calling
+   each play. Openers first, then base, then situational; each play once. */
+function buildTeamScript(data) {
+  const cs = data.callSheet || {};
+  const seen = new Set();
+  const rows = [];
+  for (const s of SITUATIONS) {
+    for (const pid of cs[s.key] || []) {
+      if (seen.has(pid)) continue;
+      const p = data.plays.find((x) => x.id === pid);
+      if (!p) continue;
+      seen.add(pid);
+      rows.push({ play: p, situation: s.label });
+    }
+  }
+  return rows;
+}
+function TeamScriptPrint({ data }) {
+  const rows = buildTeamScript(data);
+  const call = (p) => `${p.formation !== "Doubles" ? p.formation + " · " : ""}${lineCallFor(p) ? lineCallFor(p) + " · " : ""}${p.concept && CONCEPTS[p.concept] && p.concept !== "blank" ? callWord(p.concept, p.dir, p.tags || []) : p.name}`;
+  return (
+    <div className="sheet">
+      <PrintHead title="Team Period Script" right={<div className="p-meta">{rows.length} reps · {todayStr()}</div>} />
+      <div className="ts-note">Run down the list in order. Coaches read the next call, offense sprints and runs it. Check it off, then go.</div>
+      <ol className="ts-list">
+        {rows.map((r, i) => (
+          <li key={i} className="ts-row">
+            <span className="ts-rep">{i + 1}</span>
+            <span className="ts-check">☐</span>
+            <span className="ts-call">{call(r.play)}</span>
+            <span className="ts-sit">{r.situation}</span>
+          </li>
+        ))}
+        {rows.length === 0 && <div className="p-cs-empty">Fill the call sheet first, then print the script.</div>}
+      </ol>
     </div>
   );
 }
@@ -4185,6 +4227,13 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .p-foot { display: flex; justify-content: space-between; margin-top: 16px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
 .p-foot.no-border { border-top: none; }
 
+.ts-note { font-size: 12px; color: var(--muted); margin: 4px 0 12px; }
+.ts-list { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: .5in; }
+.ts-row { display: flex; align-items: baseline; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--line); break-inside: avoid; }
+.ts-rep { font-family: var(--disp); font-weight: 700; font-size: 15px; color: var(--muted); width: 20px; text-align: right; flex-shrink: 0; }
+.ts-check { flex-shrink: 0; color: var(--muted); }
+.ts-call { flex: 1; font-family: var(--disp); font-weight: 700; font-size: 14px; letter-spacing: .3px; text-transform: uppercase; }
+.ts-sit { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; flex-shrink: 0; }
 .p-cs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .p-cs-box { border: 1.5px solid var(--ink); }
 .p-cs-label { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; background: var(--ink); color: #fff; padding: 4px 8px; }
