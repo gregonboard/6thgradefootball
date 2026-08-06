@@ -3603,11 +3603,11 @@ function TeamScriptPrint({ data }) {
   return (
     <div className="sheet">
       <PrintHead title="Team Period Script" right={<div className="p-meta">{rows.length} reps · {todayStr()}</div>} />
-      <div className="ts-note">Run down the list in order. Coaches read the next call, offense sprints and runs it. Check it off, then go.</div>
+      <div className="ts-note">Read down in order. Call the big NUMBER to your QB — he finds it on his wristband. Check it off, then go.</div>
       <ol className="ts-list">
         {rows.map((r, i) => (
           <li key={i} className="ts-row">
-            <span className="ts-rep">{i + 1}</span>
+            <span className="ts-num">{r.play.num}</span>
             <span className="ts-check">☐</span>
             <span className="ts-call">{call(r.play)}</span>
             <span className="ts-sit">{r.situation}</span>
@@ -4230,7 +4230,7 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .ts-note { font-size: 12px; color: var(--muted); margin: 4px 0 12px; }
 .ts-list { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: .5in; }
 .ts-row { display: flex; align-items: baseline; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--line); break-inside: avoid; }
-.ts-rep { font-family: var(--disp); font-weight: 700; font-size: 15px; color: var(--muted); width: 20px; text-align: right; flex-shrink: 0; }
+.ts-num { font-family: var(--disp); font-weight: 700; font-size: 19px; color: var(--ink); width: 30px; text-align: right; flex-shrink: 0; }
 .ts-check { flex-shrink: 0; color: var(--muted); }
 .ts-call { flex: 1; font-family: var(--disp); font-weight: 700; font-size: 14px; letter-spacing: .3px; text-transform: uppercase; }
 .ts-sit { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; flex-shrink: 0; }
