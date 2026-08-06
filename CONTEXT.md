@@ -183,4 +183,6 @@ Never destroy user data. `normalizeData()` runs on every load: version flags gat
 
 Everything above is built, tested (vitest + jsdom end-to-end suite in `tests/app.test.jsx`, `npm test`), and in this zip. Empty formation is locked to the QUICK family in the builder (no back home to protect). A Day 1 helmets plan (routes/throws by group, formations in team) is seeded into the Practice Planner and saved plans, and the drill library gained Formation Races and Team Walk-Through Install (libVersion 3). Ideas discussed but not built: seeding the Call Sheet from the answer chain; opponent scout reports attached to game plans; play diagram animation; connecting practice periods to install weeks automatically; the F3-style "Sugar" shift package for late season.
 
+The kids Bird Route Cards read from ROUTE_TABLE (a concise hand-kept route list); it drifted stale and was corrected Aug 6 (Sparrow H slant, Robin RB middle, Hawk cross+wheel). The Team Period Script print now appends a PASSING GAME breakdown drawn from the live diagram engine (always current) so coaches get script + routes in one packet.
+
 The system doc that preceded the final build lives in Greg's files as `rebel-safari-offense.md`; where it conflicts with this document, THIS document is current (it reflects the line calls, renames, formations, and doctrine that came later).

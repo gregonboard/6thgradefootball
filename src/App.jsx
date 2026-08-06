@@ -2842,9 +2842,9 @@ function CallerTab({ data, up }) {
 
 /* ---- bird route table: any kid can play any letter off this card ---- */
 const ROUTE_TABLE = [
-  { bird: "Sparrow", X: "Hitch at 5", H: "Quick out at 4", Y: "Stick at 5", Z: "Hitch at 5", RB: "Check, leak flat" },
-  { bird: "Robin", X: "Slant", H: "Arrow to the flat", Y: "Flat", Z: "Slant", RB: "Check, leak flat" },
-  { bird: "Hawk", X: "Curl at 8", H: "Flat", Y: "Corner at 8", Z: "Curl at 8", RB: "Check, leak flat" },
+  { bird: "Sparrow", X: "Hitch at 5", H: "Slant at 4", Y: "Stick at 5", Z: "Hitch at 5", RB: "Check, leak" },
+  { bird: "Robin", X: "Slant", H: "Arrow to the flat", Y: "Flat", Z: "Slant", RB: "Settle middle at 4" },
+  { bird: "Hawk", X: "Curl (backside)", H: "Cross behind Y", Y: "Wheel up sideline", Z: "Curl at 8", RB: "Check, leak" },
   { bird: "Owl", X: "Block", H: "Jet fake", Y: "Seam behind LBs", Z: "Block", RB: "Fake Rhino" },
   { bird: "Falcon", X: "Go", H: "Seam", Y: "Seam", Z: "Go", RB: "Checkdown" },
   { bird: "Eagle", X: "Post", H: "Block", Y: "Drag at 10", Z: "Go", RB: "Block" },
@@ -2870,6 +2870,35 @@ function RoutesPrint({ data }) {
             <div className="routes-foot">Hear an animal: block your man.</div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/* Coaches' passing breakdown: every pass concept drawn large from the live
+   diagram engine (always current) with its QB read. Two per row. */
+const COACH_PASS_CONCEPTS = ["sparrow", "robin", "hawk", "owl", "falcon", "eagle", "flood"];
+function PassBreakdown() {
+  return (
+    <div className="cr-wrap">
+      <div className="cr-sectionhead">PASSING GAME · routes key off the letter, not the formation</div>
+      <div className="cr-grid">
+        {COACH_PASS_CONCEPTS.map((c) => {
+          const cc = CONCEPTS[c];
+          const play = { id: "cr-" + c, concept: c, dir: cc.dirs[0] || "", formation: "Doubles", tags: [] };
+          const a = ASSIGNMENTS[c] || {};
+          return (
+            <div key={c} className="cr-card">
+              <div className="cr-head"><b>{callWord(c, cc.dirs[0] || "")}</b> <span className="cr-line">{LINE_CALLS[c]}</span></div>
+              <PlayDiagram play={play} size="book" />
+              <div className="cr-jobs">
+                <div><b>X / Z</b> {a.XZ}</div>
+                <div><b>H</b> {a.H} &nbsp; <b>Y</b> {a.Y}</div>
+                <div className="cr-read"><b>QB</b> {cc.read}</div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -3615,6 +3644,7 @@ function TeamScriptPrint({ data }) {
         ))}
         {rows.length === 0 && <div className="p-cs-empty">Fill the call sheet first, then print the script.</div>}
       </ol>
+      <PassBreakdown />
     </div>
   );
 }
@@ -3938,6 +3968,16 @@ tbody tr { cursor: pointer; }
 .board-hint { margin-top: 2vh; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: #6B6F76; }
 
 /* ---- route cards print ---- */
+.cr-wrap { break-before: page; margin-top: 16px; }
+.cr-sectionhead { font-family: var(--disp); font-weight: 700; font-size: 15px; letter-spacing: 1.5px; color: var(--ink); border-bottom: 2px solid var(--ink); padding-bottom: 4px; margin-bottom: 12px; }
+.cr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.cr-card { border: 1.5px solid var(--ink); border-radius: 6px; padding: 8px; break-inside: avoid; }
+.cr-head { font-family: var(--disp); display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.cr-head b { font-size: 22px; letter-spacing: 1px; text-transform: uppercase; color: var(--red); }
+.cr-line { font-family: var(--disp); font-weight: 700; font-size: 11px; letter-spacing: 1px; background: var(--ink); color: #EAAA00; padding: 1px 6px; }
+.cr-jobs { font-size: 10.5px; line-height: 1.5; margin-top: 6px; }
+.cr-jobs b { font-family: var(--disp); letter-spacing: .5px; color: var(--ink); }
+.cr-read { margin-top: 3px; padding-top: 3px; border-top: 1px solid var(--line); }
 .routes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
 .routes-card { border: 1.5px solid var(--ink); page-break-inside: avoid; }
 .routes-title { font-family: var(--disp); font-weight: 700; font-size: 11px; letter-spacing: 1.5px; padding: 3px 8px; background: var(--ink); color: #fff; }
