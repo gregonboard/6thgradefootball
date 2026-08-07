@@ -311,23 +311,28 @@ describe("seeds", () => {
     expect(again.plays.length).toBe(72);
     expect(again.packages.length).toBe(v3.packages.length);
   });
-  it("defense: both fronts field 11, coverages and blitzes draw", () => {
+  it("defense: both fronts field 11; coverages, stunts, blitzes draw on the field", () => {
     for (const front of Object.keys(DEF_FRONTS)) {
       for (const cov of Object.keys(DEF_COVERAGES)) {
-        const d = genDef(front, cov, "none");
-        expect(d.def.length, front + " fields 11 defenders").toBe(11);
-        expect(d.arrows.length, front + "/" + cov + " has assignments").toBeGreaterThan(0);
-        for (const p of [...d.def, ...d.arrows.flatMap((a) => [a.from, a.to])]) {
-          const [x, y] = p.x != null ? [p.x, p.y] : p;
-          expect(x >= 0 && x <= 100 && y >= 0 && y <= 44, front + "/" + cov + " stays on the field").toBe(true);
+        for (const stunt of ["none", "pinch", "slant", "twist"]) {
+          for (const blitz of ["none", "thunder", "storm", "cannon"]) {
+            const d = genDef(front, cov, stunt, blitz);
+            expect(d.def.length, front + " fields 11").toBe(11);
+            for (const p of [...d.def.map((x) => [x.x, x.y]), ...d.arrows.flatMap((a) => [a.from, a.to])]) {
+              expect(p[0] >= 0 && p[0] <= 100 && p[1] >= 0 && p[1] <= 44, `${front}/${cov}/${stunt}/${blitz} on field`).toBe(true);
+            }
+          }
         }
       }
     }
-    // sky = zone (deep arrows), lock = man (dashed man lines)
-    expect(genDef("4-4", "sky", "none").arrows.some((a) => a.kind === "deep")).toBe(true);
-    expect(genDef("4-4", "lock", "none").arrows.some((a) => a.kind === "man")).toBe(true);
-    // blitz adds a red rusher
-    expect(genDef("4-4", "sky", "mike").arrows.some((a) => a.kind === "blitz")).toBe(true);
+    expect(genDef("4-4", "sky", "none", "none").arrows.some((a) => a.kind === "deep")).toBe(true);
+    expect(genDef("4-4", "sky", "pinch", "none").arrows.some((a) => a.kind === "stunt")).toBe(true);
+    expect(genDef("4-4", "sky", "none", "storm").arrows.filter((a) => a.kind === "blitz").length).toBe(2);
+    // a blitzer is pulled out of coverage: Thunder's edge backer has no drop
+    const thunder = genDef("4-4", "sky", "none", "thunder");
+    expect(thunder.arrows.filter((a) => a.kind === "blitz").length).toBe(1);
+    // Cover 2 has two deep defenders in the 4-3
+    expect(genDef("4-3", "cloud", "none", "none").arrows.filter((a) => a.kind === "deep").length).toBe(2);
   });
   it("seeds the elite drill library with coaching detail", () => {
     const names = SEED.drills.map((d) => d.name);

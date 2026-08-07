@@ -1062,7 +1062,7 @@ const RAW_SEED = {
   depth: { off: {}, def: {} },
   offScheme: "I-Form",
   defScheme: "5-3",
-  defense: { front: "4-4", cov: "sky", blitz: "none" },
+  defense: { front: "4-4", cov: "sky", stunt: "none", blitz: "none" },
   libVersion: 6,
   seasonWeek: 1,
   pgOverrides: {},
@@ -1446,94 +1446,135 @@ const DEF_OFFREF = [
   { l: "X", x: 8 }, { l: "T", x: 38 }, { l: "G", x: 44 }, { l: "C", x: 50 },
   { l: "G", x: 56 }, { l: "T", x: 62 }, { l: "Y", x: 68 }, { l: "Z", x: 90 },
 ];
-const DEF_DL = [{ l: "E", x: 34 }, { l: "T", x: 45 }, { l: "T", x: 55 }, { l: "E", x: 66 }];
+/* defender positions per front. y<22 (above the LOS); deeper = smaller y */
 const DEF_FRONTS = {
   "4-4": {
     label: "4-4 (Base · 8 in the box)",
-    lb: [{ l: "S", x: 30 }, { l: "M", x: 45 }, { l: "W", x: 55 }, { l: "B", x: 70 }],
-    cb: [{ l: "C", x: 10 }, { l: "C", x: 90 }],
-    deep: [{ l: "F", x: 50 }],
-    note: "Eight in the box. Our run-stopper. Two corners, one safety over the top.",
+    note: "Eight in the box, our run-stopper. Two corners, one safety over the top.",
+    dl: [{ l: "E", x: 33 }, { l: "T", x: 44 }, { l: "T", x: 56 }, { l: "E", x: 67 }],
+    lb: [{ l: "S", x: 29 }, { l: "M", x: 47 }, { l: "W", x: 53 }, { l: "B", x: 71 }],
+    cb: [{ l: "C", x: 9 }, { l: "C", x: 91 }],
+    deep: [{ l: "FS", x: 50 }],
   },
   "4-3": {
     label: "4-3 (vs spread · 7 in the box)",
-    lb: [{ l: "S", x: 40 }, { l: "M", x: 50 }, { l: "W", x: 60 }],
-    cb: [{ l: "C", x: 10 }, { l: "C", x: 90 }],
-    deep: [{ l: "F", x: 38 }, { l: "S", x: 62 }],
     note: "Seven in the box, two safeties. Use it when they spread you out or throw a lot.",
+    dl: [{ l: "E", x: 33 }, { l: "T", x: 44 }, { l: "T", x: 56 }, { l: "E", x: 67 }],
+    lb: [{ l: "S", x: 39 }, { l: "M", x: 50 }, { l: "W", x: 61 }],
+    cb: [{ l: "C", x: 9 }, { l: "C", x: 91 }],
+    deep: [{ l: "FS", x: 40 }, { l: "SS", x: 60 }],
   },
 };
 const DEF_COVERAGES = {
-  sky: { label: "Cover 3 (SKY)", kid: "3 deep, everyone else covers an area. Keep it ALL in front of you. Safest call in football.", carriers: "zone" },
-  lock: { label: "Man (LOCK)", kid: "Grab a jersey and stay on his hip. One free safety robs the middle. Use it to blitz.", carriers: "man" },
+  sky: { label: "Cover 3 (SKY)", kid: "3 deep, four underneath. Keep it ALL in front of you. Safest call in football." },
+  cloud: { label: "Cover 2 (CLOUD)", kid: "2 deep safeties split the field in halves, corners jam and sit in the flat. Takes away the quick outs and the deep ball." },
+};
+const DEF_STUNTS = {
+  none: { label: "No stunt", kid: "" },
+  pinch: { label: "PINCH", kid: "All four linemen slant to the inside gaps. Squeezes every running lane shut." },
+  slant: { label: "SLANT", kid: "The whole line slants one way on the snap. Beats a team that blocks straight ahead." },
+  twist: { label: "TWIST", kid: "The tackle and end on the strong side cross: tackle knifes inside, end loops around him. Confuses the blockers." },
 };
 const DEF_BLITZES = {
   none: { label: "No blitz", kid: "" },
-  mike: { label: "MIKE fire (A gap)", kid: "Mike shoots the A gap on the snap. Fastest way to a run for loss." },
-  edge: { label: "EDGE fire (off the corner)", kid: "The edge backer comes off the end. Great on obvious passing downs." },
+  thunder: { label: "THUNDER", kid: "The edge backer fires off the end. Fastest man to the QB on a passing down." },
+  storm: { label: "STORM", kid: "Both inside backers shoot the A gaps at once. A wall of blitzers up the middle." },
+  cannon: { label: "CANNON", kid: "The corner fires off the edge; the safety rotates over the top behind him. A surprise off the boundary." },
 };
 const DEF_RULES = [
   { n: 1, t: "FRONT gives the big guys their GAP.", d: "Line up, fire into your gap, keep your shoulders square." },
-  { n: 2, t: "COVERAGE gives the back guys a MAN or an AREA.", d: "Sky = your area, keep it in front. Lock = your jersey, stay on his hip." },
+  { n: 2, t: "COVERAGE gives the back guys an AREA.", d: "Sky = 3 deep. Cloud = 2 deep. Keep the ball in front of you." },
   { n: 3, t: "Everybody runs to the ball.", d: "Eleven hats to the football, every play." },
   { n: 4, t: "Strike and wrap, run your feet.", d: "Eyes through the near hip, head across, squeeze and drive." },
 ];
 const DEF_JOBS = {
-  line: "Fire off low into your gap. Get your hands inside, find the ball, do not get washed down.",
-  lb_sky: "Read the near back: run downhill on run, drop to your area on pass. Break on the throw.",
-  lb_lock: "Cover the back or the tight end man-to-man. If he blocks, you become an extra rusher.",
-  cb_sky: "Bail deep. Keep the widest receiver in front of you. Nothing over your head.",
-  cb_lock: "Press or off, grab your receiver and stay on his hip. No help outside, do not get beat deep.",
-  safety_sky: "You are the last line. Get to the middle third and keep everything in front.",
-  safety_lock: "Free safety: sit in the middle and rob the first crosser. Help on any deep ball.",
+  line: "Fire off low into your gap. Hands inside, find the ball, do not get washed down.",
+  lb_sky: "Read the near back: downhill on run, drop to your area on pass. Break on the throw.",
+  lb_cloud: "Drop to your hook, wall the crosser, break on the throw.",
+  cb_sky: "Bail deep. Keep the widest receiver in front. Nothing over your head.",
+  cb_cloud: "Jam the receiver at the line, then sit in the flat. Anything deep belongs to the safety.",
+  safety_sky: "Deep middle third. You are the last line, keep everything in front.",
+  safety_cloud: "You own half the deep field. Split it with the other safety, keep it all in front.",
 };
 
-/* build the diagram: gray offense, navy defense, coverage + blitz arrows */
-function genDef(frontKey, covKey, blitzKey) {
+/* build the diagram elements. Coverage arrows are owned by a defender id so a
+   blitz can pull that man out of coverage and replace him with a rush. */
+function genDef(frontKey, covKey, stuntKey, blitzKey) {
   const F = DEF_FRONTS[frontKey] || DEF_FRONTS["4-4"];
   const cov = covKey || "sky";
-  const dl = DEF_DL.map((d) => ({ ...d, y: 20, role: "line" }));
-  const lb = F.lb.map((d) => ({ ...d, y: 15.5, role: "lb" }));
-  const cb = F.cb.map((d) => ({ ...d, y: 17, role: "cb" }));
-  const deep = F.deep.map((d) => ({ ...d, y: 7, role: "safety" }));
+  const id = (p) => p.l + "@" + p.x;
+  const dl = F.dl.map((p) => ({ ...p, y: 19.5, role: "line", id: id(p) }));
+  const lb = F.lb.map((p) => ({ ...p, y: 15, role: "lb", id: id(p) }));
+  const cb = F.cb.map((p) => ({ ...p, y: 16.5, role: "cb", id: id(p) }));
+  const deep = F.deep.map((p, i) => ({ ...p, y: 8, role: "safety", id: id(p) }));
   const def = [...dl, ...lb, ...cb, ...deep];
-  const arrows = [];
+  const cbL = cb[0], cbR = cb[1];
+  const cover = []; /* {owner, from, to, kind} */
+  const A = (owner, from, to, kind) => cover.push({ owner, from, to, kind });
   if (cov === "sky") {
-    /* 3 deep thirds + underneath drops */
-    arrows.push({ from: [cb[0].x, cb[0].y], to: [16, 3], kind: "deep" });
-    arrows.push({ from: [cb[1].x, cb[1].y], to: [84, 3], kind: "deep" });
-    arrows.push({ from: [deep[0].x, deep[0].y], to: [50, 2.5], kind: "deep" });
-    lb.forEach((b) => arrows.push({ from: [b.x, b.y], to: [b.x + (b.x < 50 ? -3 : 3), 11], kind: "drop" }));
-    if (deep[1]) arrows.push({ from: [deep[1].x, deep[1].y], to: [deep[1].x + 6, 11], kind: "drop" }); /* 4-3: 2nd safety plays underneath */
+    A(cbL.id, [cbL.x, cbL.y], [16, 3], "deep");
+    A(cbR.id, [cbR.x, cbR.y], [84, 3], "deep");
+    A(deep[0].id, [deep[0].x, deep[0].y], [50, 2], "deep");
+    if (deep[1]) A(deep[1].id, [deep[1].x, deep[1].y], [deep[1].x + 8, 11], "drop");
+    lb.forEach((b) => A(b.id, [b.x, b.y], [b.x + (b.x < 50 ? -2 : 2), 11], "drop"));
   } else {
-    /* man: corners on the WRs, a backer on Y, a backer on RB, free safety middle */
-    arrows.push({ from: [cb[0].x, cb[0].y], to: [8, 23], kind: "man" });
-    arrows.push({ from: [cb[1].x, cb[1].y], to: [90, 23], kind: "man" });
-    const edgeLb = lb[lb.length - 1];
-    arrows.push({ from: [edgeLb.x, edgeLb.y], to: [68, 23], kind: "man" }); /* on the TE */
-    const midLb = lb.find((b) => b.l === "M") || lb[1];
-    arrows.push({ from: [midLb.x, midLb.y], to: [43, 31], kind: "man" }); /* on the RB */
-    arrows.push({ from: [deep[0].x, deep[0].y], to: [50, 3], kind: "deep" }); /* free safety */
-    if (deep[1]) arrows.push({ from: [deep[1].x, deep[1].y], to: [72, 5], kind: "deep" });
+    /* Cover 2: two deep halves, corners to the flats, backers to hooks */
+    if (deep[1]) { /* 4-3: two safeties take the halves */
+      A(deep[0].id, [deep[0].x, deep[0].y], [27, 3], "deep");
+      A(deep[1].id, [deep[1].x, deep[1].y], [73, 3], "deep");
+      A(cbL.id, [cbL.x, cbL.y], [16, 13], "drop");
+      A(cbR.id, [cbR.x, cbR.y], [84, 13], "drop");
+      lb.forEach((b) => A(b.id, [b.x, b.y], [b.x, 12], "drop"));
+    } else { /* 4-4: corners take the deep halves, safety robs the hole */
+      A(cbL.id, [cbL.x, cbL.y], [24, 4], "deep");
+      A(cbR.id, [cbR.x, cbR.y], [76, 4], "deep");
+      A(deep[0].id, [deep[0].x, deep[0].y], [50, 10], "drop");
+      const flats = lb.filter((b) => b.l === "S" || b.l === "B");
+      const hooks = lb.filter((b) => b.l === "M" || b.l === "W");
+      flats.forEach((b) => A(b.id, [b.x, b.y], [b.x < 50 ? 18 : 82, 13], "drop"));
+      hooks.forEach((b) => A(b.id, [b.x, b.y], [b.x, 12], "drop"));
+    }
   }
-  if (blitzKey === "mike") {
-    const m = lb.find((b) => b.l === "M") || lb[1];
-    arrows.push({ from: [m.x, m.y], to: [48, 22], kind: "blitz" });
-  } else if (blitzKey === "edge") {
-    const e = lb[lb.length - 1];
-    arrows.push({ from: [e.x, e.y], to: [56, 27], kind: "blitz" });
+  const stuntArrows = [];
+  const byL = (arr, l, nth = 0) => arr.filter((p) => p.l === l)[nth];
+  if (stuntKey === "pinch") {
+    dl.forEach((d) => stuntArrows.push({ from: [d.x, d.y], to: [d.x + (d.x < 50 ? 6 : -6), 21.3], kind: "stunt" }));
+  } else if (stuntKey === "slant") {
+    dl.forEach((d) => stuntArrows.push({ from: [d.x, d.y], to: [Math.min(74, d.x + 6), 21.3], kind: "stunt" }));
+  } else if (stuntKey === "twist") {
+    const rt = byL(dl, "T", 1), re = byL(dl, "E", 1);
+    if (rt) stuntArrows.push({ from: [rt.x, rt.y], to: [rt.x + 7, 21.3], kind: "stunt" });
+    if (re) stuntArrows.push({ from: [re.x, re.y], to: [re.x - 8, 21], kind: "stunt" });
+    dl.filter((d) => d.x < 50).forEach((d) => stuntArrows.push({ from: [d.x, d.y], to: [d.x, 21.5], kind: "stunt" }));
   }
+  const blitzArrows = [];
+  const pulled = new Set();
+  if (blitzKey === "thunder") {
+    const edge = byL(lb, "B") || byL(lb, "W");
+    if (edge) { blitzArrows.push({ from: [edge.x, edge.y], to: [60, 28], kind: "blitz" }); pulled.add(edge.id); }
+  } else if (blitzKey === "storm") {
+    for (const [l, gx] of [["M", 48], ["W", 52]]) { const b = byL(lb, l); if (b) { blitzArrows.push({ from: [b.x, b.y], to: [gx, 22], kind: "blitz" }); pulled.add(b.id); } }
+  } else if (blitzKey === "cannon") {
+    blitzArrows.push({ from: [cbR.x, cbR.y], to: [66, 27], kind: "blitz" }); pulled.add(cbR.id);
+    if (deep[0]) { /* safety rotates over the top to that side */
+      const rot = cover.find((a) => a.owner === deep[0].id);
+      if (rot) rot.to = [78, 4];
+      else A(deep[0].id, [deep[0].x, deep[0].y], [78, 4], "deep");
+    }
+  }
+  const arrows = [...cover.filter((a) => !pulled.has(a.owner)), ...stuntArrows, ...blitzArrows];
   return { off: DEF_OFFREF, def, arrows };
 }
 
-function DefDiagram({ front, cov, blitz, size = "big" }) {
-  const { off, def, arrows } = genDef(front, cov, blitz);
-  const AK = { deep: "#23356F", drop: "#23356F", man: "#23356F", blitz: "#C32032" };
+function DefDiagram({ front, cov, stunt, blitz, size = "big" }) {
+  const { off, def, arrows } = genDef(front, cov, stunt, blitz);
+  const AK = { deep: "#23356F", drop: "#23356F", stunt: "#0F6B4F", blitz: "#C32032" };
   return (
     <svg className={"play-svg " + size} viewBox="0 0 100 44" preserveAspectRatio="xMidYMid meet">
       <defs>
-        <marker id="defarrow" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto"><path d="M0,0 L4,2 L0,4 Z" fill="#23356F" /></marker>
-        <marker id="defarrowR" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto"><path d="M0,0 L4,2 L0,4 Z" fill="#C32032" /></marker>
+        <marker id="defA" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto"><path d="M0,0 L4,2 L0,4 Z" fill="#23356F" /></marker>
+        <marker id="defAg" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto"><path d="M0,0 L4,2 L0,4 Z" fill="#0F6B4F" /></marker>
+        <marker id="defAr" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto"><path d="M0,0 L4,2 L0,4 Z" fill="#C32032" /></marker>
       </defs>
       <line x1="2" y1="22" x2="98" y2="22" stroke="#C58A2E" strokeWidth="0.5" />
       {off.map((o, i) => (
@@ -1546,14 +1587,13 @@ function DefDiagram({ front, cov, blitz, size = "big" }) {
       <circle cx="43" cy="33" r="2.1" fill="#EDEDEA" stroke="#B9BCC2" strokeWidth="0.4" /><text x="43" y="33.8" textAnchor="middle" fontSize="2.2" fontWeight="700" fill="#9AA0A8" fontFamily="Roboto, sans-serif">R</text>
       {arrows.map((a, i) => (
         <line key={"a" + i} x1={a.from[0]} y1={a.from[1]} x2={a.to[0]} y2={a.to[1]}
-          stroke={AK[a.kind]} strokeWidth={a.kind === "blitz" ? 1.1 : 0.7}
-          strokeDasharray={a.kind === "man" ? "1.6 1.2" : null}
-          markerEnd={a.kind === "blitz" ? "url(#defarrowR)" : "url(#defarrow)"} />
+          stroke={AK[a.kind]} strokeWidth={a.kind === "blitz" ? 1.1 : a.kind === "stunt" ? 0.9 : 0.7}
+          markerEnd={a.kind === "blitz" ? "url(#defAr)" : a.kind === "stunt" ? "url(#defAg)" : "url(#defA)"} />
       ))}
       {def.map((d, i) => (
         <g key={"d" + i}>
           <circle cx={d.x} cy={d.y} r="2.3" fill="#fff" stroke="#23356F" strokeWidth="0.7" />
-          <text x={d.x} y={d.y + 0.85} textAnchor="middle" fontSize="2.4" fontWeight="800" fill="#23356F" fontFamily="Roboto, sans-serif">{d.l}</text>
+          <text x={d.x} y={d.y + 0.8} textAnchor="middle" fontSize={d.l.length > 1 ? "1.8" : "2.4"} fontWeight="800" fill="#23356F" fontFamily="Roboto, sans-serif">{d.l}</text>
         </g>
       ))}
     </svg>
@@ -1561,14 +1601,17 @@ function DefDiagram({ front, cov, blitz, size = "big" }) {
 }
 
 function DefenseTab({ data, up, onPrint }) {
-  const d = data.defense || { front: "4-4", cov: "sky", blitz: "none" };
+  const d = data.defense || { front: "4-4", cov: "sky", stunt: "none", blitz: "none" };
   const setD = (patch) => up({ defense: { ...d, ...patch } });
   const F = DEF_FRONTS[d.front] || DEF_FRONTS["4-4"];
   const cov = d.cov || "sky";
-  const call = `${d.front} · ${DEF_COVERAGES[cov].label}${d.blitz && d.blitz !== "none" ? " · " + DEF_BLITZES[d.blitz].label : ""}`;
+  const parts = [d.front, DEF_COVERAGES[cov].label];
+  if (d.stunt && d.stunt !== "none") parts.push(DEF_STUNTS[d.stunt].label);
+  if (d.blitz && d.blitz !== "none") parts.push(DEF_BLITZES[d.blitz].label);
   const pick = (key, val, cur, label) => (
-    <button className={"def-chip" + (cur === val ? " on" : "")} onClick={() => setD({ [key]: val })}>{label}</button>
+    <button key={val} className={"def-chip" + (cur === val ? " on" : "")} onClick={() => setD({ [key]: val })}>{label}</button>
   );
+  const kid = [F.note, DEF_COVERAGES[cov].kid, d.stunt !== "none" ? DEF_STUNTS[d.stunt].kid : "", d.blitz !== "none" ? DEF_BLITZES[d.blitz].kid : ""].filter(Boolean).join(" ");
   return (
     <div className="two-col">
       <section className="panel">
@@ -1579,19 +1622,21 @@ function DefenseTab({ data, up, onPrint }) {
         <div className="def-controls">
           <div className="def-row"><span className="def-lbl">Front</span>{Object.keys(DEF_FRONTS).map((k) => pick("front", k, d.front, k))}</div>
           <div className="def-row"><span className="def-lbl">Coverage</span>{Object.keys(DEF_COVERAGES).map((k) => pick("cov", k, cov, DEF_COVERAGES[k].label))}</div>
+          <div className="def-row"><span className="def-lbl">Line stunt</span>{Object.keys(DEF_STUNTS).map((k) => pick("stunt", k, d.stunt || "none", DEF_STUNTS[k].label))}</div>
           <div className="def-row"><span className="def-lbl">Blitz</span>{Object.keys(DEF_BLITZES).map((k) => pick("blitz", k, d.blitz || "none", DEF_BLITZES[k].label))}</div>
         </div>
-        <div className="def-call">CALL IT: <b>{call}</b></div>
-        <div className="def-diagram"><DefDiagram front={d.front} cov={cov} blitz={d.blitz} /></div>
-        <p className="hint">{F.note} {DEF_COVERAGES[cov].kid}{d.blitz && d.blitz !== "none" ? " " + DEF_BLITZES[d.blitz].kid : ""}</p>
+        <div className="def-call">CALL IT: <b>{parts.join(" · ")}</b></div>
+        <div className="def-diagram"><DefDiagram front={d.front} cov={cov} stunt={d.stunt} blitz={d.blitz} /></div>
+        <p className="hint"><span className="def-key"><span className="dk navy" /> coverage &nbsp; <span className="dk green" /> line stunt &nbsp; <span className="dk red" /> blitz</span></p>
+        <p className="hint">{kid}</p>
       </section>
       <section className="panel">
         <div className="panel-head"><h2>Who does what</h2></div>
         <div className="def-jobs">
-          <div className="def-job"><b>Down linemen (E / T)</b><span>{DEF_JOBS.line}</span></div>
-          <div className="def-job"><b>Linebackers (S / M / W{d.front === "4-4" ? " / B" : ""})</b><span>{cov === "sky" ? DEF_JOBS.lb_sky : DEF_JOBS.lb_lock}</span></div>
-          <div className="def-job"><b>Corners (C)</b><span>{cov === "sky" ? DEF_JOBS.cb_sky : DEF_JOBS.cb_lock}</span></div>
-          <div className="def-job"><b>Safety{d.front === "4-3" ? "s" : ""} (F{d.front === "4-3" ? " / S" : ""})</b><span>{cov === "sky" ? DEF_JOBS.safety_sky : DEF_JOBS.safety_lock}</span></div>
+          <div className="def-job"><b>Down linemen (E / T)</b><span>{DEF_JOBS.line}{d.stunt !== "none" ? " On " + DEF_STUNTS[d.stunt].label + ": " + DEF_STUNTS[d.stunt].kid : ""}</span></div>
+          <div className="def-job"><b>Linebackers (S / M / W{d.front === "4-4" ? " / B" : ""})</b><span>{cov === "sky" ? DEF_JOBS.lb_sky : DEF_JOBS.lb_cloud}</span></div>
+          <div className="def-job"><b>Corners (C)</b><span>{cov === "sky" ? DEF_JOBS.cb_sky : DEF_JOBS.cb_cloud}</span></div>
+          <div className="def-job"><b>Saf{d.front === "4-3" ? "eties (FS / SS)" : "ety (FS)"}</b><span>{cov === "sky" ? DEF_JOBS.safety_sky : DEF_JOBS.safety_cloud}</span></div>
         </div>
         <div className="panel-head"><h2>The 4 rules</h2></div>
         <div className="def-rules">
@@ -1605,13 +1650,13 @@ function DefenseTab({ data, up, onPrint }) {
 }
 
 function DefensePrint({ data }) {
-  const d = data.defense || { front: "4-4", cov: "sky", blitz: "none" };
   const combos = [
-    { front: "4-4", cov: "sky", blitz: "none" },
-    { front: "4-4", cov: "lock", blitz: "none" },
-    { front: "4-3", cov: "sky", blitz: "none" },
-    { front: "4-4", cov: "sky", blitz: "mike" },
+    { front: "4-4", cov: "sky", stunt: "none", blitz: "none" },
+    { front: "4-3", cov: "cloud", stunt: "none", blitz: "none" },
+    { front: "4-4", cov: "sky", stunt: "none", blitz: "thunder" },
+    { front: "4-4", cov: "sky", stunt: "pinch", blitz: "storm" },
   ];
+  const nm = (c) => [c.front, DEF_COVERAGES[c.cov].label.match(/\((\w+)\)/)[1], c.stunt !== "none" ? DEF_STUNTS[c.stunt].label : "", c.blitz !== "none" ? DEF_BLITZES[c.blitz].label : ""].filter(Boolean).join(" · ");
   return (
     <div className="sheet">
       <PrintHead title="Defense — Coach Sheet" right={<div className="p-meta">{todayStr()}</div>} />
@@ -1621,9 +1666,8 @@ function DefensePrint({ data }) {
       <div className="cr-grid">
         {combos.map((c, i) => (
           <div key={i} className="cr-card">
-            <div className="cr-head"><b>{c.front}</b> <span className="cr-line">{DEF_COVERAGES[c.cov].label}{c.blitz !== "none" ? " · " + DEF_BLITZES[c.blitz].label.split(" ")[0] : ""}</span></div>
-            <DefDiagram front={c.front} cov={c.cov} blitz={c.blitz} size="book" />
-            <div className="cr-jobs">{DEF_FRONTS[c.front].note} {DEF_COVERAGES[c.cov].kid}</div>
+            <div className="cr-head"><b style={{ fontSize: 16 }}>{nm(c)}</b></div>
+            <DefDiagram front={c.front} cov={c.cov} stunt={c.stunt} blitz={c.blitz} size="book" />
           </div>
         ))}
       </div>
@@ -4186,6 +4230,9 @@ tbody tr { cursor: pointer; }
 .def-rule div { display: grid; gap: 1px; }
 .def-rule span { font-size: 12.5px; color: var(--muted); }
 .def-rules-print { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; margin: 8px 0 12px; font-size: 11px; }
+.def-key { font-size: 11px; }
+.dk { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 3px; }
+.dk.navy { background: #23356F; } .dk.green { background: #0F6B4F; } .dk.red { background: #C32032; }
 .cr-wrap { break-before: page; margin-top: 16px; }
 .cr-sectionhead { font-family: var(--disp); font-weight: 700; font-size: 15px; letter-spacing: 1.5px; color: var(--ink); border-bottom: 2px solid var(--ink); padding-bottom: 4px; margin-bottom: 12px; }
 .cr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
