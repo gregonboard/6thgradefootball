@@ -1062,6 +1062,7 @@ const RAW_SEED = {
   depth: { off: {}, def: {} },
   offScheme: "I-Form",
   defScheme: "5-3",
+  defense: { front: "4-4", cov: "sky", blitz: "none" },
   libVersion: 6,
   seasonWeek: 1,
   pgOverrides: {},
@@ -1436,6 +1437,200 @@ function todayStr() {
 }
 
 /* ============================================================ */
+/* ============================================================
+   DEFENSE MODE — 4-4 / 4-3, two coverages, two blitzes. Kid-simple.
+   Its own tiny diagram engine (LOS at y=22, offense gray below,
+   defense navy above; deep = toward y=0).
+   ============================================================ */
+const DEF_OFFREF = [
+  { l: "X", x: 8 }, { l: "T", x: 38 }, { l: "G", x: 44 }, { l: "C", x: 50 },
+  { l: "G", x: 56 }, { l: "T", x: 62 }, { l: "Y", x: 68 }, { l: "Z", x: 90 },
+];
+const DEF_DL = [{ l: "E", x: 34 }, { l: "T", x: 45 }, { l: "T", x: 55 }, { l: "E", x: 66 }];
+const DEF_FRONTS = {
+  "4-4": {
+    label: "4-4 (Base · 8 in the box)",
+    lb: [{ l: "S", x: 30 }, { l: "M", x: 45 }, { l: "W", x: 55 }, { l: "B", x: 70 }],
+    cb: [{ l: "C", x: 10 }, { l: "C", x: 90 }],
+    deep: [{ l: "F", x: 50 }],
+    note: "Eight in the box. Our run-stopper. Two corners, one safety over the top.",
+  },
+  "4-3": {
+    label: "4-3 (vs spread · 7 in the box)",
+    lb: [{ l: "S", x: 40 }, { l: "M", x: 50 }, { l: "W", x: 60 }],
+    cb: [{ l: "C", x: 10 }, { l: "C", x: 90 }],
+    deep: [{ l: "F", x: 38 }, { l: "S", x: 62 }],
+    note: "Seven in the box, two safeties. Use it when they spread you out or throw a lot.",
+  },
+};
+const DEF_COVERAGES = {
+  sky: { label: "Cover 3 (SKY)", kid: "3 deep, everyone else covers an area. Keep it ALL in front of you. Safest call in football.", carriers: "zone" },
+  lock: { label: "Man (LOCK)", kid: "Grab a jersey and stay on his hip. One free safety robs the middle. Use it to blitz.", carriers: "man" },
+};
+const DEF_BLITZES = {
+  none: { label: "No blitz", kid: "" },
+  mike: { label: "MIKE fire (A gap)", kid: "Mike shoots the A gap on the snap. Fastest way to a run for loss." },
+  edge: { label: "EDGE fire (off the corner)", kid: "The edge backer comes off the end. Great on obvious passing downs." },
+};
+const DEF_RULES = [
+  { n: 1, t: "FRONT gives the big guys their GAP.", d: "Line up, fire into your gap, keep your shoulders square." },
+  { n: 2, t: "COVERAGE gives the back guys a MAN or an AREA.", d: "Sky = your area, keep it in front. Lock = your jersey, stay on his hip." },
+  { n: 3, t: "Everybody runs to the ball.", d: "Eleven hats to the football, every play." },
+  { n: 4, t: "Strike and wrap, run your feet.", d: "Eyes through the near hip, head across, squeeze and drive." },
+];
+const DEF_JOBS = {
+  line: "Fire off low into your gap. Get your hands inside, find the ball, do not get washed down.",
+  lb_sky: "Read the near back: run downhill on run, drop to your area on pass. Break on the throw.",
+  lb_lock: "Cover the back or the tight end man-to-man. If he blocks, you become an extra rusher.",
+  cb_sky: "Bail deep. Keep the widest receiver in front of you. Nothing over your head.",
+  cb_lock: "Press or off, grab your receiver and stay on his hip. No help outside, do not get beat deep.",
+  safety_sky: "You are the last line. Get to the middle third and keep everything in front.",
+  safety_lock: "Free safety: sit in the middle and rob the first crosser. Help on any deep ball.",
+};
+
+/* build the diagram: gray offense, navy defense, coverage + blitz arrows */
+function genDef(frontKey, covKey, blitzKey) {
+  const F = DEF_FRONTS[frontKey] || DEF_FRONTS["4-4"];
+  const cov = covKey || "sky";
+  const dl = DEF_DL.map((d) => ({ ...d, y: 20, role: "line" }));
+  const lb = F.lb.map((d) => ({ ...d, y: 15.5, role: "lb" }));
+  const cb = F.cb.map((d) => ({ ...d, y: 17, role: "cb" }));
+  const deep = F.deep.map((d) => ({ ...d, y: 7, role: "safety" }));
+  const def = [...dl, ...lb, ...cb, ...deep];
+  const arrows = [];
+  if (cov === "sky") {
+    /* 3 deep thirds + underneath drops */
+    arrows.push({ from: [cb[0].x, cb[0].y], to: [16, 3], kind: "deep" });
+    arrows.push({ from: [cb[1].x, cb[1].y], to: [84, 3], kind: "deep" });
+    arrows.push({ from: [deep[0].x, deep[0].y], to: [50, 2.5], kind: "deep" });
+    lb.forEach((b) => arrows.push({ from: [b.x, b.y], to: [b.x + (b.x < 50 ? -3 : 3), 11], kind: "drop" }));
+    if (deep[1]) arrows.push({ from: [deep[1].x, deep[1].y], to: [deep[1].x + 6, 11], kind: "drop" }); /* 4-3: 2nd safety plays underneath */
+  } else {
+    /* man: corners on the WRs, a backer on Y, a backer on RB, free safety middle */
+    arrows.push({ from: [cb[0].x, cb[0].y], to: [8, 23], kind: "man" });
+    arrows.push({ from: [cb[1].x, cb[1].y], to: [90, 23], kind: "man" });
+    const edgeLb = lb[lb.length - 1];
+    arrows.push({ from: [edgeLb.x, edgeLb.y], to: [68, 23], kind: "man" }); /* on the TE */
+    const midLb = lb.find((b) => b.l === "M") || lb[1];
+    arrows.push({ from: [midLb.x, midLb.y], to: [43, 31], kind: "man" }); /* on the RB */
+    arrows.push({ from: [deep[0].x, deep[0].y], to: [50, 3], kind: "deep" }); /* free safety */
+    if (deep[1]) arrows.push({ from: [deep[1].x, deep[1].y], to: [72, 5], kind: "deep" });
+  }
+  if (blitzKey === "mike") {
+    const m = lb.find((b) => b.l === "M") || lb[1];
+    arrows.push({ from: [m.x, m.y], to: [48, 22], kind: "blitz" });
+  } else if (blitzKey === "edge") {
+    const e = lb[lb.length - 1];
+    arrows.push({ from: [e.x, e.y], to: [56, 27], kind: "blitz" });
+  }
+  return { off: DEF_OFFREF, def, arrows };
+}
+
+function DefDiagram({ front, cov, blitz, size = "big" }) {
+  const { off, def, arrows } = genDef(front, cov, blitz);
+  const AK = { deep: "#23356F", drop: "#23356F", man: "#23356F", blitz: "#C32032" };
+  return (
+    <svg className={"play-svg " + size} viewBox="0 0 100 44" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <marker id="defarrow" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto"><path d="M0,0 L4,2 L0,4 Z" fill="#23356F" /></marker>
+        <marker id="defarrowR" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto"><path d="M0,0 L4,2 L0,4 Z" fill="#C32032" /></marker>
+      </defs>
+      <line x1="2" y1="22" x2="98" y2="22" stroke="#C58A2E" strokeWidth="0.5" />
+      {off.map((o, i) => (
+        <g key={"o" + i}>
+          <circle cx={o.x} cy="24" r="2.1" fill="#EDEDEA" stroke="#B9BCC2" strokeWidth="0.4" />
+          <text x={o.x} y="24.8" textAnchor="middle" fontSize="2.2" fontWeight="700" fill="#9AA0A8" fontFamily="Roboto, sans-serif">{o.l}</text>
+        </g>
+      ))}
+      <circle cx="50" cy="30" r="2.1" fill="#EDEDEA" stroke="#B9BCC2" strokeWidth="0.4" /><text x="50" y="30.8" textAnchor="middle" fontSize="2.2" fontWeight="700" fill="#9AA0A8" fontFamily="Roboto, sans-serif">Q</text>
+      <circle cx="43" cy="33" r="2.1" fill="#EDEDEA" stroke="#B9BCC2" strokeWidth="0.4" /><text x="43" y="33.8" textAnchor="middle" fontSize="2.2" fontWeight="700" fill="#9AA0A8" fontFamily="Roboto, sans-serif">R</text>
+      {arrows.map((a, i) => (
+        <line key={"a" + i} x1={a.from[0]} y1={a.from[1]} x2={a.to[0]} y2={a.to[1]}
+          stroke={AK[a.kind]} strokeWidth={a.kind === "blitz" ? 1.1 : 0.7}
+          strokeDasharray={a.kind === "man" ? "1.6 1.2" : null}
+          markerEnd={a.kind === "blitz" ? "url(#defarrowR)" : "url(#defarrow)"} />
+      ))}
+      {def.map((d, i) => (
+        <g key={"d" + i}>
+          <circle cx={d.x} cy={d.y} r="2.3" fill="#fff" stroke="#23356F" strokeWidth="0.7" />
+          <text x={d.x} y={d.y + 0.85} textAnchor="middle" fontSize="2.4" fontWeight="800" fill="#23356F" fontFamily="Roboto, sans-serif">{d.l}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function DefenseTab({ data, up, onPrint }) {
+  const d = data.defense || { front: "4-4", cov: "sky", blitz: "none" };
+  const setD = (patch) => up({ defense: { ...d, ...patch } });
+  const F = DEF_FRONTS[d.front] || DEF_FRONTS["4-4"];
+  const cov = d.cov || "sky";
+  const call = `${d.front} · ${DEF_COVERAGES[cov].label}${d.blitz && d.blitz !== "none" ? " · " + DEF_BLITZES[d.blitz].label : ""}`;
+  const pick = (key, val, cur, label) => (
+    <button className={"def-chip" + (cur === val ? " on" : "")} onClick={() => setD({ [key]: val })}>{label}</button>
+  );
+  return (
+    <div className="two-col">
+      <section className="panel">
+        <div className="panel-head">
+          <h2>Defense</h2>
+          <button className="btn" onClick={onPrint}>Print Defense Sheet</button>
+        </div>
+        <div className="def-controls">
+          <div className="def-row"><span className="def-lbl">Front</span>{Object.keys(DEF_FRONTS).map((k) => pick("front", k, d.front, k))}</div>
+          <div className="def-row"><span className="def-lbl">Coverage</span>{Object.keys(DEF_COVERAGES).map((k) => pick("cov", k, cov, DEF_COVERAGES[k].label))}</div>
+          <div className="def-row"><span className="def-lbl">Blitz</span>{Object.keys(DEF_BLITZES).map((k) => pick("blitz", k, d.blitz || "none", DEF_BLITZES[k].label))}</div>
+        </div>
+        <div className="def-call">CALL IT: <b>{call}</b></div>
+        <div className="def-diagram"><DefDiagram front={d.front} cov={cov} blitz={d.blitz} /></div>
+        <p className="hint">{F.note} {DEF_COVERAGES[cov].kid}{d.blitz && d.blitz !== "none" ? " " + DEF_BLITZES[d.blitz].kid : ""}</p>
+      </section>
+      <section className="panel">
+        <div className="panel-head"><h2>Who does what</h2></div>
+        <div className="def-jobs">
+          <div className="def-job"><b>Down linemen (E / T)</b><span>{DEF_JOBS.line}</span></div>
+          <div className="def-job"><b>Linebackers (S / M / W{d.front === "4-4" ? " / B" : ""})</b><span>{cov === "sky" ? DEF_JOBS.lb_sky : DEF_JOBS.lb_lock}</span></div>
+          <div className="def-job"><b>Corners (C)</b><span>{cov === "sky" ? DEF_JOBS.cb_sky : DEF_JOBS.cb_lock}</span></div>
+          <div className="def-job"><b>Safety{d.front === "4-3" ? "s" : ""} (F{d.front === "4-3" ? " / S" : ""})</b><span>{cov === "sky" ? DEF_JOBS.safety_sky : DEF_JOBS.safety_lock}</span></div>
+        </div>
+        <div className="panel-head"><h2>The 4 rules</h2></div>
+        <div className="def-rules">
+          {DEF_RULES.map((r) => (
+            <div key={r.n} className="def-rule"><b>{r.n}</b><div><b>{r.t}</b><span>{r.d}</span></div></div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function DefensePrint({ data }) {
+  const d = data.defense || { front: "4-4", cov: "sky", blitz: "none" };
+  const combos = [
+    { front: "4-4", cov: "sky", blitz: "none" },
+    { front: "4-4", cov: "lock", blitz: "none" },
+    { front: "4-3", cov: "sky", blitz: "none" },
+    { front: "4-4", cov: "sky", blitz: "mike" },
+  ];
+  return (
+    <div className="sheet">
+      <PrintHead title="Defense — Coach Sheet" right={<div className="p-meta">{todayStr()}</div>} />
+      <div className="def-rules-print">
+        {DEF_RULES.map((r) => <div key={r.n} className="def-rule"><b>{r.n}</b><div><b>{r.t}</b> {r.d}</div></div>)}
+      </div>
+      <div className="cr-grid">
+        {combos.map((c, i) => (
+          <div key={i} className="cr-card">
+            <div className="cr-head"><b>{c.front}</b> <span className="cr-line">{DEF_COVERAGES[c.cov].label}{c.blitz !== "none" ? " · " + DEF_BLITZES[c.blitz].label.split(" ")[0] : ""}</span></div>
+            <DefDiagram front={c.front} cov={c.cov} blitz={c.blitz} size="book" />
+            <div className="cr-jobs">{DEF_FRONTS[c.front].note} {DEF_COVERAGES[c.cov].kid}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [data, setData] = useState(null);
   const [tab, setTab] = useState("roster");
@@ -1492,6 +1687,7 @@ export default function App() {
     { key: "caller", label: "Caller" },
     { key: "callsheet", label: "Call Sheet" },
     { key: "wrist", label: "Wristbands" },
+    { key: "defense", label: "Defense" },
   ];
 
   return (
@@ -1538,6 +1734,7 @@ export default function App() {
           {tab === "caller" && <CallerTab data={data} up={up} />}
           {tab === "callsheet" && <CallSheetTab data={data} up={up} onPrint={() => setPrintTarget("callsheet")} onPrintScript={() => setPrintTarget("teamscript")} />}
           {tab === "wrist" && <WristTab data={data} up={up} onPrint={() => setPrintTarget("wrist")} onPrintRoutes={() => setPrintTarget("routes")} />}
+          {tab === "defense" && <DefenseTab data={data} up={up} onPrint={() => setPrintTarget("defense")} />}
         </main>
       </div>
 
@@ -3538,6 +3735,7 @@ function PrintLayer({ target, data, onClose }) {
         {target === "playbook" && <PlaybookPrint data={data} />}
         {typeof target === "string" && target.startsWith("playcard:") && <PlayCardPrint data={data} playId={target.slice("playcard:".length)} />}
         {target === "routes" && <RoutesPrint data={data} />}
+        {target === "defense" && <DefensePrint data={data} />}
         {target === "jobs" && <JobsPrint />}
         {target === "system" && <SystemPrint />}
         {target === "groups" && <GroupsPrint data={data} />}
@@ -3970,6 +4168,24 @@ tbody tr { cursor: pointer; }
 .board-hint { margin-top: 2vh; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: #6B6F76; }
 
 /* ---- route cards print ---- */
+.def-controls { padding: 12px 16px; display: grid; gap: 10px; border-bottom: 1px solid var(--line); background: #F6F4EF; }
+.def-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.def-lbl { font-family: var(--disp); font-weight: 700; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); width: 70px; }
+.def-chip { appearance: none; border: 1.5px solid var(--line); background: #fff; font-family: var(--disp); font-weight: 600; font-size: 13px; padding: 6px 12px; cursor: pointer; border-radius: 6px; }
+.def-chip.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.def-call { padding: 10px 16px; font-family: var(--disp); font-size: 15px; letter-spacing: .5px; }
+.def-call b { color: var(--red); }
+.def-diagram { padding: 8px 16px; }
+.def-jobs { padding: 8px 16px; display: grid; gap: 10px; }
+.def-job { display: grid; gap: 2px; }
+.def-job b { font-family: var(--disp); letter-spacing: .5px; }
+.def-job span { font-size: 13px; color: var(--muted); line-height: 1.4; }
+.def-rules { padding: 8px 16px 16px; display: grid; gap: 8px; }
+.def-rule { display: flex; gap: 10px; align-items: flex-start; }
+.def-rule > b { font-family: var(--disp); font-weight: 700; font-size: 22px; line-height: 1; color: var(--red); flex-shrink: 0; }
+.def-rule div { display: grid; gap: 1px; }
+.def-rule span { font-size: 12.5px; color: var(--muted); }
+.def-rules-print { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; margin: 8px 0 12px; font-size: 11px; }
 .cr-wrap { break-before: page; margin-top: 16px; }
 .cr-sectionhead { font-family: var(--disp); font-weight: 700; font-size: 15px; letter-spacing: 1.5px; color: var(--ink); border-bottom: 2px solid var(--ink); padding-bottom: 4px; margin-bottom: 12px; }
 .cr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -4305,4 +4521,4 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
   );
 }
 
-export { normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, buildCallSheet, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots };
+export { normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, buildCallSheet, genDef, DEF_FRONTS, DEF_COVERAGES, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots };

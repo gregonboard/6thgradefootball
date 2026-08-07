@@ -4,7 +4,7 @@ import { render, screen, fireEvent, waitFor, within, cleanup } from "@testing-li
 import App, {
   buildCallSheet,
   normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord,
-  LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, SEED, seedPackages, day1Plan, applyKillPairs,
+  LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, genDef, DEF_FRONTS, DEF_COVERAGES, SEED, seedPackages, day1Plan, applyKillPairs,
   installedForms, resolvePlayPos, FORM_WEEKS, formSpots,
 } from "../src/App.jsx";
 
@@ -310,6 +310,24 @@ describe("seeds", () => {
     const again = normalizeData(JSON.parse(JSON.stringify(v3)));
     expect(again.plays.length).toBe(72);
     expect(again.packages.length).toBe(v3.packages.length);
+  });
+  it("defense: both fronts field 11, coverages and blitzes draw", () => {
+    for (const front of Object.keys(DEF_FRONTS)) {
+      for (const cov of Object.keys(DEF_COVERAGES)) {
+        const d = genDef(front, cov, "none");
+        expect(d.def.length, front + " fields 11 defenders").toBe(11);
+        expect(d.arrows.length, front + "/" + cov + " has assignments").toBeGreaterThan(0);
+        for (const p of [...d.def, ...d.arrows.flatMap((a) => [a.from, a.to])]) {
+          const [x, y] = p.x != null ? [p.x, p.y] : p;
+          expect(x >= 0 && x <= 100 && y >= 0 && y <= 44, front + "/" + cov + " stays on the field").toBe(true);
+        }
+      }
+    }
+    // sky = zone (deep arrows), lock = man (dashed man lines)
+    expect(genDef("4-4", "sky", "none").arrows.some((a) => a.kind === "deep")).toBe(true);
+    expect(genDef("4-4", "lock", "none").arrows.some((a) => a.kind === "man")).toBe(true);
+    // blitz adds a red rusher
+    expect(genDef("4-4", "sky", "mike").arrows.some((a) => a.kind === "blitz")).toBe(true);
   });
   it("seeds the elite drill library with coaching detail", () => {
     const names = SEED.drills.map((d) => d.name);
@@ -707,6 +725,15 @@ describe("supabase sync", () => {
     await waitFor(() => expect(document.querySelectorAll(".print-layer .fp-card").length).toBeGreaterThan(0));
   });
 
+  it("Defense tab renders 11 defenders and toggles the front", async () => {
+    await load();
+    fireEvent.click([...document.querySelectorAll(".tab")].find((b) => b.textContent === "Defense"));
+    await waitFor(() => expect(document.querySelector(".def-diagram svg")).toBeTruthy());
+    const before = document.querySelectorAll(".def-diagram circle").length;
+    expect(before).toBeGreaterThan(11); // 11 defenders + offense reference
+    fireEvent.click(screen.getByText("4-3"));
+    await waitFor(() => expect(document.querySelector(".def-call b").textContent).toMatch(/4-3/));
+  });
   it("has no manual Backup/Restore buttons (cloud sync replaced them)", async () => {
     await load();
     expect(screen.queryByText("Backup")).toBeNull();
