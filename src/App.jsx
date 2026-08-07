@@ -372,7 +372,9 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
   const rbLeak = () => { if (!has("RB")) return; const m = at("RB")[0] <= 50 ? -1 : 1; add("RB", "route", [at("RB"), [at("RB")[0] + m * 8, at("RB")[1] - 3], [at("RB")[0] + m * 14, at("RB")[1] - 8]]); };
   const olPass = () => { for (const L of ["LT", "LG", "C", "RG", "RT"]) if (has(L)) add(L, "block", [at(L), [at(L)[0], at(L)[1] - 3]]); };
   /* STRETCH (the line word): every lineman leans playside and runs (blockAll leans backside, the down-block look) */
-  const reachOL = () => { for (const L of ["LT", "LG", "C", "RG", "RT"]) if (has(L)) add(L, "block", [at(L), [at(L)[0] + s * 2.5, at(L)[1] - 3.5]]); };
+  /* a REACH looks like a reach: a hard lateral step playside, then turn up.
+     The L-shape reads clearly as stretching to the playside gap. */
+  const reachOL = () => { for (const L of ["LT", "LG", "C", "RG", "RT"]) if (has(L)) add(L, "block", [at(L), [at(L)[0] + s * 4.5, at(L)[1] - 0.5], [at(L)[0] + s * 5.5, at(L)[1] - 4.5]]); };
   const throwTo = (L, i = 1) => { if (has("QB") && el[L]) { const r = el[L].find((e) => e.kind === "route" || e.kind === "carry"); if (r) add("QB", "throw", [at("QB"), r.pts[Math.min(i, r.pts.length - 1)]]); } };
 
   /* mirrored route helper: dx is drawn for a LEFT-side player, flipped for right */
