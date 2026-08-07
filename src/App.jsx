@@ -1405,6 +1405,7 @@ function normalizeData(parsed) {
     script: parsed.script || [],
     scriptPos: parsed.scriptPos || 0,
     safariVersion: 12,
+    defense: normDefense(parsed.defense),
     seasonWeek: parsed.seasonWeek || 1,
     pgOverrides: parsed.pgOverrides || {},
     packages,
@@ -1481,6 +1482,15 @@ const DEF_BLITZES = {
   storm: { label: "STORM", kid: "Both inside backers shoot the A gaps at once. A wall of blitzers up the middle." },
   cannon: { label: "CANNON", kid: "The corner fires off the edge; the safety rotates over the top behind him. A surprise off the boundary." },
 };
+function normDefense(d) {
+  d = d || {};
+  return {
+    front: DEF_FRONTS[d.front] ? d.front : "4-4",
+    cov: DEF_COVERAGES[d.cov] ? d.cov : "sky",
+    stunt: DEF_STUNTS[d.stunt] ? d.stunt : "none",
+    blitz: DEF_BLITZES[d.blitz] ? d.blitz : "none",
+  };
+}
 const DEF_RULES = [
   { n: 1, t: "FRONT gives the big guys their GAP.", d: "Line up, fire into your gap, keep your shoulders square." },
   { n: 2, t: "COVERAGE gives the back guys an AREA.", d: "Sky = 3 deep. Cloud = 2 deep. Keep the ball in front of you." },
@@ -1601,10 +1611,11 @@ function DefDiagram({ front, cov, stunt, blitz, size = "big" }) {
 }
 
 function DefenseTab({ data, up, onPrint }) {
-  const d = data.defense || { front: "4-4", cov: "sky", stunt: "none", blitz: "none" };
+  const raw = data.defense || {};
+  const d = normDefense(raw);
   const setD = (patch) => up({ defense: { ...d, ...patch } });
-  const F = DEF_FRONTS[d.front] || DEF_FRONTS["4-4"];
-  const cov = d.cov || "sky";
+  const F = DEF_FRONTS[d.front];
+  const cov = d.cov;
   const parts = [d.front, DEF_COVERAGES[cov].label];
   if (d.stunt && d.stunt !== "none") parts.push(DEF_STUNTS[d.stunt].label);
   if (d.blitz && d.blitz !== "none") parts.push(DEF_BLITZES[d.blitz].label);

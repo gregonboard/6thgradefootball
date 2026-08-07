@@ -730,6 +730,15 @@ describe("supabase sync", () => {
     await waitFor(() => expect(document.querySelectorAll(".print-layer .fp-card").length).toBeGreaterThan(0));
   });
 
+  it("survives stale defense data from the old version (cov=lock, blitz=mike)", async () => {
+    // this exact shape blanked the page: DEF_COVERAGES['lock'] is gone
+    window.localStorage.setItem("vh6-coach-data-v1", JSON.stringify({ players: [], defense: { front: "4-4", cov: "lock", blitz: "mike" } }));
+    render(<App />);
+    await waitFor(() => expect(screen.getByText("VESTAVIA HILLS REBELS")).toBeTruthy());
+    fireEvent.click([...document.querySelectorAll(".tab")].find((b) => b.textContent === "Defense"));
+    await waitFor(() => expect(document.querySelector(".def-diagram svg")).toBeTruthy());
+    expect(document.querySelector(".def-call b").textContent).toMatch(/Cover 3/); // fell back to sky
+  });
   it("Defense tab renders 11 defenders and toggles the front", async () => {
     await load();
     fireEvent.click([...document.querySelectorAll(".tab")].find((b) => b.textContent === "Defense"));
