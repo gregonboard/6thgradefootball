@@ -1457,6 +1457,14 @@ const DEF_FRONTS = {
     cb: [{ l: "C", x: 9 }, { l: "C", x: 91 }],
     deep: [{ l: "FS", x: 50 }],
   },
+  "GOAL LINE": {
+    label: "Goal Line (Heavy · 6 on the line)",
+    note: "Everybody crowds the line and jams a gap. Short yardage and goal line: get low, get penetration, dare them to throw.",
+    dl: [{ l: "E", x: 28 }, { l: "T", x: 38 }, { l: "N", x: 46 }, { l: "N", x: 54 }, { l: "T", x: 62 }, { l: "E", x: 72 }],
+    lb: [{ l: "M", x: 42 }, { l: "W", x: 58 }],
+    cb: [{ l: "C", x: 13 }, { l: "C", x: 87 }],
+    deep: [{ l: "S", x: 50 }],
+  },
   "4-3": {
     label: "4-3 (vs spread · 7 in the box)",
     note: "Seven in the box, two safeties. Use it when they spread you out or throw a lot.",
@@ -1481,6 +1489,8 @@ const DEF_BLITZES = {
   thunder: { label: "THUNDER", kid: "The edge backer fires off the end. Fastest man to the QB on a passing down." },
   storm: { label: "STORM", kid: "Both inside backers shoot the A gaps at once. A wall of blitzers up the middle." },
   cannon: { label: "CANNON", kid: "The corner fires off the edge; the safety rotates over the top behind him. A surprise off the boundary." },
+  vice: { label: "VICE", kid: "Both outside backers come off both edges at once. Squeezes the QB and kills the scramble." },
+  comet: { label: "COMET", kid: "A safety drops out of the sky into a gap. The one they never see coming; a corner rotates deep behind him." },
 };
 function normDefense(d) {
   d = d || {};
@@ -1491,6 +1501,13 @@ function normDefense(d) {
     blitz: DEF_BLITZES[d.blitz] ? d.blitz : "none",
   };
 }
+const DEF_SIGNALS = {
+  "4-4": "hold up 4 fingers", "4-3": "4 fingers, then 3", "GOAL LINE": "cross both fists (X)",
+  sky: "point to the sky", cloud: "flat hand, wave side to side",
+  pinch: "fists together in front", slant: "chop the way it's going", twist: "spin one finger",
+  thunder: "pound one fist", storm: "pump both fists", cannon: "fire an arm like a cannon",
+  vice: "squeeze two hands together", comet: "swoop a hand down from up high",
+};
 const DEF_RULES = [
   { n: 1, t: "FRONT gives the big guys their GAP.", d: "Line up, fire into your gap, keep your shoulders square." },
   { n: 2, t: "COVERAGE gives the back guys an AREA.", d: "Sky = 3 deep. Cloud = 2 deep. Keep the ball in front of you." },
@@ -1509,6 +1526,12 @@ const DEF_GAPS = {
     ["Tackles (T)", "A gap — either side of the center. Push the pocket."],
     ["Mike (M)", "The open gap — fill downhill, you're the closer."],
     ["Sam & Will (S/W)", "B gap and the backside — scrape over the top, chase everything."],
+  ],
+  "GOAL LINE": [
+    ["Ends (E)", "Outside shoulder of the end man — squeeze and CONTAIN, no bounce outside."],
+    ["Tackles (T)", "B gap — get low, get penetration, knock the blocker back."],
+    ["Noses (N)", "A gap — split the center and guard, do not get moved an inch."],
+    ["Mike & Will (M/W)", "Plug the first open gap and meet the back IN the hole."],
   ],
 };
 const DEF_SITUATIONS = [
@@ -1543,7 +1566,12 @@ function genDef(frontKey, covKey, stuntKey, blitzKey) {
   const cbL = cb[0], cbR = cb[1];
   const cover = []; /* {owner, from, to, kind} */
   const A = (owner, from, to, kind) => cover.push({ owner, from, to, kind });
-  if (cov === "sky") {
+  if (frontKey === "GOAL LINE") {
+    /* press everybody: corners jam the WRs, safety spies the middle, no deep bail */
+    A(cbL.id, [cbL.x, cbL.y], [10, 22.5], "drop");
+    A(cbR.id, [cbR.x, cbR.y], [90, 22.5], "drop");
+    A(deep[0].id, [deep[0].x, deep[0].y], [50, 15], "drop");
+  } else if (cov === "sky") {
     A(cbL.id, [cbL.x, cbL.y], [16, 3], "deep");
     A(cbR.id, [cbR.x, cbR.y], [84, 3], "deep");
     A(deep[0].id, [deep[0].x, deep[0].y], [50, 2], "deep");
@@ -1592,6 +1620,20 @@ function genDef(frontKey, covKey, stuntKey, blitzKey) {
       const rot = cover.find((a) => a.owner === deep[0].id);
       if (rot) rot.to = [78, 4];
       else A(deep[0].id, [deep[0].x, deep[0].y], [78, 4], "deep");
+    }
+  } else if (blitzKey === "vice") {
+    /* both edges: the outermost backers off both sides */
+    const sorted = [...lb].sort((a, b) => a.x - b.x);
+    const L = sorted[0], R = sorted[sorted.length - 1];
+    if (L) { blitzArrows.push({ from: [L.x, L.y], to: [38, 27], kind: "blitz" }); pulled.add(L.id); }
+    if (R) { blitzArrows.push({ from: [R.x, R.y], to: [62, 27], kind: "blitz" }); pulled.add(R.id); }
+  } else if (blitzKey === "comet") {
+    /* a safety fires; another defender rotates to the deep middle behind him */
+    const shooter = deep[deep.length - 1];
+    if (shooter) {
+      blitzArrows.push({ from: [shooter.x, shooter.y], to: [shooter.x < 50 ? 44 : 56, 26], kind: "blitz" }); pulled.add(shooter.id);
+      if (deep.length > 1) { const o = cover.find((a) => a.owner === deep[0].id); if (o) o.to = [50, 2]; }
+      else { const o = cover.find((a) => a.owner === cbR.id); if (o) o.to = [55, 3]; else A(cbR.id, [cbR.x, cbR.y], [55, 3], "deep"); }
     }
   }
   const arrows = [...cover.filter((a) => !pulled.has(a.owner)), ...stuntArrows, ...blitzArrows];
@@ -1659,6 +1701,7 @@ function DefenseTab({ data, up, onPrint }) {
           <div className="def-row"><span className="def-lbl">Blitz</span>{Object.keys(DEF_BLITZES).map((k) => pick("blitz", k, d.blitz || "none", DEF_BLITZES[k].label))}</div>
         </div>
         <div className="def-call">CALL IT: <b>{parts.join(" · ")}</b></div>
+        <div className="def-signal">SIGNAL: {[DEF_SIGNALS[d.front], DEF_SIGNALS[cov], d.stunt !== "none" ? DEF_SIGNALS[d.stunt] : null, d.blitz !== "none" ? DEF_SIGNALS[d.blitz] : null].filter(Boolean).join("  →  ")}</div>
         <div className="def-diagram"><DefDiagram front={d.front} cov={cov} stunt={d.stunt} blitz={d.blitz} /></div>
         <p className="hint"><span className="def-key"><span className="dk navy" /> coverage &nbsp; <span className="dk green" /> line stunt &nbsp; <span className="dk red" /> blitz</span></p>
         <p className="hint">{kid}</p>
@@ -1679,10 +1722,11 @@ function DefenseTab({ data, up, onPrint }) {
           ))}
         </div>
         <div className="panel-head"><h2>When to call it</h2></div>
+        <p className="hint" style={{ margin: "0 16px 6px" }}>Signal the <b>number</b> (hold up fingers) or the hand signals below. These six are your whole game.</p>
         <div className="def-sits">
           {DEF_SITUATIONS.map((si, i) => (
             <button key={i} className="def-sit" onClick={() => setD({ front: si.front, cov: si.cov, stunt: si.stunt, blitz: si.blitz })}>
-              <span className="def-sit-when">{si.s}</span>
+              <span className="def-sit-when"><span className="def-sit-no">{i + 1}</span> {si.s}</span>
               <span className="def-sit-call">{si.front} · {DEF_COVERAGES[si.cov].label.match(/\((\w+)\)/)[1]}{si.stunt !== "none" ? " · " + DEF_STUNTS[si.stunt].label : ""}{si.blitz !== "none" ? " · " + DEF_BLITZES[si.blitz].label : ""}</span>
               <span className="def-sit-why">{si.why}</span>
             </button>
@@ -1737,6 +1781,18 @@ function DefensePrint({ data }) {
       <div className="def-gap-print">
         {DEF_GAPS["4-4"].map(([who, job], i) => <div key={i}><b>{who}:</b> {job}</div>)}
       </div>
+      <div className="def-sectionhead">SIGNAL CARD · hold up the number, or the hand signal</div>
+      <table className="def-sit-table">
+        <tbody>
+          {DEF_SITUATIONS.map((si, i) => (
+            <tr key={i}>
+              <td className="dst-when"><b>{i + 1}</b> · {si.s}</td>
+              <td className="dst-call">{si.front} · {DEF_COVERAGES[si.cov].label.match(/\((\w+)\)/)[1]}{si.stunt !== "none" ? " · " + DEF_STUNTS[si.stunt].label : ""}{si.blitz !== "none" ? " · " + DEF_BLITZES[si.blitz].label : ""}</td>
+              <td className="dst-why">{[DEF_SIGNALS[si.front], DEF_SIGNALS[si.cov], si.stunt !== "none" ? DEF_SIGNALS[si.stunt] : null, si.blitz !== "none" ? DEF_SIGNALS[si.blitz] : null].filter(Boolean).join(" → ")}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -4302,6 +4358,9 @@ tbody tr { cursor: pointer; }
 .def-sit-when { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: .3px; }
 .def-sit-call { font-family: var(--disp); font-weight: 700; font-size: 12px; color: var(--red); letter-spacing: .5px; }
 .def-sit-why { font-size: 11.5px; color: var(--muted); }
+.def-signal { padding: 0 16px 8px; font-size: 12px; color: var(--muted); letter-spacing: .3px; }
+.def-signal::first-letter { }
+.def-sit-no { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 11px; margin-right: 2px; }
 .def-sectionhead { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 1.5px; border-bottom: 2px solid var(--ink); padding-bottom: 3px; margin: 14px 0 8px; }
 .def-sit-table { width: 100%; border-collapse: collapse; font-size: 11px; }
 .def-sit-table td { border-bottom: 1px solid var(--line); padding: 4px 6px; vertical-align: top; }

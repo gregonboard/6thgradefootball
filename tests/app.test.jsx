@@ -333,6 +333,15 @@ describe("seeds", () => {
     expect(thunder.arrows.filter((a) => a.kind === "blitz").length).toBe(1);
     // Cover 2 has two deep defenders in the 4-3
     expect(genDef("4-3", "cloud", "none", "none").arrows.filter((a) => a.kind === "deep").length).toBe(2);
+    // new package + blitzes field 11 and draw
+    expect(genDef("GOAL LINE", "sky", "none", "none").def.length).toBe(11);
+    expect(genDef("4-4", "sky", "none", "vice").arrows.filter((a) => a.kind === "blitz").length).toBe(2);
+    expect(genDef("4-3", "sky", "none", "comet").arrows.some((a) => a.kind === "blitz")).toBe(true);
+    // comet always leaves someone in the deep middle (honest rotation)
+    for (const front of ["4-4", "4-3"]) {
+      const g = genDef(front, "sky", "none", "comet");
+      expect(g.arrows.some((a) => a.kind === "deep" && a.to[0] > 44 && a.to[0] < 60 && a.to[1] < 6), front + " comet keeps deep middle").toBe(true);
+    }
   });
   it("seeds the elite drill library with coaching detail", () => {
     const names = SEED.drills.map((d) => d.name);
