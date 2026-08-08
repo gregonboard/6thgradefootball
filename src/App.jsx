@@ -4597,9 +4597,9 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
   .save-chip { font-size: 9px; }
   button.save-chip.error { font-size: 10px; padding: 5px 8px; min-height: 28px; }
 
-  /* sticky, swipeable tab bar */
-  .tabs { position: sticky; top: 0; z-index: 40; padding: 0 6px; -webkit-overflow-scrolling: touch; }
-  .tab { font-size: 14px; padding: 12px 11px 13px; }
+  /* sticky, swipeable tab bar; tighter so more tabs peek in and the swipe is obvious */
+  .tabs { position: sticky; top: 0; z-index: 40; padding: 0 4px; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+  .tab { font-size: 13px; padding: 11px 9px 12px; scroll-snap-align: start; }
 
   .content { padding: 12px 8px; }
   .panel-head { padding: 12px; }
