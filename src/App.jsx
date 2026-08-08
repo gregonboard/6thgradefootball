@@ -1852,9 +1852,21 @@ function GameDayTab({ data, up, onPrint }) {
   const setGd = (patch) => up({ gameday: { ...gd, ...patch } });
   const setOwner = (id, v) => setGd({ owners: { ...owners, [id]: v } });
   const own = (id, def) => (owners[id] !== undefined ? owners[id] : def);
-  const ownerInput = (id, def) => (
-    <input className="gd-owner" value={own(id, def)} placeholder="who?" onChange={(e) => setOwner(id, e.target.value)} />
-  );
+  const crewStr = gd.crew !== undefined ? gd.crew : "Greg, Richard, Lynn, Clay, Drew, Tom, Nathan, Tyler";
+  const coaches = crewStr.split(",").map((c) => c.trim()).filter(Boolean);
+  const ownerInput = (id, def) => {
+    const cur = own(id, def);
+    /* keep any preset combo (e.g. "Tom / Jeff / Drew") selectable even though
+       it isn't a single coach in the crew list */
+    const extra = cur && !coaches.includes(cur) ? [cur] : [];
+    return (
+      <select className="gd-owner" value={cur} onChange={(e) => setOwner(id, e.target.value)}>
+        <option value="">— who? —</option>
+        {coaches.map((c) => <option key={c} value={c}>{c}</option>)}
+        {extra.map((c) => <option key={c} value={c}>{c}</option>)}
+      </select>
+    );
+  };
   return (
     <div className="two-col">
       <section className="panel">

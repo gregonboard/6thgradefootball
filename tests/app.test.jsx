@@ -770,11 +770,13 @@ describe("supabase sync", () => {
     fireEvent.click([...document.querySelectorAll(".tab")].find((b) => b.textContent === "Game Day"));
     await waitFor(() => expect(screen.getByText("Game Day Plan")).toBeTruthy());
     expect(screen.getByText(/OFFENSIVE EYES/)).toBeTruthy();
-    const owner = document.querySelector(".gd-owner");
-    fireEvent.change(owner, { target: { value: "Coach Test" } });
+    const owner = document.querySelector(".gd-owner"); // now a coach dropdown
+    expect(owner.tagName).toBe("SELECT");
+    expect([...owner.options].map((o) => o.value)).toContain("Nathan"); // built from the crew
+    fireEvent.change(owner, { target: { value: "Nathan" } });
     fireEvent.click(screen.getByText("Print Game Day Sheet"));
     await waitFor(() => expect(document.querySelector(".print-layer .gp-cols")).toBeTruthy());
-    expect(document.querySelector(".print-layer").textContent).toMatch(/Coach Test/);
+    expect(document.querySelector(".print-layer").textContent).toMatch(/Nathan/);
     // never leaks roster PII: the plan is coach-org only
     expect(document.querySelector(".print-layer").textContent).not.toMatch(/@|Birthdate|Guardian/);
   });
