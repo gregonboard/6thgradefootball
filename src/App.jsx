@@ -1497,6 +1497,28 @@ const DEF_RULES = [
   { n: 3, t: "Everybody runs to the ball.", d: "Eleven hats to the football, every play." },
   { n: 4, t: "Strike and wrap, run your feet.", d: "Eyes through the near hip, head across, squeeze and drive." },
 ];
+const DEF_GAPS = {
+  "4-4": [
+    ["Ends (E)", "C gap — outside the tackle. You have CONTAIN: keep everything inside you."],
+    ["Tackles (T)", "B gap — outside the guard. Fire low, do not get moved."],
+    ["Mike & Will (M/W)", "A gap — next to the center. Downhill the second it's a run."],
+    ["Sam & Buck (S/B)", "D gap — outside the tight end. FORCE everything back inside."],
+  ],
+  "4-3": [
+    ["Ends (E)", "C gap / CONTAIN — box the play, keep it inside."],
+    ["Tackles (T)", "A gap — either side of the center. Push the pocket."],
+    ["Mike (M)", "The open gap — fill downhill, you're the closer."],
+    ["Sam & Will (S/W)", "B gap and the backside — scrape over the top, chase everything."],
+  ],
+};
+const DEF_SITUATIONS = [
+  { s: "1st & 2nd down (base)", front: "4-4", cov: "sky", stunt: "none", blitz: "none", why: "Stop the run first, keep the ball in front." },
+  { s: "Short yardage / goal line", front: "4-4", cov: "sky", stunt: "pinch", blitz: "none", why: "Load the box, squeeze every gap. Dare them to throw." },
+  { s: "3rd & long / obvious pass", front: "4-3", cov: "cloud", stunt: "none", blitz: "thunder", why: "Extra DB, take away the sticks, bring the edge." },
+  { s: "They have one great runner", front: "4-4", cov: "sky", stunt: "slant", blitz: "none", why: "Move the line so he never knows which gap is open." },
+  { s: "They have one great receiver", front: "4-3", cov: "cloud", stunt: "none", blitz: "none", why: "Two deep, double the deep threat, make someone else beat you." },
+  { s: "Need a turnover / big play", front: "4-4", cov: "sky", stunt: "none", blitz: "storm", why: "Send five up the middle, blow it up before it starts." },
+];
 const DEF_JOBS = {
   line: "Fire off low into your gap. Hands inside, find the ball, do not get washed down.",
   lb_sky: "Read the near back: downhill on run, drop to your area on pass. Break on the throw.",
@@ -1649,6 +1671,23 @@ function DefenseTab({ data, up, onPrint }) {
           <div className="def-job"><b>Corners (C)</b><span>{cov === "sky" ? DEF_JOBS.cb_sky : DEF_JOBS.cb_cloud}</span></div>
           <div className="def-job"><b>Saf{d.front === "4-3" ? "eties (FS / SS)" : "ety (FS)"}</b><span>{cov === "sky" ? DEF_JOBS.safety_sky : DEF_JOBS.safety_cloud}</span></div>
         </div>
+        <div className="panel-head"><h2>Gap chart · {d.front}</h2></div>
+        <p className="hint" style={{ margin: "0 16px 6px" }}>Gaps from the center out: <b>A · B · C · D</b>. Every kid owns one.</p>
+        <div className="def-jobs">
+          {(DEF_GAPS[d.front] || []).map(([who, job], i) => (
+            <div key={i} className="def-job"><b>{who}</b><span>{job}</span></div>
+          ))}
+        </div>
+        <div className="panel-head"><h2>When to call it</h2></div>
+        <div className="def-sits">
+          {DEF_SITUATIONS.map((si, i) => (
+            <button key={i} className="def-sit" onClick={() => setD({ front: si.front, cov: si.cov, stunt: si.stunt, blitz: si.blitz })}>
+              <span className="def-sit-when">{si.s}</span>
+              <span className="def-sit-call">{si.front} · {DEF_COVERAGES[si.cov].label.match(/\((\w+)\)/)[1]}{si.stunt !== "none" ? " · " + DEF_STUNTS[si.stunt].label : ""}{si.blitz !== "none" ? " · " + DEF_BLITZES[si.blitz].label : ""}</span>
+              <span className="def-sit-why">{si.why}</span>
+            </button>
+          ))}
+        </div>
         <div className="panel-head"><h2>The 4 rules</h2></div>
         <div className="def-rules">
           {DEF_RULES.map((r) => (
@@ -1681,6 +1720,22 @@ function DefensePrint({ data }) {
             <DefDiagram front={c.front} cov={c.cov} stunt={c.stunt} blitz={c.blitz} size="book" />
           </div>
         ))}
+      </div>
+      <div className="def-sectionhead">WHEN TO CALL IT</div>
+      <table className="def-sit-table">
+        <tbody>
+          {DEF_SITUATIONS.map((si, i) => (
+            <tr key={i}>
+              <td className="dst-when">{si.s}</td>
+              <td className="dst-call">{si.front} · {DEF_COVERAGES[si.cov].label.match(/\((\w+)\)/)[1]}{si.stunt !== "none" ? " · " + DEF_STUNTS[si.stunt].label : ""}{si.blitz !== "none" ? " · " + DEF_BLITZES[si.blitz].label : ""}</td>
+              <td className="dst-why">{si.why}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="def-sectionhead">GAP CHART (4-4)</div>
+      <div className="def-gap-print">
+        {DEF_GAPS["4-4"].map(([who, job], i) => <div key={i}><b>{who}:</b> {job}</div>)}
       </div>
     </div>
   );
@@ -4241,6 +4296,18 @@ tbody tr { cursor: pointer; }
 .def-rule div { display: grid; gap: 1px; }
 .def-rule span { font-size: 12.5px; color: var(--muted); }
 .def-rules-print { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; margin: 8px 0 12px; font-size: 11px; }
+.def-sits { padding: 6px 16px 12px; display: grid; gap: 6px; }
+.def-sit { text-align: left; appearance: none; border: 1.5px solid var(--line); background: #fff; border-radius: 8px; padding: 8px 10px; cursor: pointer; display: grid; gap: 1px; }
+.def-sit:hover { border-color: var(--ink); background: #FFFBF2; }
+.def-sit-when { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: .3px; }
+.def-sit-call { font-family: var(--disp); font-weight: 700; font-size: 12px; color: var(--red); letter-spacing: .5px; }
+.def-sit-why { font-size: 11.5px; color: var(--muted); }
+.def-sectionhead { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 1.5px; border-bottom: 2px solid var(--ink); padding-bottom: 3px; margin: 14px 0 8px; }
+.def-sit-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.def-sit-table td { border-bottom: 1px solid var(--line); padding: 4px 6px; vertical-align: top; }
+.dst-when { font-family: var(--disp); font-weight: 700; width: 26%; }
+.dst-call { color: var(--red); font-family: var(--disp); font-weight: 700; width: 30%; }
+.def-gap-print { font-size: 11px; line-height: 1.5; display: grid; gap: 2px; }
 .def-key { font-size: 11px; }
 .dk { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 3px; }
 .dk.navy { background: #23356F; } .dk.green { background: #0F6B4F; } .dk.red { background: #C32032; }

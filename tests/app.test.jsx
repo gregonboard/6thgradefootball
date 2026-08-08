@@ -730,6 +730,14 @@ describe("supabase sync", () => {
     await waitFor(() => expect(document.querySelectorAll(".print-layer .fp-card").length).toBeGreaterThan(0));
   });
 
+  it("tapping a situation loads the whole defensive call", async () => {
+    await load();
+    fireEvent.click([...document.querySelectorAll(".tab")].find((b) => b.textContent === "Defense"));
+    await waitFor(() => expect(document.querySelector(".def-sit")).toBeTruthy());
+    const longPass = [...document.querySelectorAll(".def-sit")].find((b) => /3rd . long|obvious pass/i.test(b.textContent));
+    fireEvent.click(longPass);
+    await waitFor(() => expect(document.querySelector(".def-call b").textContent).toMatch(/4-3.*THUNDER/));
+  });
   it("survives stale defense data from the old version (cov=lock, blitz=mike)", async () => {
     // this exact shape blanked the page: DEF_COVERAGES['lock'] is gone
     window.localStorage.setItem("vh6-coach-data-v1", JSON.stringify({ players: [], defense: { front: "4-4", cov: "lock", blitz: "mike" } }));
