@@ -1063,6 +1063,7 @@ const RAW_SEED = {
   offScheme: "I-Form",
   defScheme: "5-3",
   defense: { front: "4-4", cov: "sky", stunt: "none", blitz: "none" },
+  gameday: { opp: "", crew: "Greg, Richard, Lynn, Clay, Drew, Tom, Nathan, Tyler", owners: {} },
   libVersion: 6,
   seasonWeek: 1,
   pgOverrides: {},
@@ -1797,6 +1798,154 @@ function DefensePrint({ data }) {
   );
 }
 
+/* ============================================================
+   GAME DAY — coach responsibilities & gameday plan (from Richard's sheet)
+   ============================================================ */
+const GD_PREGAME = [
+  { id: "water", task: "Fill up & bring water bottles", owner: "" },
+  { id: "cooler", task: "Bring the cooler of water", owner: "" },
+  { id: "bands", task: "Update & print wristbands", owner: "" },
+  { id: "captains", task: "Identify game captains", owner: "Greg" },
+  { id: "ball", task: "Game ball", owner: "Greg" },
+  { id: "camera", task: "Bring drone / camera", owner: "Greg" },
+];
+const GD_WARMUP = [
+  { id: "arrive", mins: 10, task: "Arrive, get taped, gather", owner: "", note: "Boys who need tape arrive early" },
+  { id: "warm", mins: 10, task: "Warm-up + pregame speech", owner: "" },
+  { id: "group", mins: 10, task: "Group work — OL/DL · WR/DB/RB", owner: "" },
+  { id: "runthru", mins: 10, task: "Run through plays", owner: "" },
+  { id: "caps", mins: 5, task: "Captains & reminders", owner: "Greg" },
+  { id: "sideline", mins: 5, task: "Get to the sideline, run the banner", owner: "" },
+];
+const GD_ROLES = [
+  { id: "getback", role: "Get-back coach (keep the sideline clear)", owner: "" },
+  { id: "balltrack", role: "Track the game ball", owner: "" },
+  { id: "playcount", role: "Monitor play count for non-starters", owner: "" },
+  { id: "caller", role: "Play-calling", owner: "Greg" },
+  { id: "sticks", role: "Man the sticks (if needed)", owner: "Tom / Jeff / Drew" },
+  { id: "film", role: "Film the game", owner: "Tyler" },
+];
+const GD_OFF_EYES = [
+  { id: "eol", who: "Watch the OL", owner: "Richard / Tom / Jeff" },
+  { id: "erb", who: "Watch the RB", owner: "" },
+  { id: "ewr", who: "Watch the WRs", owner: "Clay" },
+  { id: "eqb", who: "Watch the QB", owner: "" },
+  { id: "eweak", who: "Find weaknesses in their defense", owner: "" },
+];
+const GD_DEF_EYES = [
+  { id: "dtrack", who: "Play tracking & tendencies", owner: "" },
+  { id: "ddl", who: "Watch the D-line", owner: "Jeff / Tom" },
+  { id: "dlb", who: "Watch the LBs", owner: "" },
+  { id: "ddb", who: "Watch the DBs", owner: "" },
+];
+const GD_POSTGAME = [
+  { id: "speech", task: "Post-game speech" },
+  { id: "gear", task: "Grab water bottles & cooler" },
+  { id: "collect", task: "Collect wristbands" },
+];
+const GD_LEAVE = ["Wristbands printed", "Call sheet printed", "Team script printed", "Defense sheet printed", "Whistle, tape, markers"];
+const gdWarmTotal = GD_WARMUP.reduce((t, w) => t + w.mins, 0);
+
+function GameDayTab({ data, up, onPrint }) {
+  const gd = data.gameday || {};
+  const owners = gd.owners || {};
+  const setGd = (patch) => up({ gameday: { ...gd, ...patch } });
+  const setOwner = (id, v) => setGd({ owners: { ...owners, [id]: v } });
+  const own = (id, def) => (owners[id] !== undefined ? owners[id] : def);
+  const ownerInput = (id, def) => (
+    <input className="gd-owner" value={own(id, def)} placeholder="who?" onChange={(e) => setOwner(id, e.target.value)} />
+  );
+  return (
+    <div className="two-col">
+      <section className="panel">
+        <div className="panel-head">
+          <h2>Game Day Plan</h2>
+          <button className="btn" onClick={onPrint}>Print Game Day Sheet</button>
+        </div>
+        <div className="gd-meta">
+          <label>Opponent <input value={gd.opp || ""} placeholder="vs ______" onChange={(e) => setGd({ opp: e.target.value })} /></label>
+          <label>Sideline crew <input value={gd.crew !== undefined ? gd.crew : "Greg, Richard, Lynn, Clay, Drew, Tom, Nathan, Tyler"} onChange={(e) => setGd({ crew: e.target.value })} /></label>
+        </div>
+        <p className="hint" style={{ margin: "0 16px 4px" }}>Only 7 coaches on the sideline (6 if we have a trainer). Fill in a name next to each job.</p>
+
+        <div className="gd-sec">PRE-GAME</div>
+        {GD_PREGAME.map((r) => (
+          <div key={r.id} className="gd-row"><span className="gd-check">☐</span><span className="gd-task">{r.task}</span>{ownerInput(r.id, r.owner)}</div>
+        ))}
+
+        <div className="gd-sec">WARM-UP · {gdWarmTotal} min</div>
+        {GD_WARMUP.map((r) => (
+          <div key={r.id} className="gd-row"><span className="gd-mins">{r.mins}'</span><span className="gd-task">{r.task}{r.note ? <span className="gd-note"> — {r.note}</span> : null}</span>{ownerInput(r.id, r.owner)}</div>
+        ))}
+      </section>
+
+      <section className="panel">
+        <div className="panel-head"><h2>During the Game</h2></div>
+        {GD_ROLES.map((r) => (
+          <div key={r.id} className="gd-row"><span className="gd-task">{r.role}</span>{ownerInput(r.id, r.owner)}</div>
+        ))}
+        <div className="gd-sec">OFFENSIVE EYES</div>
+        {GD_OFF_EYES.map((r) => (
+          <div key={r.id} className="gd-row"><span className="gd-task">{r.who}</span>{ownerInput(r.id, r.owner)}</div>
+        ))}
+        <div className="gd-sec">DEFENSIVE EYES</div>
+        {GD_DEF_EYES.map((r) => (
+          <div key={r.id} className="gd-row"><span className="gd-task">{r.who}</span>{ownerInput(r.id, r.owner)}</div>
+        ))}
+        <div className="gd-sec">POST-GAME</div>
+        {GD_POSTGAME.map((r) => (
+          <div key={r.id} className="gd-row"><span className="gd-check">☐</span><span className="gd-task">{r.task}</span></div>
+        ))}
+        <div className="gd-sec">REMINDERS</div>
+        <div className="gd-reminders">
+          <div>One cadence all game: <b>"Set… GO."</b></div>
+          <div>Tempo is a gearbox: Turbo / Base / Milk. <b>Up two scores in the 4th — stop tapping, milk the clock.</b></div>
+          <div>Timeouts: 1st half ☐ ☐ ☐ · 2nd half ☐ ☐ ☐</div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function GameDayPlanPrint({ data }) {
+  const gd = data.gameday || {};
+  const owners = gd.owners || {};
+  const own = (id, def) => (owners[id] !== undefined && owners[id] ? owners[id] : def) || "";
+  const row = (id, label, def, check) => (
+    <div key={id} className="gp-row">{check ? <span className="gp-check">☐</span> : null}<span className="gp-label">{label}</span><span className="gp-owner">{own(id, def)}</span></div>
+  );
+  return (
+    <div className="sheet">
+      <PrintHead title="Game Day Plan" right={<><div className="p-meta">{gd.opp ? "vs " + gd.opp : "vs ______________"}</div><div className="p-meta">{todayStr()}</div></>} />
+      <div className="gp-crew"><b>SIDELINE CREW:</b> {gd.crew !== undefined ? gd.crew : "Greg, Richard, Lynn, Clay, Drew, Tom, Nathan, Tyler"} <span className="gp-note">(7 on the sideline, 6 with a trainer)</span></div>
+      <div className="gp-cols">
+        <div>
+          <div className="gp-sec">BEFORE YOU LEAVE</div>
+          {GD_LEAVE.map((t, i) => <div key={i} className="gp-row"><span className="gp-check">☐</span><span className="gp-label">{t}</span></div>)}
+          <div className="gp-sec">PRE-GAME</div>
+          {GD_PREGAME.map((r) => row(r.id, r.task, r.owner, true))}
+          <div className="gp-sec">WARM-UP · {gdWarmTotal} MIN</div>
+          {GD_WARMUP.map((r) => <div key={r.id} className="gp-row"><span className="gp-mins">{r.mins}'</span><span className="gp-label">{r.task}</span><span className="gp-owner">{own(r.id, r.owner)}</span></div>)}
+        </div>
+        <div>
+          <div className="gp-sec">DURING THE GAME</div>
+          {GD_ROLES.map((r) => row(r.id, r.role, r.owner))}
+          <div className="gp-sec">OFFENSIVE EYES</div>
+          {GD_OFF_EYES.map((r) => row(r.id, r.who, r.owner))}
+          <div className="gp-sec">DEFENSIVE EYES</div>
+          {GD_DEF_EYES.map((r) => row(r.id, r.who, r.owner))}
+          <div className="gp-sec">POST-GAME</div>
+          {GD_POSTGAME.map((r) => <div key={r.id} className="gp-row"><span className="gp-check">☐</span><span className="gp-label">{r.task}</span></div>)}
+        </div>
+      </div>
+      <div className="gp-foot">
+        <span><b>Up two scores in the 4th: stop tapping, milk the clock.</b></span>
+        <span>Timeouts — 1st: ☐ ☐ ☐ &nbsp; 2nd: ☐ ☐ ☐</span>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [data, setData] = useState(null);
   const [tab, setTab] = useState("roster");
@@ -1854,6 +2003,7 @@ export default function App() {
     { key: "callsheet", label: "Call Sheet" },
     { key: "wrist", label: "Wristbands" },
     { key: "defense", label: "Defense" },
+    { key: "gameday", label: "Game Day" },
   ];
 
   return (
@@ -1901,6 +2051,7 @@ export default function App() {
           {tab === "callsheet" && <CallSheetTab data={data} up={up} onPrint={() => setPrintTarget("callsheet")} onPrintScript={() => setPrintTarget("teamscript")} />}
           {tab === "wrist" && <WristTab data={data} up={up} onPrint={() => setPrintTarget("wrist")} onPrintRoutes={() => setPrintTarget("routes")} />}
           {tab === "defense" && <DefenseTab data={data} up={up} onPrint={() => setPrintTarget("defense")} />}
+          {tab === "gameday" && <GameDayTab data={data} up={up} onPrint={() => setPrintTarget("gamedayplan")} />}
         </main>
       </div>
 
@@ -3902,6 +4053,7 @@ function PrintLayer({ target, data, onClose }) {
         {typeof target === "string" && target.startsWith("playcard:") && <PlayCardPrint data={data} playId={target.slice("playcard:".length)} />}
         {target === "routes" && <RoutesPrint data={data} />}
         {target === "defense" && <DefensePrint data={data} />}
+        {target === "gamedayplan" && <GameDayPlanPrint data={data} />}
         {target === "jobs" && <JobsPrint />}
         {target === "system" && <SystemPrint />}
         {target === "groups" && <GroupsPrint data={data} />}
@@ -4641,6 +4793,30 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
   .plan-main { flex-basis: 100%; }
   .station-add { max-width: 100%; }
 }
+
+/* ---- game day ---- */
+.gd-meta { display: flex; gap: 12px; flex-wrap: wrap; padding: 12px 16px 4px; }
+.gd-meta label { display: grid; gap: 4px; font-family: var(--disp); font-weight: 600; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); flex: 1; min-width: 160px; }
+.gd-sec { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 1.5px; color: var(--red); padding: 12px 16px 4px; }
+.gd-row { display: flex; align-items: center; gap: 8px; padding: 6px 16px; border-bottom: 1px solid var(--line); }
+.gd-check { color: var(--muted); flex-shrink: 0; }
+.gd-mins { font-family: var(--mono); font-weight: 700; font-size: 12px; color: var(--ink); width: 26px; flex-shrink: 0; }
+.gd-task { flex: 1; font-size: 13.5px; min-width: 0; }
+.gd-note { color: var(--muted); font-size: 12px; }
+.gd-owner { width: 130px; flex-shrink: 0; font-size: 13px; padding: 4px 6px; }
+.gd-reminders { padding: 4px 16px 14px; display: grid; gap: 5px; font-size: 12.5px; color: var(--muted); }
+.gd-reminders b { color: var(--ink); }
+.gp-crew { font-size: 12px; border: 1.5px solid var(--ink); padding: 6px 10px; margin-bottom: 10px; }
+.gp-crew b { font-family: var(--disp); letter-spacing: .5px; }
+.gp-note { color: var(--muted); }
+.gp-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
+.gp-sec { font-family: var(--disp); font-weight: 700; font-size: 12px; letter-spacing: 1.5px; color: var(--red); border-bottom: 1.5px solid var(--ink); padding-bottom: 2px; margin: 12px 0 4px; }
+.gp-row { display: flex; align-items: baseline; gap: 6px; padding: 3px 0; border-bottom: 1px dotted var(--line); font-size: 11px; }
+.gp-check { flex-shrink: 0; }
+.gp-mins { font-family: var(--mono); font-weight: 700; width: 20px; flex-shrink: 0; }
+.gp-label { flex: 1; }
+.gp-owner { font-family: var(--disp); font-weight: 700; color: var(--ink); min-width: 90px; text-align: right; }
+.gp-foot { display: flex; justify-content: space-between; margin-top: 12px; padding-top: 6px; border-top: 2px solid var(--ink); font-size: 11px; }
 
 /* ---- print layer ---- */
 .print-layer { position: fixed; inset: 0; background: #4A4D53; overflow-y: auto; z-index: 80; }
