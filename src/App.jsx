@@ -1102,6 +1102,7 @@ const RAW_SEED = {
   scriptPos: 0,
   safariVersion: 2,
   callSheet: {},
+  csPaper: "legal",
   wrist: { title: "REBELS", cols: 3, copies: 4, selected: null },
   depth: { off: {}, def: {} },
   offScheme: "Speed",
@@ -3797,6 +3798,11 @@ function CallSheetTab({ data, up, onPrint, onPrintScript }) {
           <button className="btn ghost" onClick={() => up({ callSheet: buildCallSheet(data) })} title="Fills every EMPTY situation from what's installed. Boxes you already filled are never touched.">⚡ Fill It For Me</button>
           {anyAssigned && <button className="btn ghost" onClick={() => { if (window.confirm("Clear the whole call sheet? Then hit Fill It For Me for a fresh, complete sheet.")) up({ callSheet: {} }); }} title="Empty every box, then Fill It For Me rebuilds it from scratch">Clear</button>}
           <button className="btn ghost" onClick={onPrintScript} disabled={!anyAssigned} title="Prints the call sheet as a numbered team-period script coaches read rep by rep">Print Team Script</button>
+          <select className="cell" style={{ maxWidth: 170 }} value={data.csPaper || "legal"} onChange={(e) => up({ csPaper: e.target.value })} title="Paper for the printed call sheet" aria-label="Call sheet paper">
+            <option value="legal">Legal · 1 page</option>
+            <option value="legalwide">Legal wide · 1 page</option>
+            <option value="letter">Letter · front/back</option>
+          </select>
           <button className="btn" onClick={onPrint} disabled={!anyAssigned}>Print Call Sheet</button>
         </div>
       </div>
@@ -4272,21 +4278,22 @@ function CallSheetPrint({ data }) {
       <span>Timeouts: ☐ ☐ ☐</span>
     </div>
   );
-  /* front = base offense (the volume), back = situations. Prints double-sided. */
-  const FRONT = ["openers", "run", "pass"];
-  const front = SITUATIONS.filter((s) => FRONT.includes(s.key));
-  const back = SITUATIONS.filter((s) => !FRONT.includes(s.key));
+  const paper = data.csPaper || "legal";
+  const head = <PrintHead title="Offensive Call Sheet" right={<><div className="p-meta">{data.gameLabel || "vs ______"}</div><div className="p-meta">{todayStr()}</div></>} />;
+  const wide = paper === "legalwide";
+  const size = paper === "letter" ? "letter portrait" : `legal ${wide ? "landscape" : "portrait"}`;
+  const cls = paper === "letter" ? "cs-letter" : wide ? "cs-legal-wide" : "cs-legal";
+  const pageIn = paper === "letter" ? 9.3 : wide ? 7.5 : 13; /* rough content height per page */
   return (
     <>
-      <div className="sheet">
-        <PrintHead title="Offensive Call Sheet · FRONT" right={<><div className="p-meta">{data.gameLabel || "vs ______"}</div><div className="p-meta">{todayStr()}</div></>} />
-        <div className="p-cs-grid">{front.map(box)}</div>
+      <style>{`@page { size: ${size}; margin: .4in; }`}</style>
+      <div className={"sheet cs-sheet " + cls}>
+        {head}
+        <div className="p-cs-grid">{SITUATIONS.map(box)}</div>
         {keyRow}
-      </div>
-      <div className="sheet cs-back">
-        <PrintHead title="Offensive Call Sheet · BACK · Situations" right={<div className="p-meta">{todayStr()}</div>} />
-        <div className="p-cs-grid">{back.map(box)}</div>
-        {keyRow}
+        {[1, 2, 3].map((n) => (
+          <div key={n} className="cs-pagebreak no-print" style={{ top: `${pageIn * n}in` }}><span>≈ page {n} ends</span></div>
+        ))}
       </div>
     </>
   );
@@ -4948,6 +4955,12 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .ts-call { flex: 1; font-family: var(--disp); font-weight: 700; font-size: 14px; letter-spacing: .3px; text-transform: uppercase; }
 .ts-sit { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; flex-shrink: 0; }
 .cs-back { break-before: page; }
+.cs-sheet { position: relative; }
+.cs-pagebreak { position: absolute; left: 0; right: 0; border-top: 2px dashed #C32032; text-align: right; }
+.cs-pagebreak span { font-family: var(--disp); font-size: 10px; letter-spacing: 1px; color: #C32032; background: #fff; padding: 0 4px; }
+.sheet.cs-legal { width: 7.6in; min-height: 12.8in; }
+.sheet.cs-legal-wide { width: 13in; min-height: 7.7in; }
+.cs-legal-wide .p-cs-grid { grid-template-columns: repeat(4, 1fr); }
 .p-cs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .p-cs-box { border: 1.5px solid var(--ink); }
 .p-cs-label { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; background: var(--ink); color: #fff; padding: 4px 8px; }
