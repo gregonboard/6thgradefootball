@@ -4243,7 +4243,7 @@ function TeamScriptPrint({ data }) {
           <li key={i} className="ts-row">
             <span className="ts-num">{r.play.num}</span>
             <span className="ts-check">☐</span>
-            <span className="ts-call">{call(r.play)}</span>
+            <span className="ts-call">{call(r.play)}{isHeavyPlay(r.play) && <span className="heavy-tag">HEAVY</span>}</span>
             <span className="ts-sit">{r.situation}</span>
           </li>
         ))}
