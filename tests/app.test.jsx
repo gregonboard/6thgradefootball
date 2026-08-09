@@ -771,6 +771,18 @@ describe("supabase sync", () => {
     expect(document.querySelector(".print-layer .p-meta").textContent).toMatch(/thru week 1/);
   });
 
+  it("Clear empties the call sheet, then Fill rebuilds it complete", async () => {
+    await load();
+    fireEvent.change(screen.getByLabelText("Season week"), { target: { value: "9" } });
+    fireEvent.click(screen.getByText("Call Sheet"));
+    fireEvent.click(screen.getByText(/Fill It For Me/));
+    await waitFor(() => expect(document.querySelectorAll(".cs-chip").length).toBeGreaterThan(0));
+    window.confirm = () => true;
+    fireEvent.click(screen.getByText("Clear"));
+    await waitFor(() => expect(document.querySelectorAll(".cs-chip").length).toBe(0));
+    fireEvent.click(screen.getByText(/Fill It For Me/));
+    await waitFor(() => expect(document.querySelectorAll(".cs-chip").length).toBeGreaterThan(0));
+  });
   it("tags Heavy-personnel plays on the call sheet (sub reminder)", async () => {
     await load();
     fireEvent.change(screen.getByLabelText("Season week"), { target: { value: "9" } }); // install everything incl. Tank/I

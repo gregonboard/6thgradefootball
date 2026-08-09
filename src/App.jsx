@@ -3795,6 +3795,7 @@ function CallSheetTab({ data, up, onPrint, onPrintScript }) {
         <h2>Call Sheet Builder</h2>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button className="btn ghost" onClick={() => up({ callSheet: buildCallSheet(data) })} title="Fills every EMPTY situation from what's installed. Boxes you already filled are never touched.">⚡ Fill It For Me</button>
+          {anyAssigned && <button className="btn ghost" onClick={() => { if (window.confirm("Clear the whole call sheet? Then hit Fill It For Me for a fresh, complete sheet.")) up({ callSheet: {} }); }} title="Empty every box, then Fill It For Me rebuilds it from scratch">Clear</button>}
           <button className="btn ghost" onClick={onPrintScript} disabled={!anyAssigned} title="Prints the call sheet as a numbered team-period script coaches read rep by rep">Print Team Script</button>
           <button className="btn" onClick={onPrint} disabled={!anyAssigned}>Print Call Sheet</button>
         </div>
