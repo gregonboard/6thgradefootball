@@ -753,6 +753,19 @@ describe("supabase sync", () => {
     expect(document.querySelector(".print-layer .p-meta").textContent).toMatch(/thru week 1/);
   });
 
+  it("tags Heavy-personnel plays on the call sheet (sub reminder)", async () => {
+    await load();
+    fireEvent.change(screen.getByLabelText("Season week"), { target: { value: "9" } }); // install everything incl. Tank/I
+    fireEvent.click(screen.getByText("Call Sheet"));
+    fireEvent.click(screen.getByText(/Fill It For Me/));
+    await waitFor(() => expect(document.querySelectorAll(".cs-chip").length).toBeGreaterThan(0));
+    // a Tank/I chip carries HEAVY, a Doubles chip does not
+    const chips = [...document.querySelectorAll(".cs-chip")];
+    const heavy = chips.find((c) => /Tank|I Rt|I Lt/.test(c.textContent));
+    const speed = chips.find((c) => /Doubles . (HAMMER|QUICK)/.test(c.textContent) && !/Tank|I Rt|I Lt/.test(c.textContent));
+    expect(heavy && /HEAVY/.test(heavy.textContent), "a heavy formation is tagged").toBe(true);
+    if (speed) expect(/HEAVY/.test(speed.textContent), "a spread play is not tagged").toBe(false);
+  });
   it("every call surface includes the line word (Greg's July 27 catch)", async () => {
     await load();
     // Caller buttons carry the line word

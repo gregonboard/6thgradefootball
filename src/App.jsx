@@ -30,6 +30,7 @@ const FORM_GROUP = {
   "Bunch Rt": "Speed", "Bunch Lt": "Speed", "Stack": "Speed", "Nasty Rt": "Speed", "Nasty Lt": "Speed", "Empty": "Speed",
   "Tank Rt": "Heavy", "Tank Lt": "Heavy", "I Rt": "Heavy", "I Lt": "Heavy",
 };
+const isHeavyPlay = (p) => FORM_GROUP[p && p.formation] === "Heavy";
 const OFF_POS_ALL = [...new Set(Object.values(OFF_SCHEMES).flatMap((s) => s.positions))];
 const offScheme = (data) => (OFF_SCHEMES[data.offScheme] ? data.offScheme : "Speed");
 const offPositions = (data) => OFF_SCHEMES[offScheme(data)].positions;
@@ -3785,7 +3786,7 @@ function CallSheetTab({ data, up, onPrint, onPrintScript }) {
                 if (!p) return null;
                 return (
                   <span key={pid} className="cs-chip" style={{ borderColor: TYPE_COLORS[p.type] }}>
-                    <b>{p.num}</b> {playCallLabel(p)}
+                    <b>{p.num}</b> {playCallLabel(p)}{isHeavyPlay(p) && <span className="heavy-tag" title="Heavy personnel: sub the big group in">HEAVY</span>}
                     <button onClick={() => removeFrom(s.key, pid)}>✕</button>
                   </span>
                 );
@@ -4237,7 +4238,7 @@ function CallSheetPrint({ data }) {
               return (
                 <div key={pid} className="p-cs-play">
                   <span className="p-cs-num" style={{ background: TYPE_COLORS[p.type] }}>{p.num}</span>
-                  <span className="p-cs-name">{p.formation !== "Doubles" && <span className="p-cs-formpre">{p.formation} · </span>}<span className="p-cs-linecall">{lineCallFor(p)}</span> {p.concept && CONCEPTS[p.concept] && p.concept !== "blank" ? callWord(p.concept, p.dir, p.tags || []) : p.name}</span>
+                  <span className="p-cs-name">{p.formation !== "Doubles" && <span className="p-cs-formpre">{p.formation} · </span>}<span className="p-cs-linecall">{lineCallFor(p)}</span> {p.concept && CONCEPTS[p.concept] && p.concept !== "blank" ? callWord(p.concept, p.dir, p.tags || []) : p.name}{isHeavyPlay(p) && <span className="heavy-tag">HEAVY</span>}</span>
                 </div>
               );
             })}
@@ -4493,6 +4494,7 @@ tbody tr { cursor: pointer; }
 .book-line { font-family: var(--disp); font-weight: 700; font-size: 10px; letter-spacing: 1px; background: var(--ink); color: #EAAA00; padding: 1px 5px; }
 .book-formpre { font-family: var(--disp); font-weight: 600; font-size: 11px; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); }
 .p-cs-formpre { font-family: var(--disp); font-weight: 600; letter-spacing: .3px; text-transform: uppercase; color: #6B6F76; }
+.heavy-tag { display: inline-block; font-family: var(--disp); font-weight: 700; font-size: 9px; letter-spacing: 1px; background: #B7791F; color: #fff; padding: 1px 5px; border-radius: 3px; margin-left: 5px; vertical-align: middle; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .play-svg.book { width: 100%; border: none; }
 .book-notes { padding: 4px 8px; font-size: 10px; color: var(--muted); border-top: 1px solid var(--line); }
 
