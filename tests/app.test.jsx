@@ -146,14 +146,23 @@ describe("vocabulary", () => {
       expect((cs[key] || []).length, key + " gets plays").toBeGreaterThan(0);
       for (const id of cs[key]) expect(SEED.plays.some((p) => p.id === id), "every id is a real play").toBe(true);
     }
-    // coach's existing picks always win
-    const mine = [SEED.plays[0].id];
+    // coach's existing picks are kept (never removed or reordered), even as the
+    // completeness sweep appends any unplaced installed plays behind them
+    const mine = [SEED.plays.find((p) => p.type === "Run").id];
     const cs2 = buildCallSheet({ ...data, callSheet: { run: mine } });
-    expect(cs2.run).toEqual(mine);
+    expect(cs2.run[0]).toBe(mine[0]);
+    expect(cs2.run).toContain(mine[0]);
     // installed variety: week 3 must offer the Trips looks, not all-Doubles
     const wk3 = buildCallSheet({ ...SEED, seasonWeek: 3, callSheet: {} });
     const wk3names = [...wk3.run, ...wk3.pass].map((id) => SEED.plays.find((p) => p.id === id).name);
     expect(wk3names.some((n) => n.startsWith("Trips")), "Trips looks appear once installed").toBe(true);
+    // completeness: every installed play lands somewhere so none get lost (Greg's Aug 9 catch)
+    const wkAll = { ...SEED, seasonWeek: 9, callSheet: {} };
+    const full = buildCallSheet(wkAll);
+    const placedAll = new Set(Object.values(full).flat());
+    const installedConcepts = wkAll.plays.filter((p) => p.concept && CONCEPTS[p.concept] && p.concept !== "blank");
+    const lost = installedConcepts.filter((p) => !placedAll.has(p.id));
+    expect(lost.map((p) => p.name), "no installed play is missing from the sheet").toEqual([]);
     // no situation is ever empty: early weeks fall back to safe installed plays
     const wk2all = buildCallSheet({ ...SEED, seasonWeek: 2, callSheet: {} });
     for (const key of Object.keys(wk2all)) expect(wk2all[key].length, key + ' non-empty at wk2').toBeGreaterThan(0);

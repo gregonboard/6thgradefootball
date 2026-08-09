@@ -3728,11 +3728,23 @@ function buildCallSheet(data) {
   const FALLBACK = ["Doubles · Rhino", "Doubles · Lion", "Doubles · Sparrow", "Doubles · Owl"];
   for (const [key, names] of Object.entries(CALL_SHEET_RECIPE)) {
     if ((cs[key] || []).length > 0) continue; /* the coach's picks always win */
-    let picks = names.map((n) => idByName[n]).filter(Boolean).slice(0, 6);
-    /* early season: the situation's plays aren't installed yet, so hand the
-       coach the safest installed answers instead of an empty box */
+    /* openers is literally the first 6; the rest hold as many as fit */
+    let picks = names.map((n) => idByName[n]).filter(Boolean);
+    if (key === "openers") picks = picks.slice(0, 6);
     if (!picks.length) picks = FALLBACK.map((n) => idByName[n]).filter(Boolean).slice(0, 3);
     cs[key] = picks;
+  }
+  /* completeness sweep: every installed play must land somewhere so nothing
+     gets lost off the sheet. Anything not already placed drops into its
+     natural box by type (runs->base runs, passes->base passes, screens &
+     tricks->specials, the sneak->short yardage). */
+  const placed = new Set(Object.values(cs).flat());
+  const bucketFor = (p) => (p.concept === "sneak" ? "third_short" : p.type === "Run" ? "run" : p.type === "Pass" ? "pass" : "special");
+  for (const p of installed) {
+    if (!p.concept || !CONCEPTS[p.concept] || placed.has(p.id)) continue;
+    const key = bucketFor(p);
+    cs[key] = [...(cs[key] || []), p.id];
+    placed.add(p.id);
   }
   return cs;
 }
