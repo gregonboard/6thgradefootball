@@ -2209,6 +2209,7 @@ function RosterTab({ data, up, onPrint, onPrintGroups, onPrintFormations }) {
               </select>
             )}
             <button className="btn" onClick={() => setFormationView(true)}>Formation View</button>
+            {/* opens on the side you're viewing so the two mirror */}
           </div>
         </div>
         {depthSide === "def" && (
@@ -2263,7 +2264,7 @@ function RosterTab({ data, up, onPrint, onPrintGroups, onPrintFormations }) {
         )}
       </section>
 
-      {formationView && <FormationView data={data} up={up} onClose={() => setFormationView(false)} onPrintFormations={onPrintFormations} />}
+      {formationView && <FormationView data={data} up={up} startSide={depthSide === "def" ? "defense" : "offense"} onClose={() => setFormationView(false)} onPrintFormations={onPrintFormations} />}
     </div>
   );
 }
@@ -2272,8 +2273,8 @@ function RosterTab({ data, up, onPrint, onPrintGroups, onPrintFormations }) {
 /* ============================================================
    FORMATION VIEW — big screen depth chart
    ============================================================ */
-function FormationView({ data, up, onClose, onPrintFormations }) {
-  const [side, setSide] = useState("offense");
+function FormationView({ data, up, startSide, onClose, onPrintFormations }) {
+  const [side, setSide] = useState(startSide || "offense");
   const seasonWeek = data.seasonWeek || 1;
   const installed = installedForms(seasonWeek >= 9 ? 6 : seasonWeek);
   const later = PLAY_FORM_NAMES.filter((f) => !installed.includes(f));

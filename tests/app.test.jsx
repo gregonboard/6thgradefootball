@@ -617,6 +617,18 @@ describe("app end-to-end", () => {
     expect(fv.getAllByText(/Sample Player/).length).toBeGreaterThanOrEqual(1);
   });
 
+  it("Formation View opens on the side you're viewing (mirror bug)", async () => {
+    await load();
+    // switch the depth chart to Defense, then open Formation View
+    fireEvent.click([...document.querySelectorAll(".side-btn")].find((b) => b.textContent === "Defense"));
+    fireEvent.click(screen.getByText("Formation View"));
+    const fv = within(document.querySelector(".fv-layer"));
+    // it should show DEFENSE positions, not the offense (QB/OL) that used to appear
+    expect(fv.getByText("MIKE LB")).toBeTruthy();
+    expect(fv.queryByText("QB")).toBeNull();
+    expect(document.querySelector(".fv-side.active.def")).toBeTruthy();
+  });
+
   it("runs Formation School: name first, tap to reveal, tap for next", async () => {
     await load();
     fireEvent.click(screen.getByText("Formation View"));
