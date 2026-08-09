@@ -330,7 +330,7 @@ const PLAY_FORMS = {
   "Doubles": { X: [6, 23], H: [18, 25], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [88, 25], QB: [50, 30], RB: [43, 30] },
   "Trips":   { X: [6, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [76, 26], Z: [90, 25], QB: [50, 30], RB: [43, 30] },
   "Empty":   { X: [6, 23], H: [15, 25], RB: [24, 26], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [88, 25], QB: [50, 30] },
-  "Tank":    { X: [8, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [73, 26], Z: [86, 25], QB: [50, 30], RB: [50, 35] },
+  "Tank":    { X: [8, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [73, 26], Z: [86, 25], QB: [50, 25.7], RB: [50, 33] },
   "Bunch":   { X: [6, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [72, 27], Z: [77, 25], QB: [50, 30], RB: [43, 30] },
   "I":       { X: [8, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [84, 25], QB: [50, 26.5], H: [50, 31], RB: [50, 35] },
   "Stack":   { X: [8, 23], H: [9, 27], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [88, 23], Z: [87, 27], QB: [50, 30], RB: [43, 30] },
@@ -354,7 +354,7 @@ function formSpots(formName) {
 /* ---- diagram generators ----
    Elements: block (line+cap), route (arrow), carry (thick red arrow),
    motion (dashed), fake (grey), throw (dotted). All points [x, y]. */
-function genPlayElements(conceptKey, spots, dir, tags = []) {
+function genPlayElements(conceptKey, spots, dir, tags = [], formation) {
   const s = dir === "Lt" ? -1 : 1;
   const el = {};
   const clampX = (x) => Math.max(1.5, Math.min(98.5, x));
@@ -377,9 +377,20 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
     if (has("Y") && !skip.includes("Y")) add("Y", "block", [at("Y"), [at("Y")[0] - s * 2, at("Y")[1] - 4]]);
   };
   const hIsFB = has("H") && Math.abs(at("H")[0] - 50) < 8 && at("H")[1] > 26;
+  const heavy = FORM_GROUP[formation] === "Heavy";
   const fbLead = () => hIsFB && add("H", "block", [at("H"), [50 + s * 8, 27], [50 + s * 13, 22]]);
+  /* Tank's big H back: shuffle a few steps, then come out and KICK the end */
+  const hShuffleKick = () => {
+    if (!has("H")) return;
+    const [hx, hy] = at("H");
+    const inX = hx - s * 5;
+    add("H", "motion", [[hx, hy], [hx - s * 2.5, hy + 1], [inX, hy + 1]]);
+    add("H", "block", [[inX, hy + 1], [hx, hy - 1], [edge, hy - 3]]);
+  };
   const jetMotion = (thenFake = true) => {
-    if (!has("H") || hIsFB) return fbLead();
+    if (!has("H")) return;
+    if (hIsFB) return fbLead();
+    if (heavy) return hShuffleKick();
     const [hx, hy] = at("H");
     const across = hx < 50 ? [[hx, hy], [42, 29], [56, 29]] : [[hx, hy], [58, 29], [44, 29]];
     add("H", "motion", across);
@@ -414,12 +425,20 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       qbFake();
       if (has("RB")) add("RB", "carry", [at("RB"), [50 + s * 4, 29], [50 + s * 17, 22], [50 + s * 19, 8]]);
       break;
-    case "trap":
-      blockAll([backG]);
-      el[backG] = [{ kind: "route", pts: [at(backG), [50, 26], [50 + s * 4, 20], [50 + s * 7, 16]] }];
-      if (has("RB")) add("RB", "carry", [at("RB"), [50 + s * 1, 27], [50 + s * 3, 8]]);
+    case "trap": {
+      /* playside Guard, Tackle, Y KICK OUT to the play side; center and backside
+         tackle down block; the backside Guard pulls and traps the man left out */
+      const psG = guards.find((g) => (at(g)[0] - 50) * s > 0);
+      const psT = ["LT", "RT"].filter(has).find((t) => (at(t)[0] - 50) * s > 0);
+      for (const L of [psG, psT, "Y"]) if (L && has(L)) add(L, "block", [at(L), [at(L)[0] + s * 4, at(L)[1] - 1.5], [at(L)[0] + s * 6, at(L)[1] - 4]]);
+      if (has("C")) add("C", "block", [at("C"), [at("C")[0] - s * 2, at("C")[1] - 4]]);
+      if (backT) add(backT, "block", [at(backT), [at(backT)[0] - s * 2, at(backT)[1] - 4]]);
+      if (backG) el[backG] = [{ kind: "route", pts: [at(backG), [50, 26], [50 + s * 4, 22], [50 + s * 7, 18]] }];
+      for (const L of ["X", "Z"]) if (has(L)) add(L, "block", [at(L), [at(L)[0], at(L)[1] - 4]]);
+      if (has("RB")) add("RB", "carry", [at("RB"), [50 + s * 3, 27], [50 + s * 6, 8]]);
       qbFake();
       break;
+    }
     case "jet":
       reachOL();
       if (has("Y")) add("Y", "block", [at("Y"), [at("Y")[0] + s * 5, at("Y")[1] - 7], [at("Y")[0] + s * 7, at("Y")[1] - 12]]);
@@ -458,7 +477,9 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       if (has("Y")) add("Y", "block", [at("Y"), [at("Y")[0] + s * 4, at("Y")[1] - 3]]);
       { const P = outsideAt(s); if (P) add(P, "block", [at(P), [at(P)[0], at(P)[1] - 4]]); }
       { const B = outsideAt(-s); if (B) add(B, "route", [at(B), [at(B)[0] - s * 2, at(B)[1] - 9]]); }
-      if (has("H")) {
+      if (heavy && !hIsFB) hShuffleKick();
+      else if (hIsFB) fbLead();
+      else if (has("H")) {
         const [hx, hy] = at("H");
         const turn = [50 + s * 4, 29];
         add("H", "motion", hx < 50 ? [[hx, hy], [44, 29], turn] : [[hx, hy], [56, 29], turn]);
@@ -549,9 +570,11 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       olPass();
       rt("X", [[0, -19]]);
       rt("Z", [[0, -19]]);
-      rt("H", [[4, -13], [6, -21]]);
+      /* H splits the safeties: bend to the middle and run the pipe */
+      if (has("H")) { const hx = at("H")[0], hy = at("H")[1]; const midX = hx <= 50 ? 48 : 52; add("H", "route", [[hx, hy], [(hx + midX) / 2, hy - 11], [midX, 3]]); }
       rt("Y", [[-2, -12], [-4, -19]]);
-      if (has("RB")) { const m = at("RB")[0] <= 50 ? 1 : -1; add("RB", "route", [at("RB"), [at("RB")[0] + m * 3, at("RB")[1] - 6], [at("RB")[0] + m * 3, at("RB")[1] - 10]]); }
+      /* RB stays in to protect, then releases to the LEFT flat as the checkdown */
+      if (has("RB")) { const rx = at("RB")[0], ry = at("RB")[1]; add("RB", "block", [[rx, ry], [rx, ry - 3]]); add("RB", "route", [[rx, ry - 3], [rx - 7, ry - 2], [24, ry - 4]]); }
       break;
     case "flood": {
       /* sprint-out: line slides with the QB, three levels stacked call-side */
@@ -572,7 +595,8 @@ function genPlayElements(conceptKey, spots, dir, tags = []) {
       rt("X", [[0, -11], [8, -19]]);
       rt("Z", [[0, -19]]);
       if (has("Y")) { const m = at("Y")[0] > 50 ? -1 : 1; add("Y", "route", [at("Y"), [at("Y")[0] + m * 8, at("Y")[1] - 6], [at("Y")[0] + m * 28, at("Y")[1] - 8]]); }
-      if (has("H")) add("H", "block", [at("H"), [at("H")[0], at("H")[1] - 3]]);
+      /* H bubble screen (the quick answer if they bring the house) */
+      if (has("H")) { const hx = at("H")[0], hy = at("H")[1]; const m = hx <= 50 ? -1 : 1; add("H", "route", [[hx, hy], [hx + m * 4, hy + 3], [hx + m * 9, hy + 1]]); if (has("QB")) add("QB", "throw", [at("QB"), [hx + m * 8, hy + 2]]); }
       if (has("RB")) add("RB", "block", [at("RB"), [at("RB")[0], at("RB")[1] - 3]]);
       if (has("QB")) add("QB", "fake", [at("QB"), [at("QB")[0], at("QB")[1] + 3]]);
       throwTo("Z"); /* the GO is Z's job by rule, wherever he aligns */
@@ -2692,7 +2716,7 @@ function PlayDiagram({ play, size = "big", editSel, onPick, onField, dimExcept }
   const svgRef = useRef(null);
   const custom = play.custom || {};
   const spots = { ...formSpots(play.formation || "Doubles"), ...(custom.spots || {}) };
-  const els = genPlayElements(play.concept, spots, play.dir, play.tags || []);
+  const els = genPlayElements(play.concept, spots, play.dir, play.tags || [], play.formation);
   for (const [label, arr] of Object.entries(custom.els || {})) els[label] = arr;
   const carrier = playCarrier(play);
   const fieldClick = (e) => {

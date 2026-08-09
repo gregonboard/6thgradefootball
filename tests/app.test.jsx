@@ -171,6 +171,24 @@ describe("vocabulary", () => {
     const wk2names = wk2.goalline.map((id) => SEED.plays.find((p) => p.id === id).name);
     expect(wk2names.every((n) => { const p = SEED.plays.find((x) => x.name === n); return !p.week || p.week <= 2; })).toBe(true);
   });
+  it("Heavy H shuffle-kicks in Tank; Speed H still jets in Trips", () => {
+    // Tank (Heavy): H shuffles a few steps then blocks (kicks the end), no jet across
+    const tank = genPlayElements("power", formSpots("Tank Rt"), "Rt", [], "Tank Rt");
+    expect(tank.H.some((e) => e.kind === "motion")).toBe(true);
+    expect(tank.H.some((e) => e.kind === "block"), "Tank H kicks the end").toBe(true);
+    expect(tank.H.some((e) => e.kind === "fake"), "Tank H does not run the jet fake").toBe(false);
+    // Trips (Speed): H keeps the jet motion + fake to disguise the play
+    const trips = genPlayElements("power", formSpots("Trips Rt"), "Rt", [], "Trips Rt");
+    expect(trips.H.some((e) => e.kind === "motion")).toBe(true);
+    expect(trips.H.some((e) => e.kind === "fake"), "Trips H sells the jet").toBe(true);
+    // Tank shows the QB under center (Moose needs it)
+    expect(formSpots("Tank Rt").QB[1]).toBeLessThan(27);
+    // trap kicks out: playside guard/tackle/Y lean playside, backside guard pulls
+    const trap = genPlayElements("trap", formSpots("Doubles"), "Rt", [], "Doubles");
+    const rg = trap.RG.find((e) => e.kind === "block");
+    expect(rg.pts[rg.pts.length - 1][0]).toBeGreaterThan(rg.pts[0][0]); // RG kicks OUT to the right
+    expect(trap.LG.some((e) => e.kind === "route"), "backside guard pulls to trap").toBe(true);
+  });
   it("I formation cards speak fullback, never jet motion (Greg's catch)", () => {
     for (const p of SEED.plays.filter((x) => /^I (Rt|Lt)$/.test(x.formation))) {
       const jobs = jobsFor(p);

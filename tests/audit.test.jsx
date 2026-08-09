@@ -9,7 +9,7 @@ it("AUDIT: every concept mirrors perfectly and obeys football sanity", () => {
   const problems = [];
   for (const [key, c] of Object.entries(CONCEPTS)) {
     if (key === "blank") continue;
-    const skipMirror = key === "owl"; /* Owl is ALWAYS Rhino-right by ruling, never mirrored */
+    const skipMirror = ["owl", "falcon"].includes(key); /* Owl is Rhino-right always; Falcon checkdown is always LEFT */
     const dirs = c.dirs[0] === "Rt" ? [["Rt", "Lt"]] : [["", ""]];
     for (const [dr, dl] of dirs) {
       const rt = genPlayElements(key, formSpots("Doubles"), dr);
