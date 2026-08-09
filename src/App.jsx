@@ -4250,32 +4250,45 @@ function TeamScriptPrint({ data }) {
 
 function CallSheetPrint({ data }) {
   const cs = data.callSheet || {};
-  return (
-    <div className="sheet">
-      <PrintHead title="Offensive Call Sheet" right={<div className="p-meta">{todayStr()}</div>} />
-      <div className="p-cs-grid">
-        {SITUATIONS.map((s) => (
-          <div key={s.key} className="p-cs-box">
-            <div className="p-cs-label">{s.label}</div>
-            {(cs[s.key] || []).map((pid) => {
-              const p = data.plays.find((x) => x.id === pid);
-              if (!p) return null;
-              return (
-                <div key={pid} className="p-cs-play">
-                  <span className="p-cs-num" style={{ background: TYPE_COLORS[p.type] }}>{p.num}</span>
-                  <span className="p-cs-name">{p.formation !== "Doubles" && <span className="p-cs-formpre">{p.formation} · </span>}<span className="p-cs-linecall">{lineCallFor(p)}</span> {p.concept && CONCEPTS[p.concept] && p.concept !== "blank" ? callWord(p.concept, p.dir, p.tags || []) : p.name}{isHeavyPlay(p) && <span className="heavy-tag">HEAVY</span>}</span>
-                </div>
-              );
-            })}
-            {(cs[s.key] || []).length === 0 && <div className="p-cs-empty">—</div>}
+  const box = (s) => (
+    <div key={s.key} className="p-cs-box">
+      <div className="p-cs-label">{s.label}</div>
+      {(cs[s.key] || []).map((pid) => {
+        const p = data.plays.find((x) => x.id === pid);
+        if (!p) return null;
+        return (
+          <div key={pid} className="p-cs-play">
+            <span className="p-cs-num" style={{ background: TYPE_COLORS[p.type] }}>{p.num}</span>
+            <span className="p-cs-name">{p.formation !== "Doubles" && <span className="p-cs-formpre">{p.formation} · </span>}<span className="p-cs-linecall">{lineCallFor(p)}</span> {p.concept && CONCEPTS[p.concept] && p.concept !== "blank" ? callWord(p.concept, p.dir, p.tags || []) : p.name}{isHeavyPlay(p) && <span className="heavy-tag">HEAVY</span>}</span>
           </div>
-        ))}
-      </div>
-      <div className="p-foot">
-        <span><span className="key-dot" style={{ background: TYPE_COLORS.Run }} /> Run &nbsp; <span className="key-dot" style={{ background: TYPE_COLORS.Pass }} /> Pass &nbsp; <span className="key-dot" style={{ background: TYPE_COLORS.Screen }} /> Screen &nbsp; <span className="key-dot" style={{ background: TYPE_COLORS.Special }} /> Special</span>
-        <span>Timeouts: ☐ ☐ ☐</span>
-      </div>
+        );
+      })}
+      {(cs[s.key] || []).length === 0 && <div className="p-cs-empty">—</div>}
     </div>
+  );
+  const keyRow = (
+    <div className="p-foot">
+      <span><span className="key-dot" style={{ background: TYPE_COLORS.Run }} /> Run &nbsp; <span className="key-dot" style={{ background: TYPE_COLORS.Pass }} /> Pass &nbsp; <span className="key-dot" style={{ background: TYPE_COLORS.Screen }} /> Screen &nbsp; <span className="key-dot" style={{ background: TYPE_COLORS.Special }} /> Special &nbsp; · &nbsp; <span className="heavy-tag">HEAVY</span> = sub the big group</span>
+      <span>Timeouts: ☐ ☐ ☐</span>
+    </div>
+  );
+  /* front = base offense (the volume), back = situations. Prints double-sided. */
+  const FRONT = ["openers", "run", "pass"];
+  const front = SITUATIONS.filter((s) => FRONT.includes(s.key));
+  const back = SITUATIONS.filter((s) => !FRONT.includes(s.key));
+  return (
+    <>
+      <div className="sheet">
+        <PrintHead title="Offensive Call Sheet · FRONT" right={<><div className="p-meta">{data.gameLabel || "vs ______"}</div><div className="p-meta">{todayStr()}</div></>} />
+        <div className="p-cs-grid">{front.map(box)}</div>
+        {keyRow}
+      </div>
+      <div className="sheet cs-back">
+        <PrintHead title="Offensive Call Sheet · BACK · Situations" right={<div className="p-meta">{todayStr()}</div>} />
+        <div className="p-cs-grid">{back.map(box)}</div>
+        {keyRow}
+      </div>
+    </>
   );
 }
 
@@ -4934,6 +4947,7 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .ts-check { flex-shrink: 0; color: var(--muted); }
 .ts-call { flex: 1; font-family: var(--disp); font-weight: 700; font-size: 14px; letter-spacing: .3px; text-transform: uppercase; }
 .ts-sit { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; flex-shrink: 0; }
+.cs-back { break-before: page; }
 .p-cs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .p-cs-box { border: 1.5px solid var(--ink); }
 .p-cs-label { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; background: var(--ink); color: #fff; padding: 4px 8px; }
