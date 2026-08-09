@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within, cleanup } from "@testing-library/react";
 import App, {
   buildCallSheet,
-  normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord,
+  normalizeData, practiceGroupsFor, pgForPos, slotsFor, CONCEPTS, callWord,
   LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, genDef, DEF_FRONTS, DEF_COVERAGES, SEED, seedPackages, day1Plan, applyKillPairs,
   installedForms, resolvePlayPos, FORM_WEEKS, formSpots,
 } from "../src/App.jsx";
@@ -441,10 +441,10 @@ describe("practiceGroupsFor", () => {
       { id: "d", name: "New Kid", num: "3" },
     ],
     depth: {
-      off: { "LT": ["a", null, null], "QB": ["b", null, null], "RB": ["c", null, null] },
-      def: { "MIKE LB": ["a", null, null], "WILL LB": [null, "c", null] },
+      off: { Speed: { "LT": ["a", null, null], "QB": ["b", null, null], "RB": ["c", null, null] } },
+      def: { "5-3": { "MIKE LB": ["a", null, null], "WILL LB": [null, "c", null] } },
     },
-    offScheme: "I-Form",
+    offScheme: "Speed",
     defScheme: "5-3",
     pgOverrides: {},
   });
@@ -475,6 +475,33 @@ describe("practiceGroupsFor", () => {
 });
 
 /* ---------- unit: formation install + depth resolution ---------- */
+describe("per-front depth", () => {
+  it("migration copies the old shared chart into every front", () => {
+    const d = normalizeData({ players: [{ id: "x", name: "Luke", num: "32" }], depth: { off: {}, def: { "SAM LB": ["x", null, null] } }, depthVersion: 2 });
+    expect(slotsFor({ ...d, defScheme: "4-4" }, "def", "SAM LB")[0].id).toBe("x");
+    expect(slotsFor({ ...d, defScheme: "4-3" }, "def", "SAM LB")[0].id).toBe("x");
+  });
+  it("each front keeps its own lineup (Sam in the 4-4, safety in the 4-3)", () => {
+    const d = normalizeData({
+      players: [{ id: "x", name: "Luke" }, { id: "y", name: "Other" }],
+      depth: { off: {}, def: { "4-4": { "SAM LB": ["x", null, null] }, "4-3": { "SS": ["x", null, null], "SAM LB": ["y", null, null] } } },
+      depthVersion: 3,
+    });
+    expect(slotsFor({ ...d, defScheme: "4-4" }, "def", "SAM LB")[0].id).toBe("x");
+    expect(slotsFor({ ...d, defScheme: "4-3" }, "def", "SS")[0].id).toBe("x");
+    expect(slotsFor({ ...d, defScheme: "4-3" }, "def", "SAM LB")[0].id).toBe("y");
+  });
+  it("offense has two groups; Heavy can differ from Speed", () => {
+    const d = normalizeData({
+      players: [{ id: "s", name: "Speedy" }, { id: "b", name: "Big" }],
+      depth: { off: { "Speed": { "RB": ["s", null, null] }, "Heavy": { "RB": ["b", null, null] } }, def: {} },
+      depthVersion: 3,
+    });
+    expect(slotsFor({ ...d, offScheme: "Speed" }, "off", "RB")[0].id).toBe("s");
+    expect(slotsFor({ ...d, offScheme: "Heavy" }, "off", "RB")[0].id).toBe("b");
+  });
+});
+
 describe("formations", () => {
   it("staggers formation installs on the week dial", () => {
     expect(installedForms(1)).toEqual(["Doubles", "Doubles Lt", "Trips Rt", "Trips Lt"]);
@@ -498,25 +525,18 @@ describe("formations", () => {
       if (spots.H) expect(spots.H[1], f + ": H is always off the line").toBeGreaterThan(23);
     }
   });
-  it("resolves play labels to depth chart positions for any scheme", () => {
-    const spread = { offScheme: "Spread" };
-    expect(resolvePlayPos(spread, "H")).toBe("Slot (H)");
-    expect(resolvePlayPos(spread, "Y")).toBe("Slot (Y)");
-    expect(resolvePlayPos(spread, "X")).toBe("WR (X)");
-    const iform = { offScheme: "I-Form" };
-    expect(resolvePlayPos(iform, "Y")).toBe("TE");
-    expect(resolvePlayPos(iform, "H")).toBe("FB");
-    expect(resolvePlayPos(iform, "QB")).toBe("QB");
+  it("resolves play labels to the two personnel groups", () => {
+    const speed = { offScheme: "Speed" };
+    expect(resolvePlayPos(speed, "H")).toBe("Slot (H)");
+    expect(resolvePlayPos(speed, "Y")).toBe("Slot (Y)");
+    expect(resolvePlayPos(speed, "X")).toBe("WR (X)");
+    const heavy = { offScheme: "Heavy" };
+    expect(resolvePlayPos(heavy, "Y")).toBe("TE"); // Y is the tight end in Heavy
+    expect(resolvePlayPos(heavy, "H")).toBe("FB"); // H is the fullback in Heavy
+    expect(resolvePlayPos(heavy, "QB")).toBe("QB");
   });
-  it("fills every play spot in Singleback: Y takes the TE, the slot travels as H", () => {
-    const sb = { offScheme: "Singleback" };
-    expect(resolvePlayPos(sb, "Y")).toBe("TE");
-    expect(resolvePlayPos(sb, "H")).toBe("Slot (Y)");
-    expect(resolvePlayPos(sb, "Z")).toBe("WR (Z)");
-    expect(resolvePlayPos(sb, "RB")).toBe("RB");
-  });
-  it("leaves no empty spots in any scheme", () => {
-    for (const scheme of ["I-Form", "Singleback", "Spread", "Wing-T"]) {
+  it("leaves no empty spots in either group", () => {
+    for (const scheme of ["Speed", "Heavy"]) {
       const map = Object.values(
         Object.fromEntries(
           ["LT","LG","C","RG","RT","QB","X","Y","H","Z","RB"].map((l) => [l, resolvePlayPos({ offScheme: scheme }, l)])

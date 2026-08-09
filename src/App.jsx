@@ -6,33 +6,32 @@ import { useState, useEffect, useRef, useMemo } from "react";
    Call sheet · Wristband printer · Game day sheet
    ============================================================ */
 
-/* ---------- offensive formations ----------
-   Same idea as the defensive fronts: position names are shared wherever the
-   job is the same (QB, RB, FB, X, Z, TE, and all five linemen), so switching
-   formations keeps assignments. Formation-only spots (Slots, Wing, HB) hide
-   when the current formation doesn't use them and come back when you return. */
+/* ---------- offensive personnel groups ----------
+   Two groups, the way we actually sub: SPEED for all the spread looks
+   (Doubles/Trips/Bunch/Stack/Nasty/Empty) and HEAVY for I and Tank. Each
+   group is its own depth chart, so the big kids in Heavy can be totally
+   different players than the speed kids in Spread. Formations map to a group
+   (FORM_GROUP), so viewing Tank pulls the Heavy chart automatically. */
 const OL5 = ["LT", "LG", "C", "RG", "RT"];
 const OL_SPOTS = { "LT": [34, 16], "LG": [42, 16], "C": [50, 16], "RG": [58, 16], "RT": [66, 16] };
 const OFF_SCHEMES = {
-  "I-Form": {
-    positions: ["QB", "RB", "FB", "WR (X)", "WR (Z)", "TE", ...OL5],
-    spots: { ...OL_SPOTS, "WR (X)": [8, 16], "TE": [74, 16], "WR (Z)": [92, 22], "QB": [50, 36.7], "FB": [50, 61], "RB": [50, 84] },
-  },
-  "Singleback": {
-    positions: ["QB", "RB", "TE", "WR (X)", "WR (Z)", "Slot (Y)", ...OL5],
-    spots: { ...OL_SPOTS, "WR (X)": [6, 16], "TE": [74, 16], "Slot (Y)": [84, 22], "WR (Z)": [94, 16], "QB": [50, 36.7], "RB": [50, 64] },
-  },
-  "Spread": {
+  "Speed": {
     positions: ["QB", "RB", "WR (X)", "Slot (H)", "Slot (Y)", "WR (Z)", ...OL5],
     spots: { ...OL_SPOTS, "WR (X)": [6, 16], "Slot (H)": [20, 22], "Slot (Y)": [80, 22], "WR (Z)": [94, 16], "QB": [50, 38], "RB": [36, 40] },
   },
-  "Wing-T": {
-    positions: ["QB", "FB", "HB", "Wing", "TE", "WR (X)", ...OL5],
-    spots: { ...OL_SPOTS, "WR (X)": [8, 16], "TE": [74, 16], "Wing": [82, 28], "QB": [50, 36.7], "HB": [36, 62], "FB": [50, 62] },
+  "Heavy": {
+    positions: ["QB", "RB", "FB", "TE", "WR (X)", "WR (Z)", ...OL5],
+    spots: { ...OL_SPOTS, "WR (X)": [8, 16], "TE": [74, 16], "WR (Z)": [92, 22], "QB": [50, 36.7], "FB": [50, 61], "RB": [50, 84] },
   },
 };
+/* which personnel group each playbook formation uses */
+const FORM_GROUP = {
+  "Doubles": "Speed", "Doubles Lt": "Speed", "Trips Rt": "Speed", "Trips Lt": "Speed",
+  "Bunch Rt": "Speed", "Bunch Lt": "Speed", "Stack": "Speed", "Nasty Rt": "Speed", "Nasty Lt": "Speed", "Empty": "Speed",
+  "Tank Rt": "Heavy", "Tank Lt": "Heavy", "I Rt": "Heavy", "I Lt": "Heavy",
+};
 const OFF_POS_ALL = [...new Set(Object.values(OFF_SCHEMES).flatMap((s) => s.positions))];
-const offScheme = (data) => (OFF_SCHEMES[data.offScheme] ? data.offScheme : "I-Form");
+const offScheme = (data) => (OFF_SCHEMES[data.offScheme] ? data.offScheme : "Speed");
 const offPositions = (data) => OFF_SCHEMES[offScheme(data)].positions;
 
 /* ---------- defensive fronts ----------
@@ -111,22 +110,27 @@ const GROUP_TONES = {
 const groupTone = (g) => GROUP_TONES[g] || "#23356F";
 
 /* ---------- depth chart model ----------
-   The depth chart is the source of truth. Each side has, per position,
-   exactly three team slots: data.depth.off["QB"] = [id1, id2, id3] (null = open).
-   A player can hold slots at multiple positions on the same side, so your
-   starting WR can also be the 2nd team QB. */
-function slotsFor(data, side, pos) {
-  const ids = ((data.depth && data.depth[side]) || {})[pos] || [null, null, null];
+   The depth chart is the source of truth, and it is PER FRONT/FORMATION:
+   data.depth.def["4-4"]["SAM LB"] = [id1, id2, id3]. Each scheme has its own
+   independent 11, so a kid can be Sam LB in the 4-4 and a safety in the 4-3.
+   A player can also hold slots at multiple positions within one scheme. */
+const schemeOf = (data, side) => (side === "off" ? offScheme(data) : defScheme(data));
+function depthChart(data, side, scheme) {
+  const sc = scheme || schemeOf(data, side);
+  return ((data.depth && data.depth[side]) || {})[sc] || {};
+}
+function slotsFor(data, side, pos, scheme) {
+  const ids = depthChart(data, side, scheme)[pos] || [null, null, null];
   return [0, 1, 2].map((i) => data.players.find((p) => p.id === ids[i]) || null);
 }
 
-/* All slots a player holds on a side, e.g. [{pos:"WR (X)", team:1}, {pos:"QB", team:2}] */
+/* All slots a player holds on a side IN THE CURRENT SCHEME */
 function assignmentsFor(data, side, id) {
   const posList = side === "off" ? offPositions(data) : defPositions(data);
+  const chart = depthChart(data, side);
   const out = [];
   for (const pos of posList) {
-    const ids = ((data.depth && data.depth[side]) || {})[pos] || [];
-    const i = ids.indexOf(id);
+    const i = (chart[pos] || []).indexOf(id);
     if (i >= 0) out.push({ pos, team: i + 1 });
   }
   return out.sort((a, b) => a.team - b.team);
@@ -152,8 +156,8 @@ const PLAY_POS_PREFS = {
   RB: ["RB", "HB", "FB"],
 };
 const PLAY_RESOLVE_ORDER = ["LT", "LG", "C", "RG", "RT", "QB", "X", "Y", "H", "Z", "RB"];
-function resolvePlayMap(data) {
-  const list = offPositions(data);
+function resolvePlayMap(data, scheme) {
+  const list = scheme && OFF_SCHEMES[scheme] ? OFF_SCHEMES[scheme].positions : offPositions(data);
   const used = new Set();
   const out = {};
   for (const label of PLAY_RESOLVE_ORDER) {
@@ -238,41 +242,56 @@ function practiceGroupsFor(data) {
   return { out, multi, unassigned };
 }
 
-/* Migrate older saves (single offPos/defPos per player, variable depth lists)
-   into the 3-slot model. Depth is kept for the union of all fronts' positions,
-   and the old single-high "SAFETY" becomes "FS". */
+/* Migrate any older save into the PER-SCHEME 3-slot model (depthVersion 3):
+   data.depth.def["4-4"]["SAM LB"] = [id1,id2,id3]. Every front is seeded from
+   whatever the save had (v1 player positions, or the v2 shared flat chart, or
+   an existing per-scheme chart) so nothing is lost and every front starts as
+   the old shared lineup until the coach edits it. */
+const isPerScheme = (sideMap) => {
+  const v = Object.values(sideMap || {})[0];
+  return !!v && !Array.isArray(v) && typeof v === "object";
+};
 function migrateDepth(data) {
   const three = (a) => [a[0] || null, a[1] || null, a[2] || null];
-  if ((data.depthVersion || 1) >= 2) {
-    const fix = (m, list, legacyMap) => {
-      const src = { ...(m || {}) };
-      for (const [oldKey, newKey] of Object.entries(legacyMap || {})) {
-        if (src[oldKey] && !(src[newKey] || []).some(Boolean)) src[newKey] = src[oldKey];
-      }
-      const o = {};
-      for (const pos of list) o[pos] = three(src[pos] || []);
-      return o;
-    };
-    return { ...data, depth: { off: fix(data.depth && data.depth.off, OFF_POS_ALL), def: fix(data.depth && data.depth.def, DEF_POS_ALL, { SAFETY: "FS" }) } };
-  }
-  const build = (side, posList, field, legacyMap) => {
+  const schemesOf = (side) => Object.keys(side === "off" ? OFF_SCHEMES : DEF_SCHEMES);
+  const posOf = (side, scheme) => (side === "off" ? OFF_SCHEMES : DEF_SCHEMES)[scheme].positions;
+  const legacyMap = (side) => (side === "def" ? { SAFETY: "FS" } : {});
+  /* the flat {pos:[ids]} chart used to seed every front for this side */
+  const seedChart = (side) => {
+    const dm = (data.depth && data.depth[side]) || {};
+    if (isPerScheme(dm)) return Object.values(dm)[0] || {}; /* already per-scheme: seed from any front */
+    const lm = legacyMap(side);
+    if ((data.depthVersion || 1) >= 2) {
+      const src = { ...dm };
+      for (const [ok, nk] of Object.entries(lm)) if (src[ok] && !(src[nk] || []).some(Boolean)) src[nk] = src[ok];
+      return src;
+    }
+    /* v1: build from player.offPos/defPos across the union of positions */
+    const field = side === "off" ? "offPos" : "defPos";
     const out = {};
-    for (const pos of posList) {
-      const matches = (v) => v === pos || (legacyMap || {})[v] === pos;
-      const stored = ((data.depth && data.depth[side]) || {})[pos] || [];
+    for (const pos of side === "off" ? OFF_POS_ALL : DEF_POS_ALL) {
+      const matches = (v) => v === pos || lm[v] === pos;
       const ordered = [];
-      for (const id of stored) {
-        const p = data.players.find((x) => x.id === id);
-        if (p && matches(p[field]) && !ordered.includes(id)) ordered.push(id);
-      }
-      for (const p of data.players) {
-        if (matches(p[field]) && !ordered.includes(p.id)) ordered.push(p.id);
-      }
-      out[pos] = three(ordered);
+      for (const id of dm[pos] || []) { const p = data.players.find((x) => x.id === id); if (p && matches(p[field]) && !ordered.includes(id)) ordered.push(id); }
+      for (const p of data.players) if (matches(p[field]) && !ordered.includes(p.id)) ordered.push(p.id);
+      if (ordered.length) out[pos] = ordered;
     }
     return out;
   };
-  return { ...data, depth: { off: build("off", OFF_POS_ALL, "offPos"), def: build("def", DEF_POS_ALL, "defPos", { SAFETY: "FS" }) }, depthVersion: 2 };
+  const perScheme = (side) => {
+    const dm = (data.depth && data.depth[side]) || {};
+    const existing = isPerScheme(dm) ? dm : null;
+    const seed = seedChart(side);
+    const out = {};
+    for (const scheme of schemesOf(side)) {
+      const chart = (existing && existing[scheme]) || seed;
+      const o = {};
+      for (const pos of posOf(side, scheme)) o[pos] = three(chart[pos] || []);
+      out[scheme] = o;
+    }
+    return out;
+  };
+  return { ...data, depth: { off: perScheme("off"), def: perScheme("def") }, depthVersion: 3 };
 }
 const CAT_COLORS = {
   Warmup: "#B7791F",
@@ -1060,7 +1079,7 @@ const RAW_SEED = {
   callSheet: {},
   wrist: { title: "REBELS", cols: 3, copies: 4, selected: null },
   depth: { off: {}, def: {} },
-  offScheme: "I-Form",
+  offScheme: "Speed",
   defScheme: "5-3",
   defense: { front: "4-4", cov: "sky", stunt: "none", blitz: "none" },
   gameday: { opp: "", crew: "Greg, Richard, Lynn, Clay, Drew, Tom, Nathan, Tyler", owners: {} },
@@ -2096,7 +2115,9 @@ function RosterTab({ data, up, onPrint, onPrintGroups, onPrintFormations }) {
   const remove = (id) => {
     const p = data.players.find((x) => x.id === id);
     if (!window.confirm(`Remove ${p ? p.name : "this player"} from the roster? His depth chart spots open up.`)) return;
-    const strip = (m) => Object.fromEntries(Object.entries(m || {}).map(([k, v]) => [k, v.map((x) => (x === id ? null : x))]));
+    /* per-scheme: strip the id out of every front's chart */
+    const strip = (sideMap) => Object.fromEntries(Object.entries(sideMap || {}).map(([scheme, chart]) =>
+      [scheme, Object.fromEntries(Object.entries(chart || {}).map(([pos, ids]) => [pos, (ids || []).map((x) => (x === id ? null : x))]))]));
     up({
       players: data.players.filter((p) => p.id !== id),
       depth: { off: strip(data.depth.off), def: strip(data.depth.def) },
@@ -2111,14 +2132,18 @@ function RosterTab({ data, up, onPrint, onPrintGroups, onPrintFormations }) {
     up({ players: arr });
   };
 
-  /* Put a player in a team slot. He's cleared from other slots at the SAME
-     position (can't be his own backup), but can hold slots at other positions. */
+  /* Put a player in a team slot IN THE CURRENT FRONT/GROUP. He's cleared from
+     other slots at the SAME position, but can hold slots at other positions,
+     and his spots in OTHER fronts are untouched. */
   const setSlot = (side, pos, idx, playerId) => {
+    const sc = schemeOf(data, side);
     const depth = { off: { ...data.depth.off }, def: { ...data.depth.def } };
-    const slots = [...(depth[side][pos] || [null, null, null])];
+    const chart = { ...(depth[side][sc] || {}) };
+    const slots = [...(chart[pos] || [null, null, null])];
     if (playerId) for (let i = 0; i < 3; i++) if (slots[i] === playerId) slots[i] = null;
     slots[idx] = playerId || null;
-    depth[side][pos] = slots;
+    chart[pos] = slots;
+    depth[side][sc] = chart;
     up({ depth });
   };
 
@@ -2200,7 +2225,8 @@ function RosterTab({ data, up, onPrint, onPrintGroups, onPrintFormations }) {
             </div>
             {depthSide === "off" && (
               <select className="cell" value={offScheme(data)} onChange={(e) => up({ offScheme: e.target.value })}>
-                {Object.keys(OFF_SCHEMES).map((k) => <option key={k} value={k}>{k}</option>)}
+                <option value="Speed">Speed (spread)</option>
+                <option value="Heavy">Heavy (I / Tank)</option>
               </select>
             )}
             {depthSide === "def" && (
@@ -2213,10 +2239,10 @@ function RosterTab({ data, up, onPrint, onPrintGroups, onPrintFormations }) {
           </div>
         </div>
         {depthSide === "def" && (
-          <p className="hint">Switching fronts keeps every assignment. Positions the current front doesn't use (like SAM in a 5-2) are hidden and come right back when you switch back.</p>
+          <p className="hint">Each front has its own lineup, so a kid can be SAM LB in the 4-4 and a safety in the 4-3. Pick the front, set its eleven.</p>
         )}
         {depthSide === "off" && (
-          <p className="hint">Switching formations keeps every assignment. Positions the current formation doesn't use (like the Wing outside a Wing-T) are hidden and come right back when you switch back.</p>
+          <p className="hint">Two personnel groups: SPEED for the spread looks, HEAVY for I and Tank. Each has its own lineup, so your big kids in Heavy can be different players than your speed kids. Formations pull the right group automatically.</p>
         )}
         <div className="table-wrap">
           <table className="slot-table">
@@ -2314,7 +2340,9 @@ function FormationView({ data, up, startSide, onClose, onPrintFormations }) {
   const playSpots = usePlayForm
     ? fvSpread(Object.fromEntries(Object.entries(formSpots(activeForm)).map(([k, [x, y]]) => [k, [fvx(x), 16 + (y - 23) * 3.2]])), 6, 9)
     : null;
-  const playMap = usePlayForm ? resolvePlayMap(data) : null;
+  /* a playbook formation pulls its personnel group's chart (Doubles=Speed, Tank=Heavy) */
+  const formGroup = usePlayForm ? (FORM_GROUP[activeForm] || "Speed") : null;
+  const playMap = usePlayForm ? resolvePlayMap(data, formGroup) : null;
   const spots = usePlayForm ? playSpots : side === "offense" ? OFF_SCHEMES[offScheme(data)].spots : DEF_SCHEMES[defScheme(data)].spots;
   const posList = usePlayForm ? Object.keys(playSpots) : side === "offense" ? offPositions(data) : defPositions(data);
   const tone = side === "offense" ? "var(--red)" : "var(--def-blue)";
@@ -2331,7 +2359,7 @@ function FormationView({ data, up, startSide, onClose, onPrintFormations }) {
           <button className={"fv-side" + (side === "defense" ? " active def" : "")} onClick={() => setSide("defense")}>Defense</button>
           {side === "offense" && !school && (
             <select className="fv-scheme" value={form} onChange={(e) => setForm(e.target.value)} aria-label="Formation">
-              <option value="base">Base ({offScheme(data)})</option>
+              <option value="base">Base group ({offScheme(data)})</option>
               <optgroup label={`Installed thru week ${seasonWeek >= 9 ? 6 : seasonWeek}`}>
                 {installed.map((f) => <option key={f} value={f}>{f}</option>)}
               </optgroup>
@@ -2344,7 +2372,8 @@ function FormationView({ data, up, startSide, onClose, onPrintFormations }) {
           )}
           {side === "offense" && !school && form === "base" && (
             <select className="fv-scheme" value={offScheme(data)} onChange={(e) => up({ offScheme: e.target.value })}>
-              {Object.keys(OFF_SCHEMES).map((k) => <option key={k} value={k}>{k}</option>)}
+              <option value="Speed">Speed (spread)</option>
+              <option value="Heavy">Heavy (I / Tank)</option>
             </select>
           )}
           {side === "defense" && (
@@ -2377,7 +2406,7 @@ function FormationView({ data, up, startSide, onClose, onPrintFormations }) {
           {(!school || school.revealed) && posList.map((pos) => {
             const [x, y] = spots[pos] || [50, 50];
             const schemePos = usePlayForm ? playMap[pos] : pos;
-            const slots = schemePos ? slotsFor(data, side === "offense" ? "off" : "def", schemePos) : [null, null, null];
+            const slots = schemePos ? slotsFor(data, side === "offense" ? "off" : "def", schemePos, usePlayForm ? formGroup : undefined) : [null, null, null];
             const starter = slots[0];
             const backups = [slots[1], slots[2]].filter(Boolean);
             return (
@@ -4001,7 +4030,6 @@ function GroupsPrint({ data }) {
 function FormationsPrint({ data }) {
   const week = (data.seasonWeek || 1) >= 9 ? 6 : data.seasonWeek || 1;
   const forms = installedForms(week);
-  const playMap = resolvePlayMap(data);
   const lastName = (p) => (p ? p.name.trim().split(/\s+/).slice(-1)[0] : "");
   return (
     <div className="sheet">
@@ -4009,6 +4037,8 @@ function FormationsPrint({ data }) {
       <div className="fp-grid">
         {forms.map((f) => {
           const spots = fvSpread(formSpots(f), 2, 8);
+          const grp = FORM_GROUP[f] || "Speed";
+          const playMap = resolvePlayMap(data, grp);
           return (
             <div key={f} className="fp-card">
               <div className="fp-title">{f.toUpperCase()}</div>
@@ -4016,7 +4046,7 @@ function FormationsPrint({ data }) {
                 <div className="fp-los" />
                 {Object.entries(spots).map(([label, [x, y]]) => {
                   const schemePos = playMap[label];
-                  const starter = schemePos ? slotsFor(data, "off", schemePos)[0] : null;
+                  const starter = schemePos ? slotsFor(data, "off", schemePos, grp)[0] : null;
                   const trav = label === "H" || label === "Y";
                   const ol = ["LT", "LG", "C", "RG", "RT"].includes(label);
                   return (
@@ -4894,4 +4924,4 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
   );
 }
 
-export { normalizeData, practiceGroupsFor, pgForPos, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, buildCallSheet, genDef, DEF_FRONTS, DEF_COVERAGES, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots };
+export { normalizeData, practiceGroupsFor, pgForPos, slotsFor, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, buildCallSheet, genDef, DEF_FRONTS, DEF_COVERAGES, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots };
