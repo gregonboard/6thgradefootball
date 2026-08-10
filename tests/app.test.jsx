@@ -5,7 +5,7 @@ import App, {
   buildCallSheet,
   normalizeData, practiceGroupsFor, pgForPos, slotsFor, CONCEPTS, callWord,
   LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, genDef, DEF_FRONTS, DEF_COVERAGES, SEED, seedPackages, day1Plan, applyKillPairs,
-  installedForms, resolvePlayPos, FORM_WEEKS, formSpots,
+  installedForms, resolvePlayPos, FORM_WEEKS, formSpots, store,
 } from "../src/App.jsx";
 
 /* ---------- unit: vocabulary and doctrine ---------- */
@@ -721,22 +721,60 @@ describe("supabase sync", () => {
     await waitFor(() => expect(screen.getByText("VESTAVIA HILLS REBELS")).toBeTruthy());
   };
 
-  it("keeps the local copy when the sideline connection is dead", async () => {
+  it("a dead cloud on load never overwrites the shared program", async () => {
+    // Regression for the wiped depth chart: a failed cloud READ must not let the
+    // app boot empty and then autosave that emptiness over the real cloud record.
     cloudOn();
-    global.fetch = () => Promise.reject(new TypeError("network down"));
-    await load(); // load survives: falls through to localStorage/SEED
-    fireEvent.change(screen.getByLabelText("Season week"), { target: { value: "3" } });
-    await waitFor(() => {
-      const raw = window.localStorage.getItem("vh6-coach-data-v1");
-      expect(raw).toBeTruthy();
-      expect(JSON.parse(raw).seasonWeek).toBe(3);
-    }, { timeout: 3000 });
-    // The failed cloud sync surfaces a tappable retry chip; a retry that
-    // reaches Supabase flips it back to saved.
-    const retry = await screen.findByText(/tap to retry/i, {}, { timeout: 3000 });
+    window.localStorage.setItem(
+      "vh6-coach-data-v1",
+      JSON.stringify({ ...JSON.parse(JSON.stringify(SEED)), seasonWeek: 4 })
+    );
+    const posts = [];
+    global.fetch = (url, opts) => {
+      if (opts && opts.method === "POST") {
+        posts.push(opts);
+        return Promise.resolve({ ok: true, json: async () => [] });
+      }
+      return Promise.reject(new TypeError("network down")); // the cloud READ fails
+    };
+    await load(); // boots view-only from the local cache
+    expect(screen.getByText(/Working offline/i)).toBeTruthy();
+    expect(screen.getByLabelText("Season week").value).toBe("4");
+    // edit while offline
+    fireEvent.change(screen.getByLabelText("Season week"), { target: { value: "6" } });
+    await new Promise((r) => setTimeout(r, 1000)); // past the 700ms save debounce
+    expect(posts.length).toBe(0); // the cloud was NEVER written -> record is safe
+    expect(JSON.parse(window.localStorage.getItem("vh6-coach-data-v1")).seasonWeek).toBe(6); // local kept
+  });
+
+  it("reconnecting after an outage loads the real cloud copy, not the local guess", async () => {
+    cloudOn();
+    window.localStorage.setItem(
+      "vh6-coach-data-v1",
+      JSON.stringify({ ...JSON.parse(JSON.stringify(SEED)), seasonWeek: 2 })
+    );
+    let online = false;
+    const cloudCopy = { ...JSON.parse(JSON.stringify(SEED)), seasonWeek: 5 };
+    global.fetch = (url, opts) => {
+      if (opts && opts.method === "POST") return Promise.resolve({ ok: true, json: async () => [] });
+      if (!online) return Promise.reject(new TypeError("down"));
+      return Promise.resolve({ ok: true, json: async () => [{ value: cloudCopy }] });
+    };
+    await load();
+    expect(screen.getByLabelText("Season week").value).toBe("2"); // local cache while offline
+    online = true;
+    fireEvent.click(screen.getByText(/tap to reconnect/i));
+    await waitFor(() => expect(screen.getByLabelText("Season week").value).toBe("5"), { timeout: 3000 });
+    expect(screen.queryByText(/Working offline/i)).toBeNull();
+  });
+
+  it("store.get throws on a failed cloud read instead of returning empty", async () => {
+    cloudOn();
+    global.fetch = () => Promise.resolve({ ok: false, status: 500, json: async () => ({}) });
+    await expect(store.get("vh6-coach-data-v1")).rejects.toThrow();
+    // a genuinely-empty account (read OK, no row) returns null, not a throw
     global.fetch = () => Promise.resolve({ ok: true, json: async () => [] });
-    fireEvent.click(retry);
-    await waitFor(() => expect(screen.getByText("All changes saved")).toBeTruthy(), { timeout: 3000 });
+    await expect(store.get("vh6-coach-data-v1")).resolves.toBeNull();
   });
 
   it("Add This Look refuses to mint a duplicate play", async () => {

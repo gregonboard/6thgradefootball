@@ -1281,13 +1281,16 @@ const store = {
     }
     const supa = supaCfg();
     if (supa) {
-      try {
-        const res = await fetch(`${supa.url}/rest/v1/app_state?key=eq.${encodeURIComponent(key)}&select=value`, {
-          headers: { apikey: supa.key, Authorization: `Bearer ${supa.key}` },
-        });
-        const rows = await res.json();
-        if (Array.isArray(rows) && rows[0]) return JSON.stringify(rows[0].value);
-      } catch (e) { /* fall through to localStorage */ }
+      // Cloud is the source of truth. If we can't READ it, throw — never silently
+      // return empty/stale, because the autosave would then overwrite the real
+      // cloud record with that empty state. A genuinely-empty account returns null.
+      const res = await fetch(`${supa.url}/rest/v1/app_state?key=eq.${encodeURIComponent(key)}&select=value`, {
+        headers: { apikey: supa.key, Authorization: `Bearer ${supa.key}` },
+      });
+      if (!res.ok) throw new Error(`cloud read failed (${res.status})`);
+      const rows = await res.json();
+      if (!Array.isArray(rows)) throw new Error("cloud read: unexpected response");
+      return rows[0] ? JSON.stringify(rows[0].value) : null;
     }
     try { return window.localStorage.getItem(key); } catch (e) { return null; }
   },
@@ -2008,27 +2011,44 @@ export default function App() {
   const [tab, setTab] = useState("roster");
   const [printTarget, setPrintTarget] = useState(null);
   const [saveState, setSaveState] = useState("saved");
+  const [syncBlocked, setSyncBlocked] = useState(false);
   const loaded = useRef(false);
   const saveTimer = useRef(null);
 
+  const loadProgram = async () => {
+    try {
+      const raw = await store.get(STORAGE_KEY);
+      setData((cur) => (raw ? normalizeData(JSON.parse(raw)) : cur || SEED));
+      setSyncBlocked(false);
+      loaded.current = true; // cloud state confirmed -> safe to autosave
+    } catch (e) {
+      // Cloud is configured but unreachable. Keep autosave OFF (loaded stays false)
+      // so we can NEVER overwrite the real cloud record with an unconfirmed state.
+      loaded.current = false;
+      setSyncBlocked(true);
+      setData((cur) => {
+        if (cur) return cur; // already showing data -> keep it, view-only
+        try {
+          const l = window.localStorage.getItem(STORAGE_KEY);
+          if (l) return normalizeData(JSON.parse(l));
+        } catch (_) {}
+        return cur; // stays null -> shows the reconnect screen
+      });
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      try {
-        const raw = await store.get(STORAGE_KEY);
-        if (raw) {
-          setData(normalizeData(JSON.parse(raw)));
-        } else {
-          setData(SEED);
-        }
-      } catch (e) {
-        setData(SEED);
-      }
-      loaded.current = true;
-    })();
+    loadProgram();
   }, []);
 
   useEffect(() => {
-    if (!loaded.current || !data) return;
+    if (!data) return;
+    // Always keep a local copy so a refresh never loses in-progress work.
+    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
+    // Only push to the cloud once we've CONFIRMED a cloud read this session.
+    // If the cloud never loaded (offline), pushing would overwrite the real
+    // record with unconfirmed local state — the exact bug that wiped the depth chart.
+    if (!loaded.current) return;
     setSaveState("saving");
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
@@ -2046,8 +2066,16 @@ export default function App() {
 
   if (!data) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FBFAF8", fontFamily: "Roboto, system-ui, sans-serif", color: "#5B616B" }}>
-        Loading your program…
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", gap: 14, alignItems: "center", justifyContent: "center", textAlign: "center", padding: 24, background: "#FBFAF8", fontFamily: "Roboto, system-ui, sans-serif", color: "#5B616B" }}>
+        {syncBlocked ? (
+          <>
+            <div style={{ fontWeight: 700, color: "#C32032" }}>Can't reach the cloud right now.</div>
+            <div style={{ maxWidth: 380 }}>Your program is safe in the cloud — we just didn't load it, and we won't save anything empty over it. Check your connection and try again.</div>
+            <button onClick={loadProgram} style={{ background: "#C32032", color: "#fff", border: 0, borderRadius: 8, padding: "10px 18px", fontWeight: 700, cursor: "pointer" }}>Retry</button>
+          </>
+        ) : (
+          "Loading your program…"
+        )}
       </div>
     );
   }
@@ -2067,6 +2095,12 @@ export default function App() {
     <div className="root">
       <Styles />
       <div className="app-ui">
+        {syncBlocked && (
+          <div className="offline-banner no-print">
+            Working offline — can't reach the cloud. Your program is safe there; changes here won't be saved until this reconnects.
+            <button onClick={loadProgram}>Retry</button>
+          </div>
+        )}
         <header className="masthead">
           <div className="mast-left">
             <div className="mark">VH</div>
@@ -2082,7 +2116,11 @@ export default function App() {
                 <option value={9}>All</option>
               </select>
             </label>
-            {saveState === "error" ? (
+            {syncBlocked ? (
+              <button className="save-chip error" onClick={loadProgram} title="Can't reach the cloud. Your program is safe there; tap to reconnect.">
+                Offline · tap to reconnect
+              </button>
+            ) : saveState === "error" ? (
               <button className="save-chip error" onClick={() => setData((d) => ({ ...d }))} title="Your work is saved on this device. Tap to retry the cloud sync.">
                 Cloud sync failed · tap to retry
               </button>
@@ -4394,6 +4432,8 @@ function Styles() {
 .mark { background: var(--red); color: #fff; font-family: var(--disp); font-weight: 700; font-size: 22px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; letter-spacing: 1px; box-shadow: 3px 3px 0 rgba(255,255,255,.15); }
 .team-line { font-family: var(--disp); font-weight: 700; font-size: 24px; letter-spacing: 2.5px; line-height: 1; }
 .sub-line { font-size: 10px; letter-spacing: 2.5px; color: #B9BCC2; margin-top: 4px; }
+.offline-banner { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; background: #FBEEC1; color: #7A5A00; border-bottom: 2px solid #EAAA00; padding: 9px 14px; font-size: 13px; font-weight: 600; }
+.offline-banner button { appearance: none; background: #C32032; color: #fff; border: 0; border-radius: 6px; padding: 5px 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
 .save-chip { font-size: 11px; letter-spacing: 1px; color: #9DA1A8; text-transform: uppercase; }
 button.save-chip.error { appearance: none; background: transparent; border: 1px solid #EAAA00; color: #EAAA00; font-family: inherit; padding: 6px 10px; cursor: pointer; min-height: 32px; }
 .mast-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
@@ -4990,4 +5030,4 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
   );
 }
 
-export { normalizeData, practiceGroupsFor, pgForPos, slotsFor, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, buildCallSheet, genDef, DEF_FRONTS, DEF_COVERAGES, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots };
+export { normalizeData, practiceGroupsFor, pgForPos, slotsFor, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, buildCallSheet, genDef, DEF_FRONTS, DEF_COVERAGES, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots, store };
