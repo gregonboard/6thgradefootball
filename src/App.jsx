@@ -1102,7 +1102,7 @@ const RAW_SEED = {
   scriptPos: 0,
   safariVersion: 2,
   callSheet: {},
-  csPaper: "legal",
+  csPaper: "legalwide",
   wrist: { title: "REBELS", cols: 3, copies: 4, selected: null },
   depth: { off: {}, def: {} },
   offScheme: "Speed",
@@ -3836,10 +3836,10 @@ function CallSheetTab({ data, up, onPrint, onPrintScript }) {
           <button className="btn ghost" onClick={() => up({ callSheet: buildCallSheet(data) })} title="Fills every EMPTY situation from what's installed. Boxes you already filled are never touched.">⚡ Fill It For Me</button>
           {anyAssigned && <button className="btn ghost" onClick={() => { if (window.confirm("Clear the whole call sheet? Then hit Fill It For Me for a fresh, complete sheet.")) up({ callSheet: {} }); }} title="Empty every box, then Fill It For Me rebuilds it from scratch">Clear</button>}
           <button className="btn ghost" onClick={onPrintScript} disabled={!anyAssigned} title="Prints the call sheet as a numbered team-period script coaches read rep by rep">Print Team Script</button>
-          <select className="cell" style={{ maxWidth: 170 }} value={data.csPaper || "legal"} onChange={(e) => up({ csPaper: e.target.value })} title="Paper for the printed call sheet" aria-label="Call sheet paper">
-            <option value="legal">Legal · 1 page</option>
-            <option value="legalwide">Legal wide · 1 page</option>
-            <option value="letter">Letter · front/back</option>
+          <select className="cell" style={{ maxWidth: 190 }} value={data.csPaper || "legalwide"} onChange={(e) => up({ csPaper: e.target.value })} title="Paper for the printed call sheet. Plays pack tight to fit one page, then flow to a second (front/back) only when they have to." aria-label="Call sheet paper">
+            <option value="legalwide">Legal · landscape (fits most)</option>
+            <option value="legal">Legal · portrait</option>
+            <option value="letter">Letter</option>
           </select>
           <button className="btn" onClick={onPrint} disabled={!anyAssigned}>Print Call Sheet</button>
         </div>
@@ -4316,12 +4316,14 @@ function CallSheetPrint({ data }) {
       <span>Timeouts: ☐ ☐ ☐</span>
     </div>
   );
-  const paper = data.csPaper || "legal";
+  const paper = data.csPaper || "legalwide";
   const head = <PrintHead title="Offensive Call Sheet" right={<><div className="p-meta">{data.gameLabel || "vs ______"}</div><div className="p-meta">{todayStr()}</div></>} />;
   const wide = paper === "legalwide";
   const size = paper === "letter" ? "letter portrait" : `legal ${wide ? "landscape" : "portrait"}`;
   const cls = paper === "letter" ? "cs-letter" : wide ? "cs-legal-wide" : "cs-legal";
-  const pageIn = paper === "letter" ? 9.3 : wide ? 7.5 : 13; /* rough content height per page */
+  /* Boxes pack down the columns and only flow onto a second page when they truly
+     run out of room, so a light sheet lands on one page and a heavy one goes
+     cleanly front/back. Real print pagination does the page splitting. */
   return (
     <>
       <style>{`@page { size: ${size}; margin: .4in; }`}</style>
@@ -4329,9 +4331,6 @@ function CallSheetPrint({ data }) {
         {head}
         <div className="p-cs-grid">{SITUATIONS.map(box)}</div>
         {keyRow}
-        {[1, 2, 3].map((n) => (
-          <div key={n} className="cs-pagebreak no-print" style={{ top: `${pageIn * n}in` }}><span>≈ page {n} ends</span></div>
-        ))}
       </div>
     </>
   );
@@ -4994,17 +4993,28 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .ts-check { flex-shrink: 0; color: var(--muted); }
 .ts-call { flex: 1; font-family: var(--disp); font-weight: 700; font-size: 14px; letter-spacing: .3px; text-transform: uppercase; }
 .ts-sit { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; flex-shrink: 0; }
-.cs-back { break-before: page; }
-.cs-sheet { position: relative; }
-.cs-pagebreak { position: absolute; left: 0; right: 0; border-top: 2px dashed #C32032; text-align: right; }
-.cs-pagebreak span { font-family: var(--disp); font-size: 10px; letter-spacing: 1px; color: #C32032; background: #fff; padding: 0 4px; }
-.sheet.cs-legal { width: 7.6in; min-height: 12.8in; }
-.sheet.cs-legal-wide { width: 13in; min-height: 7.7in; }
-.cs-legal-wide .p-cs-grid { grid-template-columns: repeat(4, 1fr); }
-.p-cs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.p-cs-box { border: 1.5px solid var(--ink); }
-.p-cs-label { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; background: var(--ink); color: #fff; padding: 4px 8px; }
-.p-cs-play { display: flex; align-items: center; gap: 7px; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+.sheet.cs-legal { width: 7.6in; }
+.sheet.cs-legal-wide { width: 13in; }
+/* Compact header/footer on the call sheet only, to win back the vertical room
+   that keeps the whole book (and its legend) on one page. */
+.cs-sheet .p-head { padding-bottom: 6px; margin-bottom: 8px; }
+.cs-sheet .p-title { font-size: 22px; }
+.cs-sheet .p-foot { margin-top: 6px; padding-top: 5px; }
+/* Column packing: boxes fill each column top-to-bottom, then spill to the next
+   column and (when full) the next page. Kills the tall-row whitespace a grid leaves. */
+.p-cs-grid { columns: 2; column-gap: .28in; }
+.cs-legal-wide .p-cs-grid { columns: 4; }
+.cs-letter .p-cs-grid { columns: 2; }
+/* A long list (Base Runs) may flow across a column boundary — a whole box won't
+   fit one column. We keep the section's dark label bar with its first plays and
+   never split an individual play row, so the wrap reads cleanly without a border
+   that would look broken at the seam. */
+.p-cs-box { margin: 0 0 8px; break-inside: auto; }
+.p-cs-box:first-child .p-cs-label { margin-top: 0; }
+.p-cs-label { font-family: var(--disp); font-weight: 700; font-size: 12.5px; letter-spacing: 1.5px; text-transform: uppercase; background: var(--ink); color: #fff; padding: 3px 8px; break-after: avoid; }
+.p-cs-play { display: flex; align-items: center; gap: 7px; padding: 2.5px 8px; border-bottom: 1px solid var(--line); border-left: 1.5px solid var(--ink); border-right: 1.5px solid var(--ink); break-inside: avoid; }
+.p-cs-play:first-of-type { border-top: none; }
+.p-cs-box .p-cs-play:last-child { border-bottom: 1.5px solid var(--ink); }
 .p-cs-play:last-child { border-bottom: none; }
 .p-cs-num { color: #fff; font-family: var(--mono); font-weight: 700; font-size: 11px; min-width: 22px; text-align: center; padding: 1px 0; }
 .p-cs-name { font-family: var(--disp); font-weight: 600; font-size: 15px; letter-spacing: .5px; text-transform: uppercase; flex: 1; }
