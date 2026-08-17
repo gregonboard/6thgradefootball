@@ -111,7 +111,7 @@ describe("vocabulary", () => {
   });
   it("seeds the diabolical layer: RPO, tag combos, chain notes, the dagger", () => {
     const names = SEED.plays.map((p) => p.name);
-    for (const want of ["Doubles · Rhino Now", "Doubles · Lion Now", "Doubles · Lion Peek", "Doubles · Rocket Peek", "Doubles · Rainbow", "Doubles · Lightning"]) {
+    for (const want of ["Doubles · Rhino Now", "Doubles · Lion Now", "Doubles · Lion Owl", "Doubles · Rocket Owl", "Doubles · Rainbow", "Doubles · Lightning"]) {
       expect(names, want + " is seeded").toContain(want);
     }
     // the Aug 17 cuts stay dead: Orbit drew two men in motion at the snap,
@@ -137,7 +137,7 @@ describe("vocabulary", () => {
     expect(rtBlock.pts[1][0]).toBeLessThan(rtBlock.pts[0][0]); // down block lean
     expect((els.Y || []).some((e) => e.kind === "carry")).toBe(true); // seam
     expect(ASSIGNMENTS.owl.OL).toMatch(/RIGHT, every time/);
-    expect(CONCEPTS.owl.how).toMatch(/Lion Peek/); // the left-action answer exists
+    expect(CONCEPTS.owl.how).toMatch(/Lion Owl/); // the whole Owl family is documented
   });
   it("Rewind and Loop finally have band numbers", () => {
     const names = SEED.plays.map((p) => p.name);
@@ -333,7 +333,7 @@ describe("seeds", () => {
     expect(names).toContain("Tank Rt · Owl");
     expect(names.filter((n) => n === "Tank Rt · Owl").length).toBe(1);
     expect(v3.plays.length).toBe(71); // everything a fresh install gets, no dupes
-    expect(v3.safariVersion).toBe(13);
+    expect(v3.safariVersion).toBe(14);
     expect(v3.packages.map((p) => p.name)).toContain("CHEETAH");
     const rocket = v3.plays.find((p) => p.name === "Doubles · Rocket");
     const reeses = v3.plays.find((p) => p.name === "Doubles · Reese's");
@@ -350,7 +350,7 @@ describe("seeds", () => {
     const old = {
       players: [], safariVersion: 12, day1Seeded: true, week2Seeded: true, savedPlans: [],
       plays: [
-        ...SEED.plays.filter((p) => !/(Peek|Nasty Rt · Raccoon|Nasty Lt · Longhorn)/.test(p.name)).map((p) => ({ ...p })),
+        ...SEED.plays.filter((p) => !/(Lion Owl|Rocket Owl|Laser Owl|Nasty Rt · Raccoon|Nasty Lt · Longhorn)/.test(p.name)).map((p) => ({ ...p })),
         cutPlay(30, "Doubles", "keep", "Rt", ["Orbit"]),
         cutPlay(61, "Doubles", "power", "Rt", ["Peek"]),
         cutPlay(62, "Doubles", "jet", "Rt", ["Orbit"]),
@@ -369,7 +369,7 @@ describe("seeds", () => {
     for (const gone of ["Doubles · Raccoon Orbit", "Doubles · Rhino Peek", "Doubles · Rocket Orbit", "Doubles · Laser Orbit", "Nasty Rt · Rocket Zip", "Nasty Lt · Laser Zip"]) {
       expect(names, gone + " is cut").not.toContain(gone);
     }
-    for (const added of ["Doubles · Lion Peek", "Doubles · Rocket Peek", "Doubles · Laser Peek", "Nasty Rt · Raccoon", "Nasty Lt · Longhorn"]) {
+    for (const added of ["Doubles · Lion Owl", "Doubles · Rocket Owl", "Doubles · Laser Owl", "Nasty Rt · Raccoon", "Nasty Lt · Longhorn"]) {
       expect(names.filter((n) => n === added).length, added + " seeded once").toBe(1);
     }
     expect(d.plays.find((p) => p.name === "Doubles · Rhino Now").note).toMatch(/smoke to X/);
@@ -381,20 +381,45 @@ describe("seeds", () => {
     expect(again.plays.length).toBe(d.plays.length);
     expect(again.plays.map((p) => p.name)).toEqual(d.plays.map((p) => p.name));
   });
-  it("v13 weaponized layer: the new plays draw real deception", () => {
-    // Rocket Peek: jet motion live, Y slipping the seam, QB throw drawn
-    const rp = genPlayElements("jet", formSpots("Doubles"), "Rt", ["Peek"], "Doubles");
+  it("weaponized layer: the Owl family draws real play action, always thrown", () => {
+    // Rocket Owl: jet motion live but the give is a FAKE, Y carries the seam, QB throw drawn
+    const rp = genPlayElements("jet", formSpots("Doubles"), "Rt", ["Owl"], "Doubles");
     expect(rp.H.some((e) => e.kind === "motion")).toBe(true);
-    expect(rp.Y.some((e) => e.kind === "route")).toBe(true);
+    expect(rp.H.some((e) => e.kind === "carry")).toBe(false); // the mesh is theater
+    expect(rp.Y.some((e) => e.kind === "carry")).toBe(true); // Y is the play
     expect(rp.QB.some((e) => e.kind === "throw")).toBe(true);
-    // Lion Peek: the left Owl
-    const lp = genPlayElements("power", formSpots("Doubles"), "Lt", ["Peek"], "Doubles");
-    expect(lp.Y.some((e) => e.kind === "route")).toBe(true);
+    // Lion Owl: the left Owl, RB runs angry without the ball
+    const lp = genPlayElements("power", formSpots("Doubles"), "Lt", ["Owl"], "Doubles");
+    expect(lp.RB.some((e) => e.kind === "carry")).toBe(false);
+    expect(lp.Y.some((e) => e.kind === "carry")).toBe(true);
     expect(lp.QB.some((e) => e.kind === "throw")).toBe(true);
     // Nasty Raccoon: QB carries, jet fake live from the condensed set
     const nr = genPlayElements("keep", formSpots("Nasty Rt"), "Rt", [], "Nasty Rt");
     expect(nr.QB.some((e) => e.kind === "carry")).toBe(true);
     expect(nr.H.some((e) => e.kind === "motion")).toBe(true);
+  });
+  it("v14: Peek becomes Owl in place, real play action, type flips to Pass", () => {
+    // a v13 program: Peek tags, Run type, the v13 note text
+    const old = {
+      players: [], safariVersion: 13, day1Seeded: true, week2Seeded: true, savedPlans: [],
+      plays: SEED.plays.map((p) => ((p.tags || []).includes("Owl")
+        ? { ...p, tags: ["Peek"], type: "Run", name: `${p.formation} · ${callWord(p.concept, p.dir, ["Peek"])}` }
+        : { ...p })),
+    };
+    const laser = old.plays.find((p) => p.name === "Doubles · Laser Peek");
+    laser.note = "Laser Peek: the seam off left jet action. Same rule: chase the jet and Y is behind you.";
+    const d = normalizeData(old);
+    const names = d.plays.map((p) => p.name);
+    expect(names).not.toContain("Doubles · Laser Peek");
+    for (const want of ["Doubles · Lion Owl", "Doubles · Rocket Owl", "Doubles · Laser Owl"]) {
+      const p = d.plays.find((x) => x.name === want);
+      expect(p, want).toBeTruthy();
+      expect(p.tags).toEqual(["Owl"]);
+      expect(p.type, want + " reads as a pass").toBe("Pass");
+    }
+    expect(d.plays.find((p) => p.name === "Doubles · Laser Owl").note).toMatch(/always thrown/);
+    const again = normalizeData(JSON.parse(JSON.stringify(d)));
+    expect(again.plays.map((p) => p.name)).toEqual(names);
   });
   it("defense: both fronts field 11; coverages, stunts, blitzes draw on the field", () => {
     for (const front of Object.keys(DEF_FRONTS)) {
@@ -505,7 +530,7 @@ describe("normalizeData migration", () => {
     expect(keepLt.name).toContain("Longhorn"); // derived names propagate the rename
     expect(d.savedPlans.some((s) => /day 1/i.test(s.name))).toBe(true);
     expect(d.players[0].name).toBe("Old Kid"); // user data untouched
-    expect(d.safariVersion).toBe(13);
+    expect(d.safariVersion).toBe(14);
   });
   it("does not double-seed on a second load", () => {
     const once = normalizeData({ safariVersion: 2, plays: SEED.plays.map((p) => ({ ...p })) });

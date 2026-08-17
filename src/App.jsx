@@ -689,11 +689,13 @@ function genPlayElements(conceptKey, spots, dir, tags = [], formation) {
     const [rx, ry] = at("RB");
     el["RB"] = [{ kind: "route", pts: [[rx, ry], [rx - s * 10, ry + 2], [rx - s * 20, ry - 4], [rx - s * 22, ry - 16]] }];
   }
-  if (tags.includes("Peek") && has("Y")) {
-    /* Owl alive on a run call: Y slips to the seam, QB throws only if the backers bite */
+  if (tags.includes("Owl") && has("Y")) {
+    /* OWL behind a run word: real play action, ALWAYS thrown. The run becomes
+       theater (every carry demotes to a fake), Y slips the seam, QB pops it. */
+    for (const L of Object.keys(el)) el[L] = el[L].map((e) => (e.kind === "carry" ? { ...e, kind: "fake" } : e));
     const [yx, yy] = at("Y");
     const bend = yx <= 50 ? 3 : -3;
-    el["Y"] = [{ kind: "route", pts: [[yx, yy], [yx, yy - 4], [yx + bend, yy - 14]] }];
+    el["Y"] = [{ kind: "carry", pts: [[yx, yy], [yx, yy - 4], [yx + bend, yy - 14]] }];
     if (has("QB")) add("QB", "throw", [at("QB"), [yx + bend * 0.7, yy - 11]]);
   }
   if (tags.includes("Max")) {
@@ -715,7 +717,7 @@ const CONCEPTS = {
   sparrow: { fam: "Pass",   dirs: [""],         words: { "": "Sparrow" }, carrier: "WR", signal: "Pinch fingers, small bird", how: "Hitches outside, H slants behind them, Y sticks at 5. Ball out now. Against press, the pressed hitch automatically becomes a GO. (H ran an out in v1; Greg ruled it collided with X's hitch.)", read: "Pick the widest cushion before the snap and throw it on rhythm. No cushion anywhere means they pressed: throw the GO over the presser or take Y at 5." },
   robin:   { fam: "Pass",   dirs: [""],         words: { "": "Robin" }, carrier: "WR", signal: "Flap the elbows", how: "Slants outside, arrows to the flats, and the RB settles in the middle the slants just emptied. The 6th grade money concept.", read: "Flat first. Covered means the slant is open behind it. Everything covered: the RB is sitting alone in the middle." },
   hawk:    { fam: "Pass",   dirs: [""],         words: { "": "Hawk" }, carrier: "WR", signal: "One arm soars", how: "Three levels on Y's side: Z curls at 8, Y wheels up the sideline (last year's touchdown route), and H sells one hard bubble step AWAY, then crosses shallow behind Y. The backer who could sink under the wheel now has H arriving in his face. X curls backside as the escape.", read: "One man: the flat defender on Y's side. He runs deep with the wheel: throw H underneath. He jumps H: the wheel is six. Blitz: H's bubble is one step away. Scramble: X is curling behind you." },
-  owl:     { fam: "Pass",   dirs: [""],         words: { "": "Owl" }, carrier: "Y", signal: "Circles over the eyes", how: "Everyone sells Rhino, and Owl is ALWAYS Rhino action to the right: the line hears HAMMER with no R or L word and that means Rhino rules, every time. Y slips into the seam behind the linebackers, QB fakes and pops it over their heads. Want the seam off LEFT action? That play already exists: Lion Peek.", read: "Fake, find Y, throw it now. Covered? Tuck it and run the Rhino path. The most unfair play we own." },
+  owl:     { fam: "Pass",   dirs: [""],         words: { "": "Owl" }, carrier: "Y", signal: "Circles over the eyes", how: "Everyone sells Rhino, and Owl is ALWAYS Rhino action to the right: the line hears HAMMER with no R or L word and that means Rhino rules, every time. Y slips into the seam behind the linebackers, QB fakes and pops it over their heads. OWL behind any run word (Lion Owl, Rocket Owl, Laser Owl) is this same shot off that run's action: always thrown, the fake is the play.", read: "Fake, find Y, throw it now. Covered? Tuck it and run the Rhino path. The most unfair play we own." },
   falcon:  { fam: "Pass",   dirs: [""],         words: { "": "Falcon" }, carrier: "WR", signal: "Both arms soar", how: "Four verticals, slots bend to the seams, RB checks down.", read: "Coach picks the target before the snap. No pick, or one deep safety in the middle: throw the seam on the FAR side of him." },
   flood:   { fam: "Pass",   dirs: ["Rt", "Lt"], words: { Rt: "Raven", Lt: "Lark" }, carrier: "WR", signal: "Wing out flat, run the fingers sideways, then point", how: "Sprint-out flood: QB moves the launch point to the call side with the RB leading. Three levels stacked in front of him: go to clear it, deep out at 10, flat at 4. Half the field, one look at a time, and his legs are the third answer.", read: "Deep out first. Covered? Flat. Both covered? RUN for the sticks and get down or get out of bounds." },
   eagle:   { fam: "Pass",   dirs: [""],         words: { "": "Eagle" }, carrier: "WR", signal: "Full wingspan flex", how: "The shot. Post and go outside, Y drags underneath, H and RB stay in to protect seven strong.", read: "One look deep for two seconds, then take the drag." },
@@ -756,7 +758,7 @@ const playCarrier = (p) => {
   if (p.concept === "rbpass") return p.dir === "Lt" ? "X" : "Z";
   if (p.concept === "reverse") return p.dir === "Lt" ? "Z" : "X";
   if ((p.tags || []).includes("Now")) return c.carrier + " / X";
-  if ((p.tags || []).includes("Peek")) return c.carrier + " / Y";
+  if ((p.tags || []).includes("Owl")) return "Y";
   return c.carrier;
 };
 
@@ -812,7 +814,8 @@ function mkSeedPlay(num, formation, concept, dir, core, week, tags) {
   return {
     id: uid(), num, formation, concept, dir: dir || "", tags: tags || [], core: !!core, week,
     name: `${formation} · ${callWord(concept, dir, tags || [])}`,
-    type: CONCEPTS[concept].fam === "Screen" ? "Screen" : CONCEPTS[concept].fam,
+    /* an OWL-tagged run is really play action, so the card colors say Pass */
+    type: (tags || []).includes("Owl") ? "Pass" : CONCEPTS[concept].fam === "Screen" ? "Screen" : CONCEPTS[concept].fam,
     note: "",
   };
 }
@@ -944,9 +947,9 @@ function safariSeedPlaysV10() {
   const mk = mkSeedPlay;
   const note = (p, n) => ({ ...p, note: n });
   return [
-    note(mk(73, "Doubles", "power", "Lt", false, 5, ["Peek"]), "The LEFT Owl, finally real. Lion with the seam alive behind it: backers flow to the left hammer even once on film, QB pulls and pops Y over their heads. Owl only lives off right action; this is the other half of the nightmare."),
-    note(mk(74, "Doubles", "jet", "Rt", false, 5, ["Peek"]), "The jet-chaser killer. Sell Rocket at full speed; the backers who have been burned by it all night sprint for the sideline, and Y slips into the seam they just emptied. They stay home? Give it and take the edge. They cannot be right."),
-    note(mk(75, "Doubles", "jet", "Lt", false, 5, ["Peek"]), "Laser Peek: the seam off left jet action. Same rule: chase the jet and Y is behind you."),
+    note(mk(73, "Doubles", "power", "Lt", false, 5, ["Owl"]), "The LEFT Owl. Everyone sells Lion, and this one is ALWAYS thrown: QB fakes the give and pops Y over the backers flowing to the hammer. Same rule as Owl: the fake is the play."),
+    note(mk(74, "Doubles", "jet", "Rt", false, 5, ["Owl"]), "Play action off our best action, always thrown. Sell the Rocket mesh at full speed; the backers who have been burned all night sprint for the sideline, and Y slips into the seam they just emptied. QB fakes the give and pops it."),
+    note(mk(75, "Doubles", "jet", "Lt", false, 5, ["Owl"]), "Laser Owl: the seam off left jet action, always thrown."),
     note(mk(76, "Nasty Rt", "keep", "Rt", false, 5), "The Nasty back door. Identical picture to Nasty Rocket, and the condensed splits mean the edge is a mile wide. When their end starts chasing the jet, QB keeps behind him with the RB leading and walks out the back."),
     note(mk(77, "Nasty Lt", "keep", "Lt", false, 5), "Nasty Longhorn: the back door, left."),
   ];
@@ -1096,7 +1099,7 @@ const RAW_SEED = {
     { id: uid(), name: "Jump-Cut Lane (RB)", cat: "Individual", group: "RB", mins: 8, notes: "One cut, no dancing: press the lane, jump-cut off the reaction. Feeds Rhino and Ram.", detail: "SETUP: two bags make a lane, coach steps into it or not. COACH: press to the heels of the bags, one plant, shoulders square north. WIN: zero double-cuts in 10 reps." },
     { id: uid(), name: "Lead Block Strike (RB)", cat: "Individual", group: "RB", mins: 6, notes: "The RB's Raccoon job: lead the edge, strike the first color, feet alive.", detail: "SETUP: RB leads through a cone edge into a bag holder. COACH: inside-out fit, same-foot same-shoulder, run through contact. WIN: 6 strikes that would spring the QB." },
     { id: uid(), name: "Sprint-Out Ladder (QB)", cat: "Individual", group: "QB", mins: 10, notes: "Raven/Lark mechanics: sprint, square the shoulders, ladder the reads, throw on the run.", detail: "SETUP: QB sprints the arc past a cone, targets at the out, the flat, and a scramble gate. COACH: chest to the target, throw off the inside foot, tuck and go through the gate when both hands stay down. WIN: 8 of 12 completions plus 2 smart tucks." },
-    { id: uid(), name: "Fake It Big (QB/RB theater)", cat: "Individual", group: "QB", mins: 6, notes: "Play-action acting class for Owl and Peek. The fake IS the play.", detail: "SETUP: QB and RB run Rhino action with no defense, coaches grade the fake only. COACH: ball to the belly, eyes downhill, RB runs angry two counts past the fake. WIN: a parent on the sideline can't tell who has it." },
+    { id: uid(), name: "Fake It Big (QB/RB theater)", cat: "Individual", group: "QB", mins: 6, notes: "Play-action acting class for the whole Owl family. The fake IS the play.", detail: "SETUP: QB and RB run Rhino action with no defense, coaches grade the fake only. COACH: ball to the belly, eyes downhill, RB runs angry two counts past the fake. WIN: a parent on the sideline can't tell who has it." },
     { id: uid(), name: "Mesh Triple Rep", cat: "Group", group: "Bigs + Backs", mins: 10, notes: "The whole series in one drill: Rhino give, Rocket flip, Raccoon keep, back to back to back.", detail: "SETUP: QB, RB, H, no line. Coach calls the series play just before GO. COACH: identical first two steps on all three, QB owns every ball. WIN: 3 straight series where a watching coach can't call it early." },
     { id: uid(), name: "Fastball Period (TURBO)", cat: "Team", group: "Offense", mins: 10, notes: "Tempo is a skill. Snap-sprint-align-snap, whistle to whistle, no huddle ever.", detail: "SETUP: full offense vs air or bags, coach signals off the board. COACH: 15 seconds max between snaps, sprint to Doubles, eyes to the sideline. WIN: 10 plays in 4 minutes with zero procedure flags." },
     { id: uid(), name: "Kill Check Rehearsal", cat: "Team", group: "Offense", mins: 8, notes: "QB counts the box out loud, yells KILL KILL when it's heavy. The band pairs come alive.", detail: "SETUP: offense aligns, coaches build a heavy or light box with bags, QB checks. COACH: count fast, one look, loud enough for the tackles. WIN: 8 of 8 correct checks." },
@@ -1357,6 +1360,8 @@ function normalizeData(parsed) {
   });
   // Coaching detail backfill: existing drills gain the coach-the-coaches text once.
   drills = drills.map((d) => (!d.detail && DRILL_DETAILS[d.name] ? { ...d, detail: DRILL_DETAILS[d.name] } : d));
+  // Peek died Aug 17 (v14): the acting-class drill note follows the vocabulary.
+  drills = drills.map((d) => (d.notes && d.notes.includes("acting class for Owl and Peek") ? { ...d, notes: d.notes.replace("acting class for Owl and Peek", "acting class for the whole Owl family") } : d));
   // Merge in new library drills the coach doesn't have yet (by name).
   if ((parsed.libVersion || 1) < SEED.libVersion) {
     const have = new Set(drills.map((d) => d.name.toLowerCase()));
@@ -1474,6 +1479,25 @@ function normalizeData(parsed) {
     let n13 = 0;
     plays = [...plays, ...safariSeedPlaysV10().filter((p) => !haveV13.has(p.name)).map((p) => ({ ...p, id: uid(), num: base13 + (++n13) }))];
   }
+  // v14 (Greg's one-word ruling, Aug 17): Peek dies. OWL behind a run word is
+  // real play action, always thrown, and Y is the play; bare Owl stays the
+  // Rhino-rules original. Tags rename, type flips to Pass, notes get the
+  // always-thrown text (names re-derive below).
+  if (!(parsed.safariVersion >= 14)) {
+    plays = plays.map((p) => {
+      if (!(p.tags || []).includes("Peek")) return p;
+      return { ...p, tags: p.tags.map((t) => (t === "Peek" ? "Owl" : t)), type: "Pass" };
+    });
+    const NOTE_SWAPS_14 = {
+      "The LEFT Owl, finally real. Lion with the seam alive behind it: backers flow to the left hammer even once on film, QB pulls and pops Y over their heads. Owl only lives off right action; this is the other half of the nightmare.":
+        "The LEFT Owl. Everyone sells Lion, and this one is ALWAYS thrown: QB fakes the give and pops Y over the backers flowing to the hammer. Same rule as Owl: the fake is the play.",
+      "The jet-chaser killer. Sell Rocket at full speed; the backers who have been burned by it all night sprint for the sideline, and Y slips into the seam they just emptied. They stay home? Give it and take the edge. They cannot be right.":
+        "Play action off our best action, always thrown. Sell the Rocket mesh at full speed; the backers who have been burned all night sprint for the sideline, and Y slips into the seam they just emptied. QB fakes the give and pops it.",
+      "Laser Peek: the seam off left jet action. Same rule: chase the jet and Y is behind you.":
+        "Laser Owl: the seam off left jet action, always thrown.",
+    };
+    plays = plays.map((p) => (p.note && NOTE_SWAPS_14[p.note] ? { ...p, note: NOTE_SWAPS_14[p.note] } : p));
+  }
   // Concept play names are derived, so vocabulary updates flow through automatically.
   plays = plays.map((p) =>
     p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
@@ -1502,7 +1526,7 @@ function normalizeData(parsed) {
     gameLabel: parsed.gameLabel || "",
     script: parsed.script || [],
     scriptPos: parsed.scriptPos || 0,
-    safariVersion: 13,
+    safariVersion: 14,
     defense: normDefense(parsed.defense),
     seasonWeek: parsed.seasonWeek || 1,
     pgOverrides: parsed.pgOverrides || {},
@@ -3029,7 +3053,7 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
                 <option value="Rt">Rt</option><option value="Lt">Lt</option>
               </select>
             )}
-            {["Jet", "Now", "Wheel", "Max", ...(seasonWeek >= 5 ? ["Peek"] : [])].map((t) => (
+            {["Jet", "Now", "Wheel", "Max", ...(seasonWeek >= 5 ? ["Owl"] : [])].map((t) => (
               <label key={t} className={"tag-check" + (bTags.includes(t) ? " on" : "")}>
                 <input type="checkbox" checked={bTags.includes(t)} onChange={() => toggleTag(t)} />{t}
               </label>
@@ -3826,12 +3850,12 @@ function SignalsPrint({ data }) {
 const CALL_SHEET_RECIPE = {
   openers: ["Doubles · Rhino", "Doubles · Rocket", "Doubles · Sparrow", "Doubles · Lion", "Doubles · Raccoon", "Doubles · Owl"],
   run: ["Doubles · Rhino", "Trips Rt · Rhino", "Doubles · Lion", "Trips Lt · Lion", "Doubles · Rocket", "Doubles · Laser", "Doubles · Ram", "Doubles · Leopard", "Doubles · Rabbit", "Doubles · Lynx"],
-  pass: ["Doubles · Sparrow", "Doubles · Robin", "Trips Rt · Hawk", "Doubles · Hawk", "Trips Lt · Hawk", "Doubles · Owl", "Doubles · Raven", "Doubles · Lark"],
+  pass: ["Doubles · Sparrow", "Doubles · Robin", "Trips Rt · Hawk", "Doubles · Hawk", "Trips Lt · Hawk", "Doubles · Owl", "Doubles · Lion Owl", "Doubles · Rocket Owl", "Doubles · Raven", "Doubles · Lark"],
   third_short: ["I Rt · Moose", "Tank Rt · Moose", "Doubles · Rabbit", "I Rt · Rhino", "Doubles · Lynx", "Tank Rt · Rhino"],
   third_long: ["Doubles · Raven", "Doubles · Lark", "Trips Rt · Raven", "Doubles · Hawk", "Trips Rt · Hawk", "Doubles · Rolo", "Doubles · Lifesaver"],
   redzone: ["Doubles · Rhino", "Tank Rt · Owl", "Trips Rt · Rhino", "Doubles · Reese's", "Doubles · Rocket", "I Rt · Rhino"],
   goalline: ["I Rt · Moose", "I Rt · Rhino", "I Lt · Lion", "Tank Rt · Owl", "Doubles · Rhino", "Doubles · Lion"],
-  special: ["Doubles · Rewind", "Doubles · Loop", "Doubles · Rainbow", "Doubles · Lightning", "Doubles · Rhino Peek"],
+  special: ["Doubles · Rewind", "Doubles · Loop", "Doubles · Rainbow", "Doubles · Lightning"],
 };
 function buildCallSheet(data) {
   const wk = data.seasonWeek || 1;
