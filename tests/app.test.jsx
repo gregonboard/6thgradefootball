@@ -57,7 +57,7 @@ describe("vocabulary", () => {
     for (const want of ["Doubles · Raven", "Trips Rt · Raven", "Doubles · Hawk", "Empty · Robin", "Empty · Reese's", "Empty · Laffy"]) {
       expect(names, want + " is seeded").toContain(want);
     }
-    expect(SEED.plays.length).toBe(72);
+    expect(SEED.plays.length).toBe(71);
   });
   it("never installs a formation before its first play", () => {
     for (const f of Object.keys(FORM_WEEKS)) {
@@ -111,8 +111,13 @@ describe("vocabulary", () => {
   });
   it("seeds the diabolical layer: RPO, tag combos, chain notes, the dagger", () => {
     const names = SEED.plays.map((p) => p.name);
-    for (const want of ["Doubles · Rhino Now", "Doubles · Lion Now", "Doubles · Rhino Peek", "Doubles · Rocket Orbit", "Nasty Rt · Rocket Zip", "Doubles · Rainbow", "Doubles · Lightning"]) {
+    for (const want of ["Doubles · Rhino Now", "Doubles · Lion Now", "Doubles · Lion Peek", "Doubles · Rocket Peek", "Doubles · Rainbow", "Doubles · Lightning"]) {
       expect(names, want + " is seeded").toContain(want);
+    }
+    // the Aug 17 cuts stay dead: Orbit drew two men in motion at the snap,
+    // Zip condensed the already-condensed Nasty, Rhino Peek duplicated Owl
+    for (const gone of ["Doubles · Rhino Peek", "Doubles · Rocket Orbit", "Doubles · Raccoon Orbit", "Nasty Rt · Rocket Zip"]) {
+      expect(names, gone + " stays cut").not.toContain(gone);
     }
     expect(CONCEPTS.rbpass.words).toEqual({ Rt: "Rainbow", Lt: "Lightning" });
     expect(LINE_CALLS.rbpass).toBe("STRETCH"); // it must smell exactly like Ram
@@ -278,7 +283,7 @@ describe("seeds", () => {
     for (const want of ["Bunch Rt · Rocket", "Nasty Rt · Ram", "Tank Rt · Ram", "Trips Rt · Rhino", "Tank Lt · Leopard"]) {
       expect(names, want + " is seeded").toContain(want);
     }
-    expect(SEED.plays.length).toBe(72);
+    expect(SEED.plays.length).toBe(71); // the Aug 17 cuts (6) + the v13 weaponized layer (5)
   });
   it("renames the jet drill in place so saved plans keep their links", () => {
     const old = { players: [], drills: [{ id: "d-keep", name: "Jet Touch Pass Timing", cat: "Group", group: "Skill (QB/RB/WR/TE)", mins: 12, notes: "old" }], libVersion: 4, safariVersion: 6, day1Seeded: true, week2Seeded: true, savedPlans: [], plays: SEED.plays.map((p) => ({ ...p })) };
@@ -327,16 +332,69 @@ describe("seeds", () => {
     const names = v3.plays.map((p) => p.name);
     expect(names).toContain("Tank Rt · Owl");
     expect(names.filter((n) => n === "Tank Rt · Owl").length).toBe(1);
-    expect(v3.plays.length).toBe(72); // 30 + v4 looks + Ram/Leopard + v6 costumes + QB tree
-    expect(v3.safariVersion).toBe(12);
+    expect(v3.plays.length).toBe(71); // everything a fresh install gets, no dupes
+    expect(v3.safariVersion).toBe(13);
     expect(v3.packages.map((p) => p.name)).toContain("CHEETAH");
     const rocket = v3.plays.find((p) => p.name === "Doubles · Rocket");
     const reeses = v3.plays.find((p) => p.name === "Doubles · Reese's");
     expect(rocket.killId).toBe(reeses.id);
     // running it again must change nothing (Greg's live data reloads every session)
     const again = normalizeData(JSON.parse(JSON.stringify(v3)));
-    expect(again.plays.length).toBe(72);
+    expect(again.plays.length).toBe(71);
     expect(again.packages.length).toBe(v3.packages.length);
+  });
+  it("v13: cuts the Orbit/Zip/Rhino-Peek plays, seeds the weaponized layer, fixes stale notes", () => {
+    // a v12 program still carrying the cut plays and the old note text
+    // live v12 data carries derived names (normalizeData re-derives and stores them on every load)
+    const cutPlay = (num, formation, concept, dir, tags) => ({ id: "cut" + num, num, formation, concept, dir, tags, week: 5, name: `${formation} · ${callWord(concept, dir, tags)}`, type: "Run", note: "" });
+    const old = {
+      players: [], safariVersion: 12, day1Seeded: true, week2Seeded: true, savedPlans: [],
+      plays: [
+        ...SEED.plays.filter((p) => !/(Peek|Nasty Rt · Raccoon|Nasty Lt · Longhorn)/.test(p.name)).map((p) => ({ ...p })),
+        cutPlay(30, "Doubles", "keep", "Rt", ["Orbit"]),
+        cutPlay(61, "Doubles", "power", "Rt", ["Peek"]),
+        cutPlay(62, "Doubles", "jet", "Rt", ["Orbit"]),
+        cutPlay(63, "Doubles", "jet", "Lt", ["Orbit"]),
+        cutPlay(64, "Nasty Rt", "jet", "Rt", ["Zip"]),
+        cutPlay(65, "Nasty Lt", "jet", "Lt", ["Zip"]),
+      ],
+    };
+    // give the RPO and reverse plays their pre-v13 notes
+    for (const p of old.plays) {
+      if (p.name === "Doubles · Rhino Now") p.note = "THE RPO. QB reads the man over the slot: he squeezes for Rhino, throw the bubble; he widens, hand Rhino. The defense is wrong before the snap.";
+      if (p.name === "Doubles · Loop") p.note = "The reverse, left.";
+    }
+    const d = normalizeData(old);
+    const names = d.plays.map((p) => p.name);
+    for (const gone of ["Doubles · Raccoon Orbit", "Doubles · Rhino Peek", "Doubles · Rocket Orbit", "Doubles · Laser Orbit", "Nasty Rt · Rocket Zip", "Nasty Lt · Laser Zip"]) {
+      expect(names, gone + " is cut").not.toContain(gone);
+    }
+    for (const added of ["Doubles · Lion Peek", "Doubles · Rocket Peek", "Doubles · Laser Peek", "Nasty Rt · Raccoon", "Nasty Lt · Longhorn"]) {
+      expect(names.filter((n) => n === added).length, added + " seeded once").toBe(1);
+    }
+    expect(d.plays.find((p) => p.name === "Doubles · Rhino Now").note).toMatch(/smoke to X/);
+    expect(d.plays.find((p) => p.name === "Doubles · Loop").note).toMatch(/fakes the jet RIGHT/);
+    // a coach-edited note is left alone
+    expect(d.plays.find((p) => p.name === "Doubles · Lion Now")).toBeTruthy();
+    // idempotent: running it again changes nothing
+    const again = normalizeData(JSON.parse(JSON.stringify(d)));
+    expect(again.plays.length).toBe(d.plays.length);
+    expect(again.plays.map((p) => p.name)).toEqual(d.plays.map((p) => p.name));
+  });
+  it("v13 weaponized layer: the new plays draw real deception", () => {
+    // Rocket Peek: jet motion live, Y slipping the seam, QB throw drawn
+    const rp = genPlayElements("jet", formSpots("Doubles"), "Rt", ["Peek"], "Doubles");
+    expect(rp.H.some((e) => e.kind === "motion")).toBe(true);
+    expect(rp.Y.some((e) => e.kind === "route")).toBe(true);
+    expect(rp.QB.some((e) => e.kind === "throw")).toBe(true);
+    // Lion Peek: the left Owl
+    const lp = genPlayElements("power", formSpots("Doubles"), "Lt", ["Peek"], "Doubles");
+    expect(lp.Y.some((e) => e.kind === "route")).toBe(true);
+    expect(lp.QB.some((e) => e.kind === "throw")).toBe(true);
+    // Nasty Raccoon: QB carries, jet fake live from the condensed set
+    const nr = genPlayElements("keep", formSpots("Nasty Rt"), "Rt", [], "Nasty Rt");
+    expect(nr.QB.some((e) => e.kind === "carry")).toBe(true);
+    expect(nr.H.some((e) => e.kind === "motion")).toBe(true);
   });
   it("defense: both fronts field 11; coverages, stunts, blitzes draw on the field", () => {
     for (const front of Object.keys(DEF_FRONTS)) {
@@ -447,7 +505,7 @@ describe("normalizeData migration", () => {
     expect(keepLt.name).toContain("Longhorn"); // derived names propagate the rename
     expect(d.savedPlans.some((s) => /day 1/i.test(s.name))).toBe(true);
     expect(d.players[0].name).toBe("Old Kid"); // user data untouched
-    expect(d.safariVersion).toBe(12);
+    expect(d.safariVersion).toBe(13);
   });
   it("does not double-seed on a second load", () => {
     const once = normalizeData({ safariVersion: 2, plays: SEED.plays.map((p) => ({ ...p })) });

@@ -676,12 +676,14 @@ function genPlayElements(conceptKey, spots, dir, tags = [], formation) {
       ...cur.map((e) => ({ ...e, pts: e.pts.map(([x, y]) => [x + dx, y + 1]) })),
     ];
   }
-  if (tags.includes("Now") && has("H")) {
-    /* RPO bubble attached: H bubbles his side instead of jet motion, QB reads */
-    const [hx, hy] = at("H");
-    const m = hx <= 50 ? -1 : 1;
-    el["H"] = [{ kind: "route", pts: [[hx, hy], [hx + m * 4, hy + 3], [hx + m * 10, hy + 1]] }];
-    if (has("QB")) add("QB", "throw", [at("QB"), [hx + m * 8, hy + 2]]);
+  if (tags.includes("Now") && has("X")) {
+    /* RPO smoke attached: jet motion stays live; X takes one step back and
+       shows his numbers (same smoke as Reese's/Laffy), QB reads and can
+       throw it now instead of handing off */
+    const [xx, xy] = at("X");
+    const m = xx <= 50 ? 1 : -1;
+    el["X"] = [{ kind: "route", pts: [[xx, xy], [xx, xy + 2.5], [xx + m * 1.5, xy - 5]] }];
+    if (has("QB")) add("QB", "throw", [at("QB"), [xx, xy + 2]]);
   }
   if (tags.includes("Wheel") && has("RB")) {
     const [rx, ry] = at("RB");
@@ -719,7 +721,7 @@ const CONCEPTS = {
   eagle:   { fam: "Pass",   dirs: [""],         words: { "": "Eagle" }, carrier: "WR", signal: "Full wingspan flex", how: "The shot. Post and go outside, Y drags underneath, H and RB stay in to protect seven strong.", read: "One look deep for two seconds, then take the drag." },
   bubble:  { fam: "Screen", dirs: ["Rt", "Lt"], words: { Rt: "Reese's", Lt: "Laffy" }, carrier: "WR", signal: "Rub the belly, then point", how: "SMOKE screen (July 28 ruling: an outside man drifting wider made the throw a lateral floater, pick-six bait). Called-side outside WR takes ONE step back and shows his numbers while the jet fake pulls the second level; Y walls the first man inside. Ball arrives instantly and a hair FORWARD, then he gets NORTH.", read: "Catch and throw NOW, slightly forward, outside shoulder. Pressed over the screen? MIRROR it before the snap. Never late, never behind him." },
   slip:    { fam: "Screen", dirs: ["Rt", "Lt"], words: { Rt: "Rolo", Lt: "Lifesaver" }, carrier: "RB", signal: "Take a big bite, then point", how: "QB drifts, the line lets the rush through and releases, RB slips out behind it.", read: "Let the rush come, then dump it over their heads." },
-  reverse: { fam: "Special", dirs: ["Rt", "Lt"], words: { Rt: "Rewind", Lt: "Loop" }, carrier: "WR", signal: "Spin a finger backward, then point", how: "Full Rocket fake one way, backside WR takes it back the other way behind everyone chasing. Once a game, when they start flying to the jet.", read: "None. Sell the fake, hand it deep." },
+  reverse: { fam: "Special", dirs: ["Rt", "Lt"], words: { Rt: "Rewind", Lt: "Loop" }, carrier: "WR", signal: "Spin a finger backward, then point", how: "The R or L points where the ball ENDS, not where it starts. Full jet fake the OTHER way first, then the backside WR brings it back behind everyone chasing: Rewind fakes left and X carries right, Loop fakes right and Z carries left. Once a game, when they start flying to the jet.", read: "None. Sell the fake, hand it deep." },
   rbpass:  { fam: "Special", dirs: ["Rt", "Lt"], words: { Rt: "Rainbow", Lt: "Lightning" }, carrier: "WR", signal: "Paint an arc overhead, then point", how: "The dagger. Ram action until the corner comes up to tackle, then the RB pulls up and throws over everyone to the receiver he was pretending to block them for. Off the board only, never voiced, once a game, and only after Ram has scored.", read: "RB: sell Ram three steps, pull up BEHIND the line. Deep man behind everybody? Throw it HIGH. Anything else, tuck it and run Ram. Never force it." },
   blank:   { fam: "Special", dirs: [""],         words: { "": "Custom" }, carrier: null, signal: "Your call", how: "A blank canvas. Use Customize to draw every path yourself.", read: "Your design." },
 };
@@ -753,7 +755,7 @@ const playCarrier = (p) => {
   if (p.concept === "bubble") return p.dir === "Lt" ? "X" : "Z";
   if (p.concept === "rbpass") return p.dir === "Lt" ? "X" : "Z";
   if (p.concept === "reverse") return p.dir === "Lt" ? "Z" : "X";
-  if ((p.tags || []).includes("Now")) return c.carrier + " / H";
+  if ((p.tags || []).includes("Now")) return c.carrier + " / X";
   if ((p.tags || []).includes("Peek")) return c.carrier + " / Y";
   return c.carrier;
 };
@@ -820,7 +822,9 @@ function safariSeedPlaysV2() {
     mk(25, "Bunch Rt", "robin", "", false, 5), mk(26, "Bunch Lt", "robin", "", false, 5),
     mk(27, "Nasty Rt", "power", "Rt", false, 5), mk(28, "Nasty Lt", "power", "Lt", false, 5),
     mk(29, "Stack", "falcon", "", false, 5),
-    mk(30, "Doubles", "keep", "Rt", false, 5, ["Orbit"]),
+    /* 30 was Raccoon Orbit: cut Aug 17 (two men in motion at the snap is a
+       flag, and nobody ever carried off the orbit, so the fake threatened
+       nothing). Base Raccoon at 5 does the job. */
   ];
 }
 /* v4 looks: speed in space. Same words the kids already know, new costumes. */
@@ -902,13 +906,13 @@ function safariSeedPlaysV7() {
   const mk = mkSeedPlay;
   const note = (p, n) => ({ ...p, note: n });
   return [
-    note(mk(59, "Doubles", "power", "Rt", false, 4, ["Now"]), "THE RPO. QB reads the man over the slot: he squeezes for Rhino, throw the bubble; he widens, hand Rhino. The defense is wrong before the snap."),
-    note(mk(60, "Doubles", "power", "Lt", false, 4, ["Now"]), "The RPO, left."),
-    note(mk(61, "Doubles", "power", "Rt", false, 5, ["Peek"]), "Rhino with Owl alive behind it. Backers bite even once on film, QB pops Y over their heads. The line never knows."),
-    note(mk(62, "Doubles", "jet", "Rt", false, 5, ["Orbit"]), "Rocket with the RB orbiting the OTHER way. Two fakes crossing at the snap: somebody on defense is always wrong."),
-    note(mk(63, "Doubles", "jet", "Lt", false, 5, ["Orbit"]), "Laser Orbit: the crossing fakes, left."),
-    note(mk(64, "Nasty Rt", "jet", "Rt", false, 5, ["Zip"]), "Nasty jet with Z zipping down pre-snap: an extra wall right where the corner wants to force it."),
-    note(mk(65, "Nasty Lt", "jet", "Lt", false, 5, ["Zip"]), "Nasty jet Zip, left."),
+    note(mk(59, "Doubles", "power", "Rt", false, 4, ["Now"]), "THE RPO. Jet motion stays live: H sells Rhino like always. QB reads X's corner before the snap: big cushion, throw the smoke to X NOW; corner pressed, hand Rhino. The defense is wrong before the snap."),
+    note(mk(60, "Doubles", "power", "Lt", false, 4, ["Now"]), "The RPO, left. Same pre-snap read: cushion over X means throw the smoke, pressed means hand Lion."),
+    /* 61-65 (Rhino Peek, the Orbits, the Nasty Zips) cut Aug 17: Rhino Peek
+       duplicated Owl exactly, Orbit drew two men in motion at the snap (a
+       flag) with a fake nobody ever carries off of, and Zip condensed a
+       formation whose whole point is that it is already condensed. The
+       weaponized layer that replaced them lives in safariSeedPlaysV10. */
     note(mk(66, "Doubles", "rbpass", "Rt", false, 6), "THE DAGGER. Off the board only, never voiced, once a game, only after Ram has scored. The corner who finally comes up to stop Ram just gave up six."),
     note(mk(67, "Doubles", "rbpass", "Lt", false, 6), "The dagger, left."),
   ];
@@ -929,8 +933,22 @@ function safariSeedPlaysV9() {
   const mk = mkSeedPlay;
   const note = (p, n) => ({ ...p, note: n });
   return [
-    note(mk(71, "Doubles", "reverse", "Rt", false, 5), "Off the board only, once a game, after the jets have them flying. QB owns both exchanges."),
-    note(mk(72, "Doubles", "reverse", "Lt", false, 5), "The reverse, left."),
+    note(mk(71, "Doubles", "reverse", "Rt", false, 5), "Off the board only, once a game, after the jets have them flying. QB owns both exchanges. The word points where the ball ENDS: Rewind fakes the jet LEFT, then X brings it back RIGHT behind everyone chasing."),
+    note(mk(72, "Doubles", "reverse", "Lt", false, 5), "The reverse, left. Loop fakes the jet RIGHT, then Z brings it back LEFT."),
+  ];
+}
+/* v13 (Aug 17): the weaponized layer, take two. Same pictures the defense
+   already fears, new answers hiding behind them. Every one of these is a
+   play the kids already know wearing a mask: zero new mechanics. */
+function safariSeedPlaysV10() {
+  const mk = mkSeedPlay;
+  const note = (p, n) => ({ ...p, note: n });
+  return [
+    note(mk(73, "Doubles", "power", "Lt", false, 5, ["Peek"]), "The LEFT Owl, finally real. Lion with the seam alive behind it: backers flow to the left hammer even once on film, QB pulls and pops Y over their heads. Owl only lives off right action; this is the other half of the nightmare."),
+    note(mk(74, "Doubles", "jet", "Rt", false, 5, ["Peek"]), "The jet-chaser killer. Sell Rocket at full speed; the backers who have been burned by it all night sprint for the sideline, and Y slips into the seam they just emptied. They stay home? Give it and take the edge. They cannot be right."),
+    note(mk(75, "Doubles", "jet", "Lt", false, 5, ["Peek"]), "Laser Peek: the seam off left jet action. Same rule: chase the jet and Y is behind you."),
+    note(mk(76, "Nasty Rt", "keep", "Rt", false, 5), "The Nasty back door. Identical picture to Nasty Rocket, and the condensed splits mean the edge is a mile wide. When their end starts chasing the jet, QB keeps behind him with the RB leading and walks out the back."),
+    note(mk(77, "Nasty Lt", "keep", "Lt", false, 5), "Nasty Longhorn: the back door, left."),
   ];
 }
 function safariSeedPlays() {
@@ -1095,7 +1113,7 @@ const RAW_SEED = {
   ],
   practice: { date: "", start: "17:30", title: "Practice Plan", items: [] },
   savedPlans: [],
-  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7(), ...safariSeedPlaysV8(), ...safariSeedPlaysV9()],
+  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7(), ...safariSeedPlaysV8(), ...safariSeedPlaysV9(), ...safariSeedPlaysV10()],
   callLog: [],
   gameLabel: "",
   script: [],
@@ -1425,6 +1443,37 @@ function normalizeData(parsed) {
     let n11 = 0;
     plays = [...plays, ...safariSeedPlaysV9().filter((p) => !haveV11.has(p.name)).map((p) => ({ ...p, id: uid(), num: base11 + (++n11) }))];
   }
+  // v13 (Aug 17, the weaponized layer take two): Orbit/Zip plays and Rhino Peek
+  // are cut (two men in motion at the snap is a flag, the orbit fake had no play
+  // behind it, Zip condensed an already-condensed formation, and Rhino Peek
+  // duplicated Owl). Lion Peek, the jet-action Peeks, and the Nasty keeps replace
+  // them. Stale notes on the Now RPOs and the reverses get their fixed text.
+  if (!(parsed.safariVersion >= 13)) {
+    /* Match by structure, not stored name: old backups can carry pre-rename
+       vocabulary (Rustler Orbit), and names only re-derive after this runs. */
+    const cut13 = (p) => {
+      if (p.custom) return false;
+      const tags = p.tags || [];
+      if (tags.includes("Orbit") || tags.includes("Zip")) return true;
+      return p.concept === "power" && (p.dir || "") === "Rt" && p.formation === "Doubles" && tags.includes("Peek");
+    };
+    plays = plays.filter((p) => !cut13(p));
+    const NOTE_SWAPS_13 = {
+      "THE RPO. QB reads the man over the slot: he squeezes for Rhino, throw the bubble; he widens, hand Rhino. The defense is wrong before the snap.":
+        "THE RPO. Jet motion stays live: H sells Rhino like always. QB reads X's corner before the snap: big cushion, throw the smoke to X NOW; corner pressed, hand Rhino. The defense is wrong before the snap.",
+      "The RPO, left.":
+        "The RPO, left. Same pre-snap read: cushion over X means throw the smoke, pressed means hand Lion.",
+      "Off the board only, once a game, after the jets have them flying. QB owns both exchanges.":
+        "Off the board only, once a game, after the jets have them flying. QB owns both exchanges. The word points where the ball ENDS: Rewind fakes the jet LEFT, then X brings it back RIGHT behind everyone chasing.",
+      "The reverse, left.":
+        "The reverse, left. Loop fakes the jet RIGHT, then Z brings it back LEFT.",
+    };
+    plays = plays.map((p) => (p.note && NOTE_SWAPS_13[p.note] ? { ...p, note: NOTE_SWAPS_13[p.note] } : p));
+    const haveV13 = new Set(plays.map((p) => p.name));
+    const base13 = plays.reduce((m, p) => Math.max(m, Number(p.num) || 0), 0);
+    let n13 = 0;
+    plays = [...plays, ...safariSeedPlaysV10().filter((p) => !haveV13.has(p.name)).map((p) => ({ ...p, id: uid(), num: base13 + (++n13) }))];
+  }
   // Concept play names are derived, so vocabulary updates flow through automatically.
   plays = plays.map((p) =>
     p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
@@ -1453,7 +1502,7 @@ function normalizeData(parsed) {
     gameLabel: parsed.gameLabel || "",
     script: parsed.script || [],
     scriptPos: parsed.scriptPos || 0,
-    safariVersion: 12,
+    safariVersion: 13,
     defense: normDefense(parsed.defense),
     seasonWeek: parsed.seasonWeek || 1,
     pgOverrides: parsed.pgOverrides || {},
@@ -2980,7 +3029,7 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
                 <option value="Rt">Rt</option><option value="Lt">Lt</option>
               </select>
             )}
-            {["Jet", "Orbit", "Zip", "Now", "Wheel", "Max", ...(seasonWeek >= 5 ? ["Peek"] : [])].map((t) => (
+            {["Jet", "Now", "Wheel", "Max", ...(seasonWeek >= 5 ? ["Peek"] : [])].map((t) => (
               <label key={t} className={"tag-check" + (bTags.includes(t) ? " on" : "")}>
                 <input type="checkbox" checked={bTags.includes(t)} onChange={() => toggleTag(t)} />{t}
               </label>
