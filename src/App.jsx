@@ -4046,10 +4046,14 @@ function splitWristCards(plays, cardCount) {
 function WristCard({ plays, title, index, total, cols }) {
   const perCol = Math.ceil(plays.length / cols) || 1;
   const columns = Array.from({ length: cols }, (_, c) => plays.slice(c * perCol, (c + 1) * perCol)).filter((c) => c.length);
-  const hasEyebrow = plays.some((p) => p.concept && CONCEPTS[p.concept] && p.formation !== "Doubles");
   const rowH = (1.7 * 96) / perCol;
-  const vFont = rowH * (hasEyebrow ? 0.46 : 0.56);
-  const labelLen = (p) => ((lineCallFor(p) ? lineCallFor(p).length + 1 : 0) +
+  /* one line per play: the formation rides the SAME line as the call (Greg's
+     Aug 24 ask: the two-line eyebrow rendered too small for the QB). Rows are
+     height-bound, so single-line rows buy every row a taller font. */
+  const vFont = rowH * 0.56;
+  const hasForm = (p) => p.concept && CONCEPTS[p.concept] && p.concept !== "blank" && p.formation && p.formation !== "Doubles";
+  const labelLen = (p) => ((hasForm(p) ? p.formation.length * 0.78 + 1 : 0) +
+    (lineCallFor(p) ? lineCallFor(p).length + 1 : 0) +
     ((p.concept && CONCEPTS[p.concept] && p.concept !== "blank") ? callWord(p.concept, p.dir, p.tags || []).length : (p.name || "").length));
   const maxChars = Math.max(6, ...plays.map(labelLen));
   const textWpx = (4 * 96 - 38) / cols - 30; /* usable width (minus left/right sleeve margin) per column, minus the number lane */
@@ -4066,9 +4070,7 @@ function WristCard({ plays, title, index, total, cols }) {
               <div key={p.id} className="wrist-play">
                 <span className="wp-num" style={{ fontSize: numSize }}>{p.num}</span>
                 <span className="wp-name" style={{ fontSize: nameSize }}>
-                  {p.concept && CONCEPTS[p.concept] && p.concept !== "blank" && p.formation !== "Doubles" && (
-                    <span className="wp-form">{p.formation}</span>
-                  )}
+                  {hasForm(p) && <span className="wp-form">{p.formation}</span>}
                   <span className="wp-call">
                     {p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
                       ? <><span className="wp-line">{lineCallFor(p)}</span> <b>{callWord(p.concept, p.dir, p.tags || [])}</b></>
@@ -4661,7 +4663,7 @@ tbody tr { cursor: pointer; }
 .line-chip { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 1.5px; padding: 3px 9px; background: var(--ink); color: #EAAA00; }
 .line-chip.dark { background: transparent; border: 1px solid #4A4D53; }
 .wp-line { font-weight: 500; font-size: 1em; letter-spacing: .5px; color: var(--ink); flex-shrink: 0; }
-.wp-form { display: block; font-size: .64em; letter-spacing: .5px; color: #6B6F76; line-height: 1; }
+.wp-form { font-size: .78em; font-weight: 600; letter-spacing: .5px; color: #4A4D53; line-height: 1; white-space: nowrap; }
 
 .row-line { font-family: var(--mono); font-weight: 700; font-size: 9.5px; letter-spacing: .5px; color: var(--muted); margin-right: 6px; }
 
@@ -4946,7 +4948,7 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .wrist-play:nth-child(even) { background: #F1F2F4; }
 .wrist-play:last-child { border-bottom: none; }
 .wp-num { font-family: var(--disp); font-weight: 500; font-size: 15px; color: var(--ink); border-right: 1px solid #C9CBCF; width: 22px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-.wp-name { font-family: var(--disp); font-weight: 500; font-size: 14px; letter-spacing: 0; text-transform: uppercase; flex: 1; min-width: 0; color: var(--ink); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 0 4px; overflow: hidden; }
+.wp-name { font-family: var(--disp); font-weight: 500; font-size: 14px; letter-spacing: 0; text-transform: uppercase; flex: 1; min-width: 0; color: var(--ink); display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: .3em; white-space: nowrap; padding: 0 4px; overflow: hidden; }
 .wp-name b { font-weight: 500; }
 .wp-call { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 @media (max-width: 640px) { .wrist-preview-wrap { transform-origin: top left; overflow-x: auto; } }
