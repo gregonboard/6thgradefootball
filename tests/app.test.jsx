@@ -57,7 +57,7 @@ describe("vocabulary", () => {
     for (const want of ["Doubles · Raven", "Trips Rt · Raven", "Doubles · Hawk", "Empty · Robin", "Empty · Reese's", "Empty · Laffy"]) {
       expect(names, want + " is seeded").toContain(want);
     }
-    expect(SEED.plays.length).toBe(71);
+    expect(SEED.plays.length).toBe(88);
   });
   it("never installs a formation before its first play", () => {
     for (const f of Object.keys(FORM_WEEKS)) {
@@ -283,7 +283,7 @@ describe("seeds", () => {
     for (const want of ["Bunch Rt · Rocket", "Nasty Rt · Ram", "Tank Rt · Ram", "Trips Rt · Rhino", "Tank Lt · Leopard"]) {
       expect(names, want + " is seeded").toContain(want);
     }
-    expect(SEED.plays.length).toBe(71); // the Aug 17 cuts (6) + the v13 weaponized layer (5)
+    expect(SEED.plays.length).toBe(88); // 71 after the Aug 17 cuts + the 17 Nasty looks (v15) // the v13 weaponized layer (5)
   });
   it("renames the jet drill in place so saved plans keep their links", () => {
     const old = { players: [], drills: [{ id: "d-keep", name: "Jet Touch Pass Timing", cat: "Group", group: "Skill (QB/RB/WR/TE)", mins: 12, notes: "old" }], libVersion: 4, safariVersion: 6, day1Seeded: true, week2Seeded: true, savedPlans: [], plays: SEED.plays.map((p) => ({ ...p })) };
@@ -332,15 +332,15 @@ describe("seeds", () => {
     const names = v3.plays.map((p) => p.name);
     expect(names).toContain("Tank Rt · Owl");
     expect(names.filter((n) => n === "Tank Rt · Owl").length).toBe(1);
-    expect(v3.plays.length).toBe(71); // everything a fresh install gets, no dupes
-    expect(v3.safariVersion).toBe(14);
+    expect(v3.plays.length).toBe(88); // everything a fresh install gets, no dupes
+    expect(v3.safariVersion).toBe(15);
     expect(v3.packages.map((p) => p.name)).toContain("CHEETAH");
     const rocket = v3.plays.find((p) => p.name === "Doubles · Rocket");
     const reeses = v3.plays.find((p) => p.name === "Doubles · Reese's");
     expect(rocket.killId).toBe(reeses.id);
     // running it again must change nothing (Greg's live data reloads every session)
     const again = normalizeData(JSON.parse(JSON.stringify(v3)));
-    expect(again.plays.length).toBe(71);
+    expect(again.plays.length).toBe(88);
     expect(again.packages.length).toBe(v3.packages.length);
   });
   it("v13: cuts the Orbit/Zip/Rhino-Peek plays, seeds the weaponized layer, fixes stale notes", () => {
@@ -530,7 +530,7 @@ describe("normalizeData migration", () => {
     expect(keepLt.name).toContain("Longhorn"); // derived names propagate the rename
     expect(d.savedPlans.some((s) => /day 1/i.test(s.name))).toBe(true);
     expect(d.players[0].name).toBe("Old Kid"); // user data untouched
-    expect(d.safariVersion).toBe(14);
+    expect(d.safariVersion).toBe(15);
   });
   it("does not double-seed on a second load", () => {
     const once = normalizeData({ safariVersion: 2, plays: SEED.plays.map((p) => ({ ...p })) });
@@ -635,7 +635,7 @@ describe("formations", () => {
       if (spots.H) expect(spots.H[1], f + ": H is always off the line").toBeGreaterThan(23);
     }
   });
-  it("resolves play labels to the two personnel groups", () => {
+  it("resolves play labels to the personnel groups", () => {
     const speed = { offScheme: "Speed" };
     expect(resolvePlayPos(speed, "H")).toBe("Slot (H)");
     expect(resolvePlayPos(speed, "Y")).toBe("Slot (Y)");
@@ -645,8 +645,8 @@ describe("formations", () => {
     expect(resolvePlayPos(heavy, "H")).toBe("FB"); // H is the fullback in Heavy
     expect(resolvePlayPos(heavy, "QB")).toBe("QB");
   });
-  it("leaves no empty spots in either group", () => {
-    for (const scheme of ["Speed", "Heavy"]) {
+  it("leaves no empty spots in any group", () => {
+    for (const scheme of ["Speed", "Heavy", "Super Heavy"]) {
       const map = Object.values(
         Object.fromEntries(
           ["LT","LG","C","RG","RT","QB","X","Y","H","Z","RB"].map((l) => [l, resolvePlayPos({ offScheme: scheme }, l)])
@@ -1001,5 +1001,171 @@ describe("supabase sync", () => {
       });
     await load();
     expect(screen.getByLabelText("Season week").value).toBe("5");
+  });
+});
+
+/* ---------- Sept 1: Nasty goes Super Heavy (Greg's ask) ---------- */
+import { GAME_PLANS, applyGamePlan, sheetByPersonnel, personnelOf, OFF_SCHEMES } from "../src/App.jsx";
+describe("super heavy (Sept 1)", () => {
+  it("Nasty puts X wide on the line, both ways, and stays legal", () => {
+    const rt = formSpots("Nasty Rt"), lt = formSpots("Nasty Lt");
+    expect(rt.X).toEqual(formSpots("Doubles").X);   /* same wide split as home base */
+    expect(lt.X[0]).toBe(100 - rt.X[0]);
+    expect(rt.H[0]).toBeLessThan(rt.LT[0]);          /* H is a wing off the tackle */
+    expect(rt.H[1]).toBeGreaterThan(23);
+    expect(rt.Z[0]).toBeGreaterThan(rt.Y[0]);        /* Z is a wing outside Y */
+    expect(rt.Z[1]).toBeGreaterThan(23);
+  });
+  it("three personnel groups; Nasty is Super Heavy, Z resolves to the wing", () => {
+    expect(Object.keys(OFF_SCHEMES)).toEqual(["Speed", "Heavy", "Super Heavy"]);
+    expect(personnelOf({ formation: "Nasty Rt" })).toBe("Super Heavy");
+    expect(personnelOf({ formation: "Nasty Lt" })).toBe("Super Heavy");
+    expect(personnelOf({ formation: "Tank Rt" })).toBe("Heavy");
+    expect(personnelOf({ formation: "Doubles" })).toBe("Speed");
+    const sh = { offScheme: "Super Heavy" };
+    expect(resolvePlayPos(sh, "Z")).toBe("Wing (Z)");
+    expect(resolvePlayPos(sh, "Y")).toBe("TE");
+    expect(resolvePlayPos(sh, "H")).toBe("Slot (H)"); /* same slot kid as Speed */
+    expect(resolvePlayPos(sh, "X")).toBe("WR (X)");
+  });
+  it("migration seeds the Super Heavy chart position by position from Speed AND Heavy, wing empty until set", () => {
+    /* Heavy listed first on purpose: the live save has that order, and the
+       first dry run seeded Super Heavy from Heavy alone (H came up empty) */
+    const d = normalizeData({
+      players: [{ id: "h", name: "Slot" }, { id: "z", name: "Zee" }, { id: "t", name: "Tight" }],
+      depth: { off: { "Heavy": { "TE": ["t", null, null] }, "Speed": { "Slot (H)": ["h", null, null], "WR (Z)": ["z", null, null] } }, def: {} },
+      depthVersion: 3,
+    });
+    expect(slotsFor({ ...d, offScheme: "Super Heavy" }, "off", "Slot (H)")[0].id).toBe("h");
+    expect(slotsFor({ ...d, offScheme: "Super Heavy" }, "off", "TE")[0].id).toBe("t");
+    expect(slotsFor({ ...d, offScheme: "Super Heavy" }, "off", "Wing (Z)")[0]).toBe(null);
+    expect(slotsFor({ ...d, offScheme: "Speed" }, "off", "WR (Z)")[0].id).toBe("z");
+  });
+  it("playside H wing kicks the end; backside H still jets (Rhino and Rocket match)", () => {
+    const rt = formSpots("Nasty Rt");
+    const kinds = (el, L) => (el[L] || []).map((e) => e.kind);
+    /* Nasty Rt Lion: H is on the left, the playside: a block, no motion */
+    expect(kinds(genPlayElements("power", rt, "Lt", [], "Nasty Rt"), "H")).toEqual(["block"]);
+    /* Nasty Rt Rhino: H is backside: he jets, exactly like Nasty Rt Rocket */
+    expect(kinds(genPlayElements("power", rt, "Rt", [], "Nasty Rt"), "H")).toContain("motion");
+    expect(kinds(genPlayElements("jet", rt, "Rt", [], "Nasty Rt"), "H")).toContain("motion");
+    /* bare Owl is Rhino-right rules: from Nasty Lt the H wing (right) kicks like Nasty Lt Rhino */
+    const lt = formSpots("Nasty Lt");
+    expect(kinds(genPlayElements("owl", lt, "", [], "Nasty Lt"), "H")).toEqual(["block"]);
+    expect(kinds(genPlayElements("power", lt, "Rt", [], "Nasty Lt"), "H")).toEqual(["block"]);
+    /* keep with a playside wing leaves no stray fake path */
+    expect(kinds(genPlayElements("keep", rt, "Lt", [], "Nasty Rt"), "H")).toEqual(["block"]);
+    /* Speed formations are untouched: Doubles Lion still jets */
+    expect(kinds(genPlayElements("power", formSpots("Doubles"), "Lt", [], "Doubles"), "H")).toContain("motion");
+    /* the smoke to the wide X: H wing blocks, X gets the ball */
+    const smoke = genPlayElements("bubble", rt, "Lt", [], "Nasty Rt");
+    expect(kinds(smoke, "H")).toEqual(["block"]);
+    expect(kinds(smoke, "X")).toContain("route");
+  });
+  it("Eagle from Super Heavy: H stays in, the shot is X's post", () => {
+    const el = genPlayElements("eagle", formSpots("Nasty Rt"), "", [], "Nasty Rt");
+    expect(el.H.map((e) => e.kind)).toEqual(["block"]);
+    const throwsTo = el.QB.filter((e) => e.kind === "throw").map((e) => e.pts[1]);
+    const xRoute = el.X.find((e) => e.kind === "route");
+    expect(throwsTo.some(([x, y]) => xRoute.pts.some(([rx, ry]) => rx === x && ry === y))).toBe(true);
+    /* Doubles Eagle keeps its bubble and throws the GO to Z */
+    const dbl = genPlayElements("eagle", formSpots("Doubles"), "", [], "Doubles");
+    expect(dbl.H.map((e) => e.kind)).toEqual(["route"]);
+  });
+  it("job cards speak wing in Super Heavy and jet everywhere else", () => {
+    const wing = jobsFor({ concept: "power", dir: "Lt", formation: "Nasty Rt", tags: [] });
+    expect(wing.H).toMatch(/WING/);
+    expect(wing.H).not.toMatch(/motion full speed/i);
+    expect(wing.XZ).toMatch(/Z is a WING/);
+    const back = jobsFor({ concept: "power", dir: "Rt", formation: "Nasty Rt", tags: [] });
+    expect(back.H).toMatch(/Jet motion/);
+    expect(jobsFor({ concept: "eagle", dir: "", formation: "Nasty Lt", tags: [] }).H).toMatch(/block/i);
+    expect(jobsFor({ concept: "power", dir: "Lt", formation: "Doubles", tags: [] }).H).toMatch(/Jet motion/);
+    expect(jobsFor({ concept: "power", dir: "Lt", formation: "I Lt", tags: [] }).H).toMatch(/FB/);
+  });
+  it("v15: the Nasty install lands once on an existing v14 program, deduped by name", () => {
+    const v14 = normalizeData({ safariVersion: 14, plays: SEED.plays.filter((p) => !/^Nasty (Rt|Lt) · (Lion Owl|Laffy|Reese's|Rabbit|Lynx|Renegade|Lizard|Owl|Laser Owl|Rhino Now|Lion Now|Eagle|Rewind)$/.test(p.name) && !["Nasty Rt · Lion", "Nasty Lt · Rhino"].includes(p.name)).map((p) => ({ ...p, note: /^Nasty (Rt · Rhino|Lt · Lion)$/.test(p.name) ? "" : p.note }) ) });
+    const names = v14.plays.map((p) => p.name);
+    for (const n of ["Nasty Rt · Lion", "Nasty Lt · Rhino", "Nasty Rt · Rabbit", "Nasty Lt · Lynx", "Nasty Rt · Renegade", "Nasty Lt · Lizard", "Nasty Rt · Owl", "Nasty Lt · Owl", "Nasty Rt · Lion Owl", "Nasty Lt · Laser Owl", "Nasty Rt · Laffy", "Nasty Lt · Reese's", "Nasty Rt · Rhino Now", "Nasty Lt · Lion Now", "Nasty Rt · Eagle", "Nasty Lt · Eagle", "Nasty Rt · Rewind"]) {
+      expect(names.filter((x) => x === n).length, n).toBe(1);
+    }
+    expect(v14.safariVersion).toBe(15);
+    expect(v14.plays.find((p) => p.name === "Nasty Rt · Rhino").note).toMatch(/Super Heavy|Y and the Z wing/);
+    /* numbers append after the highest existing one, unique */
+    const nums = v14.plays.map((p) => p.num);
+    expect(new Set(nums).size).toBe(nums.length);
+    expect(v14.plays.find((p) => p.name === "Nasty Rt · Lion Owl").type).toBe("Pass");
+    /* second load: nothing doubles */
+    const again = normalizeData(JSON.parse(JSON.stringify(v14)));
+    expect(again.plays.length).toBe(v14.plays.length);
+    expect(v14.plays.filter((p) => /^Nasty/.test(p.name)).length).toBe(25);
+  });
+  it("the Thompson plan fills every box, sets the keys, and points the band at the sheet", () => {
+    const d = normalizeData({});
+    const plan = GAME_PLANS.find((g) => g.key === "thompson");
+    /* every name in the plan resolves to a real seeded play */
+    const names = new Set(d.plays.map((p) => p.name));
+    for (const list of Object.values(plan.sheet)) for (const n of list) expect(names.has(n), n).toBe(true);
+    const patch = applyGamePlan(d, plan);
+    expect(patch.callSheet.openers.length).toBe(6);
+    expect(patch.gameLabel).toBe("vs Thompson");
+    expect(patch.csKeys).toMatch(/LEFT INSIDE BACKER/);
+    const all = new Set(Object.values(patch.callSheet).flat());
+    expect(new Set(patch.wrist.selected)).toEqual(all);
+    /* the week leans Super Heavy: more Nasty snaps on the sheet than Speed */
+    const d2 = { ...d, ...patch };
+    const groups = sheetByPersonnel(d2);
+    expect(groups.map((g) => g.group)).toEqual(["Speed", "Heavy", "Super Heavy"]);
+    const count = (g) => groups.find((x) => x.group === g).boxes.reduce((n, b) => n + b.plays.length, 0);
+    expect(count("Super Heavy")).toBeGreaterThan(count("Speed"));
+    expect(count("Super Heavy") + count("Heavy") + count("Speed")).toBe(all.size);
+  });
+});
+
+describe("call sheet front and back (end to end)", () => {
+  beforeEach(() => window.localStorage.clear());
+  afterEach(cleanup);
+  const load = async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByText("VESTAVIA HILLS REBELS")).toBeTruthy());
+  };
+  it("loads the Thompson plan from the Call Sheet tab and prints front + personnel back", async () => {
+    await load();
+    fireEvent.change(screen.getByLabelText("Season week"), { target: { value: "9" } });
+    fireEvent.click(screen.getByText("Call Sheet"));
+    window.confirm = () => true;
+    fireEvent.change(screen.getByLabelText("Load game plan"), { target: { value: "thompson" } });
+    await waitFor(() => expect(document.querySelectorAll(".cs-chip").length).toBeGreaterThan(40));
+    /* Nasty chips carry the SUPER HEAVY sub reminder, Tank carries HEAVY */
+    const chips = [...document.querySelectorAll(".cs-chip")];
+    expect(chips.some((c) => /Nasty/.test(c.textContent) && /SUPER HEAVY/.test(c.textContent))).toBe(true);
+    expect(chips.some((c) => /Tank/.test(c.textContent) && /HEAVY/.test(c.textContent) && !/SUPER/.test(c.textContent))).toBe(true);
+    expect(screen.getByLabelText("Opponent keys").value).toMatch(/THOMPSON 4-4/);
+    fireEvent.click(screen.getByText("Print Call Sheet"));
+    await waitFor(() => expect(document.querySelector(".print-layer .p-cs-back")).toBeTruthy());
+    /* front: keys strip under the header, the eight situations */
+    expect(document.querySelector(".print-layer .p-cs-keys").textContent).toMatch(/RIGHT END/);
+    expect(document.querySelectorAll(".print-layer .cs-sheet > .p-cs-grid > .p-cs-box").length).toBe(8);
+    /* back: personnel labels in order, every sheet play present exactly once */
+    const labels = [...document.querySelectorAll(".print-layer .p-cs-back .p-cs-label")].map((l) => l.textContent);
+    expect(labels[0]).toMatch(/^Speed/);
+    expect(labels.some((l) => /^Heavy/.test(l))).toBe(true);
+    expect(labels.some((l) => /^Super Heavy/.test(l))).toBe(true);
+    const frontIds = new Set([...document.querySelectorAll(".print-layer .cs-sheet > .p-cs-grid .p-cs-play .p-cs-num")].map((n) => n.textContent));
+    const backNums = [...document.querySelectorAll(".print-layer .p-cs-back .p-cs-num")].map((n) => n.textContent);
+    expect(new Set(backNums).size).toBe(backNums.length);
+    expect(new Set(backNums)).toEqual(frontIds);
+    /* the wristband is pointed at the sheet */
+    fireEvent.click(screen.getByText("Close"));
+    fireEvent.click(screen.getByText("Wristbands"));
+    await waitFor(() => expect(document.querySelectorAll(".wrist-play").length).toBeGreaterThan(0));
+    expect(document.querySelectorAll(".wrist-play").length).toBe(frontIds.size);
+  });
+  it("Super Heavy shows up in the depth chart personnel picker", async () => {
+    await load();
+    const sel = [...document.querySelectorAll("select.cell")].find((s) => [...s.options].some((o) => o.value === "Super Heavy"));
+    expect(sel).toBeTruthy();
+    fireEvent.change(sel, { target: { value: "Super Heavy" } });
+    await waitFor(() => expect(screen.getByText("Wing (Z)")).toBeTruthy());
   });
 });

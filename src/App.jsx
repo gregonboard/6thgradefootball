@@ -7,11 +7,13 @@ import { useState, useEffect, useRef, useMemo } from "react";
    ============================================================ */
 
 /* ---------- offensive personnel groups ----------
-   Two groups, the way we actually sub: SPEED for all the spread looks
-   (Doubles/Trips/Bunch/Stack/Nasty/Empty) and HEAVY for I and Tank. Each
-   group is its own depth chart, so the big kids in Heavy can be totally
-   different players than the speed kids in Spread. Formations map to a group
-   (FORM_GROUP), so viewing Tank pulls the Heavy chart automatically. */
+   Three groups, the way we actually sub: SPEED for the spread looks
+   (Doubles/Trips/Bunch/Stack/Empty), HEAVY for I and Tank, and SUPER HEAVY
+   (Sept 1, Greg's ask) for Nasty: Speed minus the Z receiver, a second WING
+   in his place for run situations. Each group is its own depth chart, so the
+   big kids in Heavy can be totally different players than the speed kids.
+   Formations map to a group (FORM_GROUP), so viewing Tank pulls the Heavy
+   chart and Nasty pulls Super Heavy automatically. */
 const OL5 = ["LT", "LG", "C", "RG", "RT"];
 const OL_SPOTS = { "LT": [34, 16], "LG": [42, 16], "C": [50, 16], "RG": [58, 16], "RT": [66, 16] };
 const OFF_SCHEMES = {
@@ -23,14 +25,30 @@ const OFF_SCHEMES = {
     positions: ["QB", "RB", "FB", "TE", "WR (X)", "WR (Z)", ...OL5],
     spots: { ...OL_SPOTS, "WR (X)": [8, 16], "TE": [74, 16], "WR (Z)": [92, 22], "QB": [50, 36.7], "FB": [50, 61], "RB": [50, 84] },
   },
+  /* Nasty personnel: X stays the wide receiver, H is the same slot kid (a wing
+     off the tackle in Nasty), Y is a true TE, and Z is a WING, a blocker. */
+  "Super Heavy": {
+    positions: ["QB", "RB", "WR (X)", "Slot (H)", "TE", "Wing (Z)", ...OL5],
+    spots: { ...OL_SPOTS, "WR (X)": [6, 16], "Slot (H)": [24, 24], "TE": [74, 16], "Wing (Z)": [83, 24], "QB": [50, 38], "RB": [36, 40] },
+  },
 };
+const OFF_SCHEME_LABELS = { "Speed": "Speed (spread)", "Heavy": "Heavy (I / Tank)", "Super Heavy": "Super Heavy (Nasty)" };
 /* which personnel group each playbook formation uses */
 const FORM_GROUP = {
   "Doubles": "Speed", "Doubles Lt": "Speed", "Trips Rt": "Speed", "Trips Lt": "Speed",
-  "Bunch Rt": "Speed", "Bunch Lt": "Speed", "Stack": "Speed", "Nasty Rt": "Speed", "Nasty Lt": "Speed", "Empty": "Speed",
+  "Bunch Rt": "Speed", "Bunch Lt": "Speed", "Stack": "Speed", "Empty": "Speed",
+  "Nasty Rt": "Super Heavy", "Nasty Lt": "Super Heavy",
   "Tank Rt": "Heavy", "Tank Lt": "Heavy", "I Rt": "Heavy", "I Lt": "Heavy",
 };
-const isHeavyPlay = (p) => FORM_GROUP[p && p.formation] === "Heavy";
+const PERSONNEL_ORDER = ["Speed", "Heavy", "Super Heavy"];
+const personnelOf = (p) => FORM_GROUP[p && p.formation] || "Speed";
+/* the sub reminder printed next to a call: nothing for Speed, HEAVY, SUPER HEAVY */
+const PERSONNEL_TAGS = { "Heavy": "HEAVY", "Super Heavy": "SUPER HEAVY" };
+const PersonnelTag = ({ p }) => {
+  const g = personnelOf(p);
+  if (!PERSONNEL_TAGS[g]) return null;
+  return <span className={"heavy-tag" + (g === "Super Heavy" ? " super" : "")} title={g + " personnel: sub the group in"}>{PERSONNEL_TAGS[g]}</span>;
+};
 const OFF_POS_ALL = [...new Set(Object.values(OFF_SCHEMES).flatMap((s) => s.positions))];
 const offScheme = (data) => (OFF_SCHEMES[data.offScheme] ? data.offScheme : "Speed");
 const offPositions = (data) => OFF_SCHEMES[offScheme(data)].positions;
@@ -153,7 +171,7 @@ const PLAY_POS_PREFS = {
   X: ["WR (X)"],
   Y: ["TE", "Slot (Y)", "Wing"],
   H: ["Slot (H)", "Slot (Y)", "Wing", "FB", "TE"],
-  Z: ["WR (Z)", "Wing", "Slot (Y)", "TE", "FB"],
+  Z: ["WR (Z)", "Wing (Z)", "Wing", "Slot (Y)", "TE", "FB"],
   RB: ["RB", "HB", "FB"],
 };
 const PLAY_RESOLVE_ORDER = ["LT", "LG", "C", "RG", "RT", "QB", "X", "Y", "H", "Z", "RB"];
@@ -260,7 +278,15 @@ function migrateDepth(data) {
   /* the flat {pos:[ids]} chart used to seed every front for this side */
   const seedChart = (side) => {
     const dm = (data.depth && data.depth[side]) || {};
-    if (isPerScheme(dm)) return Object.values(dm)[0] || {}; /* already per-scheme: seed from any front */
+    if (isPerScheme(dm)) {
+      /* already per-scheme: a NEW scheme seeds position by position from
+         every existing chart (Speed first, then Heavy), so Super Heavy gets
+         the Speed slot kid AND the Heavy tight end, not one chart's gaps */
+      const order = Object.keys(side === "off" ? OFF_SCHEMES : DEF_SCHEMES).filter((k) => dm[k]);
+      const merged = {};
+      for (const k of order) for (const [pos, ids] of Object.entries(dm[k] || {})) if (!(merged[pos] || []).some(Boolean) && (ids || []).some(Boolean)) merged[pos] = ids;
+      return merged;
+    }
     const lm = legacyMap(side);
     if ((data.depthVersion || 1) >= 2) {
       const src = { ...dm };
@@ -334,7 +360,9 @@ const PLAY_FORMS = {
   "Bunch":   { X: [6, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [72, 27], Z: [77, 25], QB: [50, 30], RB: [43, 30] },
   "I":       { X: [8, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [84, 25], QB: [50, 26.5], H: [50, 31], RB: [50, 35] },
   "Stack":   { X: [8, 23], H: [9, 27], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [88, 23], Z: [87, 27], QB: [50, 30], RB: [43, 30] },
-  "Nasty":   { X: [26, 23], H: [32, 26], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [74, 25], QB: [50, 30], RB: [43, 30] },
+  /* Nasty (Sept 1 ruling): X is WIDE now, the same split as Doubles; H is a
+     wing off the tackle, Y tight, Z a wing outside Y. Super Heavy personnel. */
+  "Nasty":   { X: [6, 23], H: [32, 26], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [74, 25], QB: [50, 30], RB: [43, 30] },
 };
 const PLAY_FORM_NAMES = ["Doubles", "Doubles Lt", "Trips Rt", "Trips Lt", "Bunch Rt", "Bunch Lt", "Stack", "Nasty Rt", "Nasty Lt", "Empty", "Tank Rt", "Tank Lt", "I Rt", "I Lt"];
 
@@ -378,6 +406,13 @@ function genPlayElements(conceptKey, spots, dir, tags = [], formation) {
   };
   const hIsFB = has("H") && Math.abs(at("H")[0] - 50) < 8 && at("H")[1] > 26;
   const heavy = FORM_GROUP[formation] === "Heavy";
+  /* Super Heavy (Nasty): H is a wing off the tackle. On the PLAYSIDE he is a
+     blocker and kicks out the end man (no motion); on the backside he still
+     jets, so Rhino and Rocket from the same look stay identical. */
+  const superHeavy = FORM_GROUP[formation] === "Super Heavy";
+  const hPlayside = has("H") && (at("H")[0] - 50) * s > 0;
+  const wingKick = () => has("H") && add("H", "block", [at("H"), [at("H")[0] + s * 3, at("H")[1] - 2], [at("H")[0] + s * 5.5, at("H")[1] - 5]]);
+  const hIsWing = superHeavy && hPlayside;
   const fbLead = () => hIsFB && add("H", "block", [at("H"), [50 + s * 8, 27], [50 + s * 13, 22]]);
   /* Tank's big H back: shuffle a few steps, then come out and KICK the end */
   const hShuffleKick = () => {
@@ -391,6 +426,7 @@ function genPlayElements(conceptKey, spots, dir, tags = [], formation) {
     if (!has("H")) return;
     if (hIsFB) return fbLead();
     if (heavy) return hShuffleKick();
+    if (hIsWing) return wingKick();
     const [hx, hy] = at("H");
     const across = hx < 50 ? [[hx, hy], [42, 29], [56, 29]] : [[hx, hy], [58, 29], [44, 29]];
     add("H", "motion", across);
@@ -460,7 +496,7 @@ function genPlayElements(conceptKey, spots, dir, tags = [], formation) {
       if (has("Y")) add("Y", "block", [at("Y"), [at("Y")[0] + s * 5, at("Y")[1] - 7], [at("Y")[0] + s * 7, at("Y")[1] - 12]]);
       for (const L of ["X", "Z"]) if (has(L)) add(L, "block", [at(L), [at(L)[0], at(L)[1] - 4]]);
       jetMotion(false);
-      if (has("H")) add("H", "fake", [[50 + s * 2, 29], [edge, 26]]);
+      if (has("H") && !hIsWing) add("H", "fake", [[50 + s * 2, 29], [edge, 26]]);
       if (has("QB")) add("QB", "carry", [at("QB"), [50 + s * 10, 28], [50 + s * 22, 23], [50 + s * 26, 10]]);
       if (has("RB")) add("RB", "block", [at("RB"), [50 + s * 12, 27]]);
       break;
@@ -479,6 +515,7 @@ function genPlayElements(conceptKey, spots, dir, tags = [], formation) {
       { const B = outsideAt(-s); if (B) add(B, "route", [at(B), [at(B)[0] - s * 2, at(B)[1] - 9]]); }
       if (heavy && !hIsFB) hShuffleKick();
       else if (hIsFB) fbLead();
+      else if (hIsWing) wingKick();
       else if (has("H")) {
         const [hx, hy] = at("H");
         const turn = [50 + s * 4, 29];
@@ -595,11 +632,15 @@ function genPlayElements(conceptKey, spots, dir, tags = [], formation) {
       rt("X", [[0, -11], [8, -19]]);
       rt("Z", [[0, -19]]);
       if (has("Y")) { const m = at("Y")[0] > 50 ? -1 : 1; add("Y", "route", [at("Y"), [at("Y")[0] + m * 8, at("Y")[1] - 6], [at("Y")[0] + m * 28, at("Y")[1] - 8]]); }
-      /* H bubble screen (the quick answer if they bring the house) */
-      if (has("H")) { const hx = at("H")[0], hy = at("H")[1]; const m = hx <= 50 ? -1 : 1; add("H", "route", [[hx, hy], [hx + m * 4, hy + 3], [hx + m * 9, hy + 1]]); if (has("QB")) add("QB", "throw", [at("QB"), [hx + m * 8, hy + 2]]); }
+      /* H bubble screen (the quick answer if they bring the house); in Super
+         Heavy the H wing stays in instead: seven blocking, the end is his */
+      if (has("H") && superHeavy) add("H", "block", [at("H"), [at("H")[0] + (at("H")[0] <= 50 ? -2 : 2), at("H")[1] - 4]]);
+      else if (has("H")) { const hx = at("H")[0], hy = at("H")[1]; const m = hx <= 50 ? -1 : 1; add("H", "route", [[hx, hy], [hx + m * 4, hy + 3], [hx + m * 9, hy + 1]]); if (has("QB")) add("QB", "throw", [at("QB"), [hx + m * 8, hy + 2]]); }
       if (has("RB")) add("RB", "block", [at("RB"), [at("RB")[0], at("RB")[1] - 3]]);
       if (has("QB")) add("QB", "fake", [at("QB"), [at("QB")[0], at("QB")[1] + 3]]);
-      throwTo("Z"); /* the GO is Z's job by rule, wherever he aligns */
+      /* the GO is Z's job by rule, wherever he aligns; from Super Heavy Z is a
+         wing clearing the corner, so the drawn shot is X's post */
+      throwTo(superHeavy ? "X" : "Z");
       break;
     case "bubble": {
       olPass();
@@ -796,9 +837,29 @@ const I_FB_JOBS = {
   keep: "FB: lead around the edge, block for the QB.",
   rbpass: "FB: lead flat exactly like Ram. You are the bait.",
 };
+/* Super Heavy (Nasty): H is a wing; when he is on the playside he blocks the
+   end man instead of running motion. Z is a wing every snap. The diagram
+   engine already draws it; the words on the cards must match. */
+const WING_KICK_CONCEPTS = ["power", "owl", "stretch", "bubble", "keep"];
+const WING_H_JOBS = {
+  bubble: "You are the playside WING: block the end man on your side and stay on him. X is coming north right behind you.",
+  keep: "You are the playside WING: block the end man on your side. The QB is coming around your block.",
+};
+const superHeavyJobs = (play, base) => {
+  const spots = formSpots(play.formation);
+  const s = play.dir === "Lt" ? -1 : 1;
+  const hPlayside = spots.H && (spots.H[0] - 50) * s > 0;
+  const out = { ...base, XZ: base.XZ + " Z is a WING in Super Heavy: on every run word, block the end man on your side like a lineman." };
+  if (play.concept === "eagle") out.H = "Stay in and block the end on your side. You are the bodyguard: nobody touches him.";
+  else if (hPlayside && WING_KICK_CONCEPTS.includes(play.concept) && !(play.tags || []).includes("Jet"))
+    out.H = WING_H_JOBS[play.concept] || "You are the playside WING: no motion. Block the end man on your side. If he crashes inside, ride him inside and the RB bounces off your back.";
+  return out;
+};
 const jobsFor = (play) => {
   const base = ASSIGNMENTS[play.concept];
-  if (!base || !/^I (Rt|Lt)$/.test(play.formation || "")) return base;
+  if (!base) return base;
+  if (FORM_GROUP[play.formation] === "Super Heavy") return superHeavyJobs(play, base);
+  if (!/^I (Rt|Lt)$/.test(play.formation || "")) return base;
   return {
     ...base,
     QB: "UNDER CENTER: secure the snap with two hands first. " + base.QB,
@@ -954,6 +1015,39 @@ function safariSeedPlaysV10() {
     note(mk(77, "Nasty Lt", "keep", "Lt", false, 5), "Nasty Longhorn: the back door, left."),
   ];
 }
+/* v15 (Sept 1, Greg's ask): the Nasty install. Nasty is Super Heavy now (X
+   wide, Y tight, two wings), and every word the kids already know gets its
+   Nasty costume for a run-first week: weak-side power with the wing kicking,
+   traps, counters, the Owl family, the smokes to the wide X, the Now RPOs,
+   the Eagle shot, and one reverse. Zero new words. */
+function safariSeedPlaysV11() {
+  const mk = mkSeedPlay;
+  const note = (p, n) => ({ ...p, note: n });
+  return [
+    note(mk(78, "Nasty Rt", "power", "Lt", false, 5), "Weak-side power with the H wing kicking the end (no motion). Built for an end who crashes inside: H rides him in and the RB bounces off H's back. X blocks the corner."),
+    note(mk(79, "Nasty Lt", "power", "Rt", false, 5), "Weak-side power right: H wing kicks the end, X blocks the corner, Y and Z seal the backside."),
+    note(mk(80, "Nasty Rt", "trap", "Rt", false, 5), "Trap from Super Heavy. Fastest play in the book: the ball is through the A gap before a flowing backer can get there. Y kicks out, no motion."),
+    note(mk(81, "Nasty Lt", "trap", "Lt", false, 5), "Trap left from Super Heavy: Y kicks, RG traps the first man past center, RB hits the A gap NOW."),
+    note(mk(82, "Nasty Rt", "counter", "Rt", false, 6), "Counter from Super Heavy: RB jabs left, the second level flows left, the ball comes back right behind the wrappers. The answer for a backer who over-runs everything."),
+    note(mk(83, "Nasty Lt", "counter", "Lt", false, 6), "Counter left: jab right, everyone flows right, ball comes back left behind the wrappers."),
+    note(mk(84, "Nasty Rt", "owl", "", false, 5), "Owl from Super Heavy: Rhino rules, block it right, same picture as Nasty Rt Rhino. Two Rhinos load the box, then Y slips behind the backers who just filled."),
+    note(mk(85, "Nasty Lt", "owl", "", false, 5), "Rhino action goes right, Y is on the LEFT: the backside pop. The seam opens behind backers flowing away from him. H wing kicks right exactly like Nasty Lt Rhino."),
+    note(mk(86, "Nasty Rt", "power", "Lt", false, 5, ["Owl"]), "Sells our weak-side Lion (H kicks, everyone flows left) and Y on the right slips the seam the backers just left. Always thrown."),
+    note(mk(87, "Nasty Lt", "jet", "Lt", false, 5, ["Owl"]), "Off our jet left: the backers chase the motion, Y slips behind them. Always thrown."),
+    note(mk(88, "Nasty Rt", "bubble", "Lt", false, 5), "The smoke to X, who is WIDE on the left now. H wing blocks the end, Y walls inside, X catches and gets north behind both. Cushion over X means candy."),
+    note(mk(89, "Nasty Lt", "bubble", "Rt", false, 5), "The smoke to X on the right. Same rule: the corner gives cushion, X takes it. H wing blocks the end."),
+    note(mk(90, "Nasty Rt", "power", "Rt", false, 5, ["Now"]), "THE RPO from Super Heavy: Rhino right into the wall of Y and Z, H jets from the backside. QB reads X's corner BEFORE the snap: cushion, throw the smoke to X now; pressed, hand Rhino."),
+    note(mk(91, "Nasty Lt", "power", "Lt", false, 5, ["Now"]), "The RPO, left: Lion into Y and Z, H jets from the backside, X on the right is the pre-snap smoke read."),
+    note(mk(92, "Nasty Rt", "eagle", "", false, 5), "The shot from a run look: X runs the POST from the wide split behind a safety leaning on the run, Z wing clears the corner up the sideline, Y drags. H and RB stay in: seven blocking."),
+    note(mk(93, "Nasty Lt", "eagle", "", false, 5), "The shot, X on the right: post behind the safety, Z wing clears, Y drags, seven blocking."),
+    note(mk(94, "Nasty Rt", "reverse", "Rt", false, 5), "Special. Laser fake to the LEFT, then X (wide left) brings it back RIGHT behind a defense chasing the jet. Off the board only, once a game, after the jets have them flying."),
+  ];
+}
+/* the two original Nasty powers never had notes; Super Heavy gives them one */
+const SUPER_HEAVY_NOTES = {
+  "Nasty Rt · Rhino": "Power into the strong side: Y and the Z wing wall the edge, H jets from the backside to sell Rocket. Same picture as Nasty Rt Rocket, Raccoon, and Owl.",
+  "Nasty Lt · Lion": "Power left into Y and the Z wing, H jets from the right to sell Laser. Same picture as Nasty Lt Laser, Longhorn, and Lion Now.",
+};
 function safariSeedPlays() {
   const mk = mkSeedPlay;
   return [
@@ -1116,7 +1210,7 @@ const RAW_SEED = {
   ],
   practice: { date: "", start: "17:30", title: "Practice Plan", items: [] },
   savedPlans: [],
-  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7(), ...safariSeedPlaysV8(), ...safariSeedPlaysV9(), ...safariSeedPlaysV10()],
+  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7(), ...safariSeedPlaysV8(), ...safariSeedPlaysV9(), ...safariSeedPlaysV10(), ...safariSeedPlaysV11()],
   callLog: [],
   gameLabel: "",
   script: [],
@@ -1498,6 +1592,16 @@ function normalizeData(parsed) {
     };
     plays = plays.map((p) => (p.note && NOTE_SWAPS_14[p.note] ? { ...p, note: NOTE_SWAPS_14[p.note] } : p));
   }
+  // v15 (Sept 1, Greg's ask): the Nasty install for Super Heavy personnel.
+  // Seventeen costumes of words the kids already know, deduped by name so a
+  // coach who built one of these himself keeps his copy.
+  if (!(parsed.safariVersion >= 15)) {
+    const haveV15 = new Set(plays.map((p) => p.name));
+    const base15 = plays.reduce((m, p) => Math.max(m, Number(p.num) || 0), 0);
+    let n15 = 0;
+    plays = [...plays, ...safariSeedPlaysV11().filter((p) => !haveV15.has(p.name)).map((p) => ({ ...p, id: uid(), num: base15 + (++n15) }))];
+    plays = plays.map((p) => (!p.note && SUPER_HEAVY_NOTES[p.name] ? { ...p, note: SUPER_HEAVY_NOTES[p.name] } : p));
+  }
   // Concept play names are derived, so vocabulary updates flow through automatically.
   plays = plays.map((p) =>
     p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
@@ -1526,8 +1630,9 @@ function normalizeData(parsed) {
     gameLabel: parsed.gameLabel || "",
     script: parsed.script || [],
     scriptPos: parsed.scriptPos || 0,
-    safariVersion: 14,
+    safariVersion: 15,
     defense: normDefense(parsed.defense),
+    csKeys: typeof parsed.csKeys === "string" ? parsed.csKeys : "",
     seasonWeek: parsed.seasonWeek || 1,
     pgOverrides: parsed.pgOverrides || {},
     packages,
@@ -2362,8 +2467,7 @@ function RosterTab({ data, up, onPrint, onPrintGroups, onPrintFormations }) {
             </div>
             {depthSide === "off" && (
               <select className="cell" value={offScheme(data)} onChange={(e) => up({ offScheme: e.target.value })}>
-                <option value="Speed">Speed (spread)</option>
-                <option value="Heavy">Heavy (I / Tank)</option>
+                {Object.keys(OFF_SCHEMES).map((k) => <option key={k} value={k}>{OFF_SCHEME_LABELS[k] || k}</option>)}
               </select>
             )}
             {depthSide === "def" && (
@@ -2379,7 +2483,7 @@ function RosterTab({ data, up, onPrint, onPrintGroups, onPrintFormations }) {
           <p className="hint">Each front has its own lineup, so a kid can be SAM LB in the 4-4 and a safety in the 4-3. Pick the front, set its eleven.</p>
         )}
         {depthSide === "off" && (
-          <p className="hint">Two personnel groups: SPEED for the spread looks, HEAVY for I and Tank. Each has its own lineup, so your big kids in Heavy can be different players than your speed kids. Formations pull the right group automatically.</p>
+          <p className="hint">Three personnel groups: SPEED for the spread looks, HEAVY for I and Tank, SUPER HEAVY for Nasty (Speed minus Z, a second wing in his place). Each has its own lineup, so your big kids can be different players than your speed kids. Formations pull the right group automatically.</p>
         )}
         <div className="table-wrap">
           <table className="slot-table">
@@ -2509,8 +2613,7 @@ function FormationView({ data, up, startSide, onClose, onPrintFormations }) {
           )}
           {side === "offense" && !school && form === "base" && (
             <select className="fv-scheme" value={offScheme(data)} onChange={(e) => up({ offScheme: e.target.value })}>
-              <option value="Speed">Speed (spread)</option>
-              <option value="Heavy">Heavy (I / Tank)</option>
+              {Object.keys(OFF_SCHEMES).map((k) => <option key={k} value={k}>{OFF_SCHEME_LABELS[k] || k}</option>)}
             </select>
           )}
           {side === "defense" && (
@@ -3857,6 +3960,58 @@ const CALL_SHEET_RECIPE = {
   goalline: ["I Rt · Moose", "I Rt · Rhino", "I Lt · Lion", "Tank Rt · Owl", "Doubles · Rhino", "Doubles · Lion"],
   special: ["Doubles · Rewind", "Doubles · Loop", "Doubles · Rainbow", "Doubles · Lightning"],
 };
+/* ---- game plans: a whole week's sheet in one tap ----
+   Each plan is a call sheet by play NAME (so it survives renumbering), the
+   opponent keys that print under the header, and the game label. Loading one
+   replaces the sheet and points the wristband at exactly these plays. */
+const GAME_PLANS = [
+  {
+    key: "thompson",
+    name: "Thompson (4-4) · Tue Sept 8",
+    gameLabel: "vs Thompson",
+    keys: [
+      "THOMPSON 4-4: eight in the box, one safety. They will not honor the wide X. Cushion over X = candy: Laffy from Nasty Rt, Reese's from Nasty Lt, and the Now RPOs are free all night.",
+      "THEIR RIGHT END lines up over OUR LEFT tackle: fast, crashes inside. Nasty Rt Lion puts the H wing on him (ride him in, RB bounces). Everything outside him is open: Laser, Leopard, Longhorn from Nasty Lt. Rewind comes back behind him.",
+      "THEIR LEFT INSIDE BACKER lines up over OUR RIGHT guard: 60% of their tackles. Run at him only with a wall (Nasty Rt Rhino, Tank Rt Rhino). Make him wrong: Lynx and Lizard away, Owl and Lion Owl behind him when he fills.",
+      "THE SHOT: after two hammers, Nasty Eagle. X post behind a safety leaning on the run, H wing stays home on the crasher. One look, then the drag.",
+      "TEMPO: Nasty Lt is home this week; MIRROR flips it to Nasty Rt. Speed sets only for 3rd and long. Up two scores in the 4th: milk it.",
+    ],
+    sheet: {
+      openers: ["Nasty Lt · Lion", "Nasty Rt · Laffy", "Nasty Lt · Laser", "Nasty Rt · Rhino", "Nasty Rt · Lion Owl", "Nasty Lt · Longhorn"],
+      run: ["Nasty Lt · Lion", "Nasty Rt · Rhino", "Nasty Rt · Lion", "Nasty Lt · Rhino", "Nasty Lt · Laser", "Nasty Rt · Rocket", "Nasty Lt · Leopard", "Nasty Rt · Ram", "Nasty Lt · Lynx", "Nasty Rt · Rabbit", "Nasty Lt · Lizard", "Nasty Rt · Renegade", "Nasty Lt · Longhorn", "Nasty Rt · Raccoon", "Tank Rt · Rhino", "Tank Lt · Lion", "Tank Lt · Leopard", "Tank Rt · Ram"],
+      pass: ["Nasty Rt · Lion Owl", "Nasty Lt · Owl", "Nasty Rt · Owl", "Nasty Lt · Laser Owl", "Nasty Rt · Rhino Now", "Nasty Lt · Lion Now", "Nasty Rt · Eagle", "Nasty Lt · Eagle", "Doubles · Sparrow", "Doubles · Robin", "Trips Rt · Hawk"],
+      third_short: ["I Rt · Moose", "Tank Rt · Moose", "Nasty Lt · Lynx", "Nasty Rt · Rabbit", "Tank Rt · Rhino", "I Lt · Lion"],
+      third_long: ["Doubles · Raven", "Doubles · Lark", "Trips Rt · Hawk", "Doubles · Rolo", "Doubles · Lifesaver", "Doubles · Falcon"],
+      redzone: ["Nasty Lt · Lion", "Nasty Rt · Owl", "Tank Rt · Owl", "Nasty Rt · Laffy", "Nasty Lt · Reese's", "Nasty Lt · Lizard", "I Rt · Rhino"],
+      goalline: ["I Rt · Moose", "I Rt · Rhino", "I Lt · Lion", "Tank Rt · Owl", "Nasty Lt · Lion", "Tank Rt · Rhino"],
+      special: ["Nasty Rt · Rewind", "Doubles · Rainbow", "Doubles · Loop"],
+    },
+  },
+];
+function applyGamePlan(data, plan) {
+  const idByName = Object.fromEntries(data.plays.map((p) => [p.name, p.id]));
+  const callSheet = {};
+  for (const [key, names] of Object.entries(plan.sheet)) callSheet[key] = names.map((n) => idByName[n]).filter(Boolean);
+  const selected = [...new Set(Object.values(callSheet).flat())];
+  return {
+    callSheet,
+    gameLabel: plan.gameLabel,
+    csKeys: plan.keys.join("\n"),
+    wrist: { ...(data.wrist || {}), selected },
+  };
+}
+/* every play a sheet holds, grouped by personnel then type, for the back page */
+const TYPE_ORDER = ["Run", "Pass", "Screen", "Special"];
+function sheetByPersonnel(data) {
+  const cs = data.callSheet || {};
+  const ids = [...new Set(SITUATIONS.flatMap((s) => cs[s.key] || []))];
+  const plays = ids.map((id) => data.plays.find((p) => p.id === id)).filter(Boolean).sort((a, b) => a.num - b.num);
+  return PERSONNEL_ORDER.map((group) => ({
+    group,
+    boxes: TYPE_ORDER.map((type) => ({ type, plays: plays.filter((p) => personnelOf(p) === group && (p.type || "Run") === type) })).filter((b) => b.plays.length),
+  })).filter((g) => g.boxes.length);
+}
+
 function buildCallSheet(data) {
   const wk = data.seasonWeek || 1;
   const installed = data.plays.filter((p) => wk >= 9 || !p.week || p.week <= wk);
@@ -3906,6 +4061,14 @@ function CallSheetTab({ data, up, onPrint, onPrintScript }) {
       <div className="panel-head">
         <h2>Call Sheet Builder</h2>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <select className="cell" style={{ maxWidth: 230 }} value="" aria-label="Load game plan" title="Replaces the whole sheet with a built game plan (keys, boxes, and the wristband selection)." onChange={(e) => {
+            const plan = GAME_PLANS.find((g) => g.key === e.target.value);
+            if (!plan) return;
+            if (!anyAssigned || window.confirm(`Load the ${plan.name} plan? It replaces every box on this sheet and points the wristband at these plays.`)) up(applyGamePlan(data, plan));
+          }}>
+            <option value="">Load game plan…</option>
+            {GAME_PLANS.map((g) => <option key={g.key} value={g.key}>{g.name}</option>)}
+          </select>
           <button className="btn ghost" onClick={() => up({ callSheet: buildCallSheet(data) })} title="Fills every EMPTY situation from what's installed. Boxes you already filled are never touched.">⚡ Fill It For Me</button>
           {anyAssigned && <button className="btn ghost" onClick={() => { if (window.confirm("Clear the whole call sheet? Then hit Fill It For Me for a fresh, complete sheet.")) up({ callSheet: {} }); }} title="Empty every box, then Fill It For Me rebuilds it from scratch">Clear</button>}
           <button className="btn ghost" onClick={onPrintScript} disabled={!anyAssigned} title="Prints the call sheet as a numbered team-period script coaches read rep by rep">Print Team Script</button>
@@ -3917,7 +4080,8 @@ function CallSheetTab({ data, up, onPrint, onPrintScript }) {
           <button className="btn" onClick={onPrint} disabled={!anyAssigned}>Print Call Sheet</button>
         </div>
       </div>
-      <p className="hint">Slot plays into game situations. A play can live in more than one box. Print, laminate, call the game.</p>
+      <p className="hint">Slot plays into game situations. A play can live in more than one box. Print, laminate, call the game. The print is front and back: situations on the front, every play on the sheet grouped by personnel (Speed / Heavy / Super Heavy) on the back.</p>
+      <textarea className="cs-keys-edit" aria-label="Opponent keys" rows={4} placeholder="Opponent keys, one per line. They print in a strip under the call sheet header (what their front does, who to run away from, the shot)." value={data.csKeys || ""} onChange={(e) => up({ csKeys: e.target.value })} />
       <div className="cs-grid">
         {SITUATIONS.map((s) => (
           <div key={s.key} className="cs-box">
@@ -3928,7 +4092,7 @@ function CallSheetTab({ data, up, onPrint, onPrintScript }) {
                 if (!p) return null;
                 return (
                   <span key={pid} className="cs-chip" style={{ borderColor: TYPE_COLORS[p.type] }}>
-                    <b>{p.num}</b> {playCallLabel(p)}{isHeavyPlay(p) && <span className="heavy-tag" title="Heavy personnel: sub the big group in">HEAVY</span>}
+                    <b>{p.num}</b> {playCallLabel(p)}<PersonnelTag p={p} />
                     <button onClick={() => removeFrom(s.key, pid)}>✕</button>
                   </span>
                 );
@@ -4356,7 +4520,7 @@ function TeamScriptPrint({ data }) {
           <li key={i} className="ts-row">
             <span className="ts-num">{r.play.num}</span>
             <span className="ts-check">☐</span>
-            <span className="ts-call">{call(r.play)}{isHeavyPlay(r.play) && <span className="heavy-tag">HEAVY</span>}</span>
+            <span className="ts-call">{call(r.play)}<PersonnelTag p={r.play} /></span>
             <span className="ts-sit">{r.situation}</span>
           </li>
         ))}
@@ -4378,7 +4542,7 @@ function CallSheetPrint({ data }) {
         return (
           <div key={pid} className="p-cs-play">
             <span className="p-cs-num" style={{ background: TYPE_COLORS[p.type] }}>{p.num}</span>
-            <span className="p-cs-name">{p.formation !== "Doubles" && <span className="p-cs-formpre">{p.formation} · </span>}<span className="p-cs-linecall">{lineCallFor(p)}</span> {p.concept && CONCEPTS[p.concept] && p.concept !== "blank" ? callWord(p.concept, p.dir, p.tags || []) : p.name}{isHeavyPlay(p) && <span className="heavy-tag">HEAVY</span>}</span>
+            <span className="p-cs-name">{p.formation !== "Doubles" && <span className="p-cs-formpre">{p.formation} · </span>}<span className="p-cs-linecall">{lineCallFor(p)}</span> {p.concept && CONCEPTS[p.concept] && p.concept !== "blank" ? callWord(p.concept, p.dir, p.tags || []) : p.name}<PersonnelTag p={p} /></span>
           </div>
         );
       })}
@@ -4387,25 +4551,59 @@ function CallSheetPrint({ data }) {
   );
   const keyRow = (
     <div className="p-foot">
-      <span><span className="key-dot" style={{ background: TYPE_COLORS.Run }} /> Run &nbsp; <span className="key-dot" style={{ background: TYPE_COLORS.Pass }} /> Pass &nbsp; <span className="key-dot" style={{ background: TYPE_COLORS.Screen }} /> Screen &nbsp; <span className="key-dot" style={{ background: TYPE_COLORS.Special }} /> Special &nbsp; · &nbsp; <span className="heavy-tag">HEAVY</span> = sub the big group</span>
+      <span><span className="key-dot" style={{ background: TYPE_COLORS.Run }} /> Run &nbsp; <span className="key-dot" style={{ background: TYPE_COLORS.Pass }} /> Pass &nbsp; <span className="key-dot" style={{ background: TYPE_COLORS.Screen }} /> Screen &nbsp; <span className="key-dot" style={{ background: TYPE_COLORS.Special }} /> Special &nbsp; · &nbsp; <span className="heavy-tag">HEAVY</span> <span className="heavy-tag super">SUPER HEAVY</span> = sub the group · back page lists every play by personnel</span>
       <span>Timeouts: ☐ ☐ ☐</span>
     </div>
   );
+  const keys = (data.csKeys || "").split("\n").map((k) => k.trim()).filter(Boolean);
+  const keysStrip = keys.length > 0 && (
+    <div className="p-cs-keys">
+      {keys.map((k, i) => {
+        const m = k.match(/^((?:[A-Z0-9'\-]{2,}[:.]?\s)+)(.*)$/); /* a SHOUTED lead-in becomes the bold label */
+        return <div key={i}>{m ? <><b>{m[1]}</b>{m[2]}</> : k}</div>;
+      })}
+    </div>
+  );
+  /* BACK: the same plays regrouped by personnel, so in Super Heavy you can see
+     every call that needs no sub. Personnel is the label color. */
+  const groups = sheetByPersonnel(data);
+  const backBox = (group, b) => (
+    <div key={group + b.type} className="p-cs-box">
+      <div className={"p-cs-label " + (group === "Speed" ? "speed" : group === "Heavy" ? "heavy" : "super")}>{group} · {b.type === "Run" ? "Runs" : b.type === "Pass" ? "Passes" : b.type === "Screen" ? "Screens" : "Specials"}</div>
+      {b.plays.map((p) => (
+        <div key={p.id} className="p-cs-play">
+          <span className="p-cs-num" style={{ background: TYPE_COLORS[p.type] }}>{p.num}</span>
+          <span className="p-cs-name">{p.formation !== "Doubles" && <span className="p-cs-formpre">{p.formation} · </span>}<span className="p-cs-linecall">{lineCallFor(p)}</span> {p.concept && CONCEPTS[p.concept] && p.concept !== "blank" ? callWord(p.concept, p.dir, p.tags || []) : p.name}</span>
+        </div>
+      ))}
+    </div>
+  );
+  const rowCount = SITUATIONS.reduce((n, s) => n + (cs[s.key] || []).length, 0);
   const paper = data.csPaper || "legalwide";
   const head = <PrintHead title="Offensive Call Sheet" right={<><div className="p-meta">{data.gameLabel || "vs ______"}</div><div className="p-meta">{todayStr()}</div></>} />;
   const wide = paper === "legalwide";
   const size = paper === "letter" ? "letter portrait" : `legal ${wide ? "landscape" : "portrait"}`;
-  const cls = paper === "letter" ? "cs-letter" : wide ? "cs-legal-wide" : "cs-legal";
-  /* Boxes pack down the columns and only flow onto a second page when they truly
-     run out of room, so a light sheet lands on one page and a heavy one goes
-     cleanly front/back. Real print pagination does the page splitting. */
+  const cls = (paper === "letter" ? "cs-letter" : wide ? "cs-legal-wide" : "cs-legal") + (rowCount > 50 ? " dense" : "");
+  /* FRONT: boxes pack down the columns (a crowded sheet tightens its rows so
+     the whole front stays one page). BACK: the personnel page always starts
+     on a fresh sheet, so the printout is front / back every time. */
   return (
     <>
       <style>{`@page { size: ${size}; margin: .4in; }`}</style>
       <div className={"sheet cs-sheet " + cls}>
         {head}
+        {keysStrip}
         <div className="p-cs-grid">{SITUATIONS.map(box)}</div>
         {keyRow}
+        {groups.length > 0 && (
+          <>
+            <div className="p-cs-pagebreak no-print">▼ back of the sheet ▼</div>
+            <div className="p-cs-back">
+              <PrintHead title="Call Sheet · By Personnel" right={<><div className="p-meta">{data.gameLabel || "vs ______"}</div><div className="p-meta">Speed = spread · Heavy = I / Tank · Super Heavy = Nasty (Z off, wing in)</div></>} />
+              <div className="p-cs-grid">{groups.flatMap((g) => g.boxes.map((b) => backBox(g.group, b)))}</div>
+            </div>
+          </>
+        )}
       </div>
     </>
   );
@@ -4654,6 +4852,8 @@ tbody tr { cursor: pointer; }
 .book-formpre { font-family: var(--disp); font-weight: 600; font-size: 11px; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); }
 .p-cs-formpre { font-family: var(--disp); font-weight: 600; letter-spacing: .3px; text-transform: uppercase; color: #6B6F76; }
 .heavy-tag { display: inline-block; font-family: var(--disp); font-weight: 700; font-size: 9px; letter-spacing: 1px; background: #B7791F; color: #fff; padding: 1px 5px; border-radius: 3px; margin-left: 5px; vertical-align: middle; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.heavy-tag.super { background: #8E1B27; }
+.cs-keys-edit { display: block; width: 100%; box-sizing: border-box; margin: 0 0 12px; padding: 8px 10px; font: inherit; font-size: 13px; line-height: 1.4; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); resize: vertical; }
 .play-svg.book { width: 100%; border: none; }
 .book-notes { padding: 4px 8px; font-size: 10px; color: var(--muted); border-top: 1px solid var(--line); }
 
@@ -5095,6 +5295,23 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .p-cs-name { font-family: var(--disp); font-weight: 600; font-size: 15px; letter-spacing: .5px; text-transform: uppercase; flex: 1; }
 .p-cs-form { font-size: 10px; color: var(--muted); }
 .p-cs-empty { padding: 8px; color: var(--line); }
+/* the opponent keys strip under the front header */
+.p-cs-keys { margin: 0 0 8px; padding: 4px 8px; border: 1.5px solid var(--ink); font-size: 10.5px; line-height: 1.3; columns: 2; column-gap: .28in; break-inside: avoid; }
+.cs-legal-wide .p-cs-keys { columns: 3; }
+.p-cs-keys div { break-inside: avoid; margin: 1px 0; }
+.p-cs-keys b { font-family: var(--disp); font-weight: 700; letter-spacing: .5px; color: var(--red); }
+/* crowded front (50+ plays): tighter rows so the situations stay on one page */
+.cs-sheet.dense .p-cs-play { padding: 1px 6px; gap: 6px; }
+.cs-sheet.dense .p-cs-name { font-size: 13px; }
+.cs-sheet.dense .p-cs-num { font-size: 10px; min-width: 20px; }
+.cs-sheet.dense .p-cs-label { font-size: 11.5px; padding: 2px 6px; }
+.cs-sheet.dense .p-cs-box { margin-bottom: 6px; }
+/* BACK page: personnel-colored labels, always a fresh sheet of paper */
+.p-cs-pagebreak { text-align: center; font-family: var(--disp); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); border-top: 2px dashed #9DA1A8; margin: 18px 0 8px; padding-top: 4px; }
+.p-cs-back { break-before: page; page-break-before: always; }
+.p-cs-label.speed { background: var(--ink); }
+.p-cs-label.heavy { background: #B7791F; }
+.p-cs-label.super { background: #8E1B27; }
 
 .wrist-print-grid { display: grid; grid-template-columns: repeat(auto-fill, 4in); gap: .25in; justify-content: center; }
 .wrist-cut { border: 1.5px dashed #9DA1A8; padding: .08in; width: fit-content; }
@@ -5115,4 +5332,4 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
   );
 }
 
-export { normalizeData, practiceGroupsFor, pgForPos, slotsFor, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, buildCallSheet, genDef, DEF_FRONTS, DEF_COVERAGES, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots, store };
+export { normalizeData, practiceGroupsFor, pgForPos, slotsFor, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, buildCallSheet, genDef, DEF_FRONTS, DEF_COVERAGES, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots, store, GAME_PLANS, applyGamePlan, sheetByPersonnel, personnelOf, OFF_SCHEMES, CallSheetPrint, WristPrint, PlayDiagram, Styles };
