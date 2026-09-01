@@ -57,7 +57,7 @@ describe("vocabulary", () => {
     for (const want of ["Doubles · Raven", "Trips Rt · Raven", "Doubles · Hawk", "Empty · Robin", "Empty · Reese's", "Empty · Laffy"]) {
       expect(names, want + " is seeded").toContain(want);
     }
-    expect(SEED.plays.length).toBe(88);
+    expect(SEED.plays.length).toBe(85);
   });
   it("never installs a formation before its first play", () => {
     for (const f of Object.keys(FORM_WEEKS)) {
@@ -283,7 +283,7 @@ describe("seeds", () => {
     for (const want of ["Bunch Rt · Rocket", "Nasty Rt · Ram", "Tank Rt · Ram", "Trips Rt · Rhino", "Tank Lt · Leopard"]) {
       expect(names, want + " is seeded").toContain(want);
     }
-    expect(SEED.plays.length).toBe(88); // 71 after the Aug 17 cuts + the 17 Nasty looks (v15) // the v13 weaponized layer (5)
+    expect(SEED.plays.length).toBe(85); // 71 after the Aug 17 cuts + the 14 Nasty looks (v15) // the v13 weaponized layer (5)
   });
   it("renames the jet drill in place so saved plans keep their links", () => {
     const old = { players: [], drills: [{ id: "d-keep", name: "Jet Touch Pass Timing", cat: "Group", group: "Skill (QB/RB/WR/TE)", mins: 12, notes: "old" }], libVersion: 4, safariVersion: 6, day1Seeded: true, week2Seeded: true, savedPlans: [], plays: SEED.plays.map((p) => ({ ...p })) };
@@ -332,7 +332,7 @@ describe("seeds", () => {
     const names = v3.plays.map((p) => p.name);
     expect(names).toContain("Tank Rt · Owl");
     expect(names.filter((n) => n === "Tank Rt · Owl").length).toBe(1);
-    expect(v3.plays.length).toBe(88); // everything a fresh install gets, no dupes
+    expect(v3.plays.length).toBe(85); // everything a fresh install gets, no dupes
     expect(v3.safariVersion).toBe(15);
     expect(v3.packages.map((p) => p.name)).toContain("CHEETAH");
     const rocket = v3.plays.find((p) => p.name === "Doubles · Rocket");
@@ -340,7 +340,7 @@ describe("seeds", () => {
     expect(rocket.killId).toBe(reeses.id);
     // running it again must change nothing (Greg's live data reloads every session)
     const again = normalizeData(JSON.parse(JSON.stringify(v3)));
-    expect(again.plays.length).toBe(88);
+    expect(again.plays.length).toBe(85);
     expect(again.packages.length).toBe(v3.packages.length);
   });
   it("v13: cuts the Orbit/Zip/Rhino-Peek plays, seeds the weaponized layer, fixes stale notes", () => {
@@ -1084,9 +1084,9 @@ describe("super heavy (Sept 1)", () => {
     expect(jobsFor({ concept: "power", dir: "Lt", formation: "I Lt", tags: [] }).H).toMatch(/FB/);
   });
   it("v15: the Nasty install lands once on an existing v14 program, deduped by name", () => {
-    const v14 = normalizeData({ safariVersion: 14, plays: SEED.plays.filter((p) => !/^Nasty (Rt|Lt) · (Lion Owl|Laffy|Reese's|Rabbit|Lynx|Renegade|Lizard|Owl|Laser Owl|Rhino Now|Lion Now|Eagle|Rewind)$/.test(p.name) && !["Nasty Rt · Lion", "Nasty Lt · Rhino"].includes(p.name)).map((p) => ({ ...p, note: /^Nasty (Rt · Rhino|Lt · Lion)$/.test(p.name) ? "" : p.note }) ) });
+    const v14 = normalizeData({ safariVersion: 14, plays: SEED.plays.filter((p) => !/^Nasty (Rt|Lt) · (Lion Owl|Laffy|Reese's|Rabbit|Lynx|Renegade|Lizard|Owl|Rhino Now|Lion Now|Rewind)$/.test(p.name) && !["Nasty Rt · Lion", "Nasty Lt · Rhino"].includes(p.name)).map((p) => ({ ...p, note: /^Nasty (Rt · Rhino|Lt · Lion)$/.test(p.name) ? "" : p.note }) ) });
     const names = v14.plays.map((p) => p.name);
-    for (const n of ["Nasty Rt · Lion", "Nasty Lt · Rhino", "Nasty Rt · Rabbit", "Nasty Lt · Lynx", "Nasty Rt · Renegade", "Nasty Lt · Lizard", "Nasty Rt · Owl", "Nasty Lt · Owl", "Nasty Rt · Lion Owl", "Nasty Lt · Laser Owl", "Nasty Rt · Laffy", "Nasty Lt · Reese's", "Nasty Rt · Rhino Now", "Nasty Lt · Lion Now", "Nasty Rt · Eagle", "Nasty Lt · Eagle", "Nasty Rt · Rewind"]) {
+    for (const n of ["Nasty Rt · Lion", "Nasty Lt · Rhino", "Nasty Rt · Rabbit", "Nasty Lt · Lynx", "Nasty Rt · Renegade", "Nasty Lt · Lizard", "Nasty Rt · Owl", "Nasty Lt · Owl", "Nasty Rt · Lion Owl", "Nasty Rt · Laffy", "Nasty Lt · Reese's", "Nasty Rt · Rhino Now", "Nasty Lt · Lion Now", "Nasty Rt · Rewind"]) {
       expect(names.filter((x) => x === n).length, n).toBe(1);
     }
     expect(v14.safariVersion).toBe(15);
@@ -1098,7 +1098,9 @@ describe("super heavy (Sept 1)", () => {
     /* second load: nothing doubles */
     const again = normalizeData(JSON.parse(JSON.stringify(v14)));
     expect(again.plays.length).toBe(v14.plays.length);
-    expect(v14.plays.filter((p) => /^Nasty/.test(p.name)).length).toBe(25);
+    expect(v14.plays.filter((p) => /^Nasty/.test(p.name)).length).toBe(22);
+    /* Greg's ruling: the birds live in Speed, so no Eagle or Laser Owl from Nasty */
+    expect(names.some((n) => /^Nasty .* (Eagle|Laser Owl)$/.test(n))).toBe(false);
   });
   it("the Thompson plan fills every box, sets the keys, and points the band at the sheet", () => {
     const d = normalizeData({});

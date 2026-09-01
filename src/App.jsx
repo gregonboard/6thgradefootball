@@ -1018,8 +1018,10 @@ function safariSeedPlaysV10() {
 /* v15 (Sept 1, Greg's ask): the Nasty install. Nasty is Super Heavy now (X
    wide, Y tight, two wings), and every word the kids already know gets its
    Nasty costume for a run-first week: weak-side power with the wing kicking,
-   traps, counters, the Owl family, the smokes to the wide X, the Now RPOs,
-   the Eagle shot, and one reverse. Zero new words. */
+   traps, counters, three Owls (Y is the same kid in both groups), the smokes
+   to the wide X, the Now RPOs, and one reverse. Zero new words. Greg's
+   ruling: Nasty is the heavy set and Z is a wing there, so the birds live in
+   Speed where the catchers are; no Eagle or Laser Owl from Nasty. */
 function safariSeedPlaysV11() {
   const mk = mkSeedPlay;
   const note = (p, n) => ({ ...p, note: n });
@@ -1033,13 +1035,10 @@ function safariSeedPlaysV11() {
     note(mk(84, "Nasty Rt", "owl", "", false, 5), "Owl from Super Heavy: Rhino rules, block it right, same picture as Nasty Rt Rhino. Two Rhinos load the box, then Y slips behind the backers who just filled."),
     note(mk(85, "Nasty Lt", "owl", "", false, 5), "Rhino action goes right, Y is on the LEFT: the backside pop. The seam opens behind backers flowing away from him. H wing kicks right exactly like Nasty Lt Rhino."),
     note(mk(86, "Nasty Rt", "power", "Lt", false, 5, ["Owl"]), "Sells our weak-side Lion (H kicks, everyone flows left) and Y on the right slips the seam the backers just left. Always thrown."),
-    note(mk(87, "Nasty Lt", "jet", "Lt", false, 5, ["Owl"]), "Off our jet left: the backers chase the motion, Y slips behind them. Always thrown."),
     note(mk(88, "Nasty Rt", "bubble", "Lt", false, 5), "The smoke to X, who is WIDE on the left now. H wing blocks the end, Y walls inside, X catches and gets north behind both. Cushion over X means candy."),
     note(mk(89, "Nasty Lt", "bubble", "Rt", false, 5), "The smoke to X on the right. Same rule: the corner gives cushion, X takes it. H wing blocks the end."),
     note(mk(90, "Nasty Rt", "power", "Rt", false, 5, ["Now"]), "THE RPO from Super Heavy: Rhino right into the wall of Y and Z, H jets from the backside. QB reads X's corner BEFORE the snap: cushion, throw the smoke to X now; pressed, hand Rhino."),
     note(mk(91, "Nasty Lt", "power", "Lt", false, 5, ["Now"]), "The RPO, left: Lion into Y and Z, H jets from the backside, X on the right is the pre-snap smoke read."),
-    note(mk(92, "Nasty Rt", "eagle", "", false, 5), "The shot from a run look: X runs the POST from the wide split behind a safety leaning on the run, Z wing clears the corner up the sideline, Y drags. H and RB stay in: seven blocking."),
-    note(mk(93, "Nasty Lt", "eagle", "", false, 5), "The shot, X on the right: post behind the safety, Z wing clears, Y drags, seven blocking."),
     note(mk(94, "Nasty Rt", "reverse", "Rt", false, 5), "Special. Laser fake to the LEFT, then X (wide left) brings it back RIGHT behind a defense chasing the jet. Off the board only, once a game, after the jets have them flying."),
   ];
 }
@@ -1593,7 +1592,7 @@ function normalizeData(parsed) {
     plays = plays.map((p) => (p.note && NOTE_SWAPS_14[p.note] ? { ...p, note: NOTE_SWAPS_14[p.note] } : p));
   }
   // v15 (Sept 1, Greg's ask): the Nasty install for Super Heavy personnel.
-  // Seventeen costumes of words the kids already know, deduped by name so a
+  // Fourteen costumes of words the kids already know, deduped by name so a
   // coach who built one of these himself keeps his copy.
   if (!(parsed.safariVersion >= 15)) {
     const haveV15 = new Set(plays.map((p) => p.name));
@@ -3973,16 +3972,17 @@ const GAME_PLANS = [
       "THOMPSON 4-4: eight in the box, one safety. They will not honor the wide X. Cushion over X = candy: Laffy from Nasty Rt, Reese's from Nasty Lt, and the Now RPOs are free all night.",
       "THEIR RIGHT END lines up over OUR LEFT tackle: fast, crashes inside. Nasty Rt Lion puts the H wing on him (ride him in, RB bounces). Everything outside him is open: Laser, Leopard, Longhorn from Nasty Lt. Rewind comes back behind him.",
       "THEIR LEFT INSIDE BACKER lines up over OUR RIGHT guard: 60% of their tackles. Run at him only with a wall (Nasty Rt Rhino, Tank Rt Rhino). Make him wrong: Lynx and Lizard away, Owl and Lion Owl behind him when he fills.",
-      "THE SHOT: after two hammers, Nasty Eagle. X post behind a safety leaning on the run, H wing stays home on the crasher. One look, then the drag.",
-      "TEMPO: Nasty Lt is home this week; MIRROR flips it to Nasty Rt. Speed sets only for 3rd and long. Up two scores in the 4th: milk it.",
+      "NASTY RUNS IT, SPEED THROWS IT: Z is a wing in Super Heavy, so the only Nasty throws are Y's Owls (same kid), X's smokes, and the Now read. Every other bird comes from Doubles or Trips with the catchers on the field.",
+      "THE SHOT: Speed personnel, Doubles Eagle, called right after a Nasty drive while the safety is still thinking run. X post behind him, Z go clears the corner, Y drags. One look, then the drag.",
+      "TEMPO: Nasty Lt is home this week; MIRROR flips it to Nasty Rt. Up two scores in the 4th: milk it.",
     ],
     sheet: {
       openers: ["Nasty Lt · Lion", "Nasty Rt · Laffy", "Nasty Lt · Laser", "Nasty Rt · Rhino", "Nasty Rt · Lion Owl", "Nasty Lt · Longhorn"],
       run: ["Nasty Lt · Lion", "Nasty Rt · Rhino", "Nasty Rt · Lion", "Nasty Lt · Rhino", "Nasty Lt · Laser", "Nasty Rt · Rocket", "Nasty Lt · Leopard", "Nasty Rt · Ram", "Nasty Lt · Lynx", "Nasty Rt · Rabbit", "Nasty Lt · Lizard", "Nasty Rt · Renegade", "Nasty Lt · Longhorn", "Nasty Rt · Raccoon", "Tank Rt · Rhino", "Tank Lt · Lion", "Tank Lt · Leopard", "Tank Rt · Ram"],
-      pass: ["Nasty Rt · Lion Owl", "Nasty Lt · Owl", "Nasty Rt · Owl", "Nasty Lt · Laser Owl", "Nasty Rt · Rhino Now", "Nasty Lt · Lion Now", "Nasty Rt · Eagle", "Nasty Lt · Eagle", "Doubles · Sparrow", "Doubles · Robin", "Trips Rt · Hawk"],
+      pass: ["Nasty Rt · Lion Owl", "Nasty Lt · Owl", "Nasty Rt · Owl", "Nasty Rt · Rhino Now", "Nasty Lt · Lion Now", "Doubles · Eagle", "Doubles · Sparrow", "Doubles · Robin", "Trips Rt · Hawk", "Doubles · Owl", "Doubles · Falcon"],
       third_short: ["I Rt · Moose", "Tank Rt · Moose", "Nasty Lt · Lynx", "Nasty Rt · Rabbit", "Tank Rt · Rhino", "I Lt · Lion"],
       third_long: ["Doubles · Raven", "Doubles · Lark", "Trips Rt · Hawk", "Doubles · Rolo", "Doubles · Lifesaver", "Doubles · Falcon"],
-      redzone: ["Nasty Lt · Lion", "Nasty Rt · Owl", "Tank Rt · Owl", "Nasty Rt · Laffy", "Nasty Lt · Reese's", "Nasty Lt · Lizard", "I Rt · Rhino"],
+      redzone: ["Nasty Lt · Lion", "Nasty Rt · Owl", "Tank Rt · Owl", "Nasty Rt · Laffy", "Nasty Lt · Reese's", "Nasty Lt · Lizard", "I Rt · Rhino", "Doubles · Eagle"],
       goalline: ["I Rt · Moose", "I Rt · Rhino", "I Lt · Lion", "Tank Rt · Owl", "Nasty Lt · Lion", "Tank Rt · Rhino"],
       special: ["Nasty Rt · Rewind", "Doubles · Rainbow", "Doubles · Loop"],
     },
