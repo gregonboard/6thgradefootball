@@ -1114,12 +1114,19 @@ describe("super heavy (Sept 1)", () => {
     expect(patch.csKeys).toMatch(/LEFT INSIDE BACKER/);
     const all = new Set(Object.values(patch.callSheet).flat());
     expect(new Set(patch.wrist.selected)).toEqual(all);
-    /* the week leans Super Heavy: more Nasty snaps on the sheet than Speed */
+    /* balance (Greg's ruling): Speed is home, Super Heavy is a new install and
+       stays a package of about a dozen, Heavy is the known hammer */
     const d2 = { ...d, ...patch };
     const groups = sheetByPersonnel(d2);
     expect(groups.map((g) => g.group)).toEqual(["Speed", "Heavy", "Super Heavy"]);
     const count = (g) => groups.find((x) => x.group === g).boxes.reduce((n, b) => n + b.plays.length, 0);
-    expect(count("Super Heavy")).toBeGreaterThan(count("Speed"));
+    expect(count("Speed")).toBeGreaterThan(count("Super Heavy"));
+    expect(count("Super Heavy")).toBeGreaterThanOrEqual(10);
+    expect(count("Super Heavy")).toBeLessThanOrEqual(14);
+    expect(count("Heavy")).toBeGreaterThanOrEqual(8);
+    /* the first four openers are Speed, the kids' home base, then Nasty enters */
+    const openerGroups = patch.callSheet.openers.map((id) => personnelOf(d.plays.find((p) => p.id === id)));
+    expect(openerGroups).toEqual(["Speed", "Speed", "Speed", "Speed", "Super Heavy", "Super Heavy"]);
     expect(count("Super Heavy") + count("Heavy") + count("Speed")).toBe(all.size);
   });
 });
