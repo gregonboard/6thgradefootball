@@ -4226,7 +4226,10 @@ function WristCard({ plays, title, index, total, cols }) {
     ((p.concept && CONCEPTS[p.concept] && p.concept !== "blank") ? callWord(p.concept, p.dir, p.tags || []).length : (p.name || "").length));
   const maxChars = Math.max(6, ...plays.map(labelLen));
   const textWpx = (4 * 96 - 38) / cols - 30; /* usable width (minus left/right sleeve margin) per column, minus the number lane */
-  const hFont = textWpx / (maxChars * 0.6);
+  /* measured in Chrome (Sept 1): Roboto Condensed 500 uppercase with its .5px
+     letter-spacing runs 0.68 to 0.70em per character; 0.6 let long Nasty calls
+     print two sizes too big and clip to "STRETCH RACCO..." */
+  const hFont = textWpx / (maxChars * 0.72);
   const nameSize = Math.max(8, Math.min(22, Math.floor(Math.min(vFont, hFont))));
   const numSize = Math.max(9, Math.min(23, Math.round(rowH * 0.5)));
   return (
