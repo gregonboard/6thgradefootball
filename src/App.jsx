@@ -3979,7 +3979,7 @@ const GAME_PLANS = [
     sheet: {
       openers: ["Nasty Lt · Lion", "Nasty Rt · Laffy", "Nasty Lt · Laser", "Nasty Rt · Rhino", "Nasty Rt · Lion Owl", "Nasty Lt · Longhorn"],
       run: ["Nasty Lt · Lion", "Nasty Rt · Rhino", "Nasty Rt · Lion", "Nasty Lt · Rhino", "Nasty Lt · Laser", "Nasty Rt · Rocket", "Nasty Lt · Leopard", "Nasty Rt · Ram", "Nasty Lt · Lynx", "Nasty Rt · Rabbit", "Nasty Lt · Lizard", "Nasty Rt · Renegade", "Nasty Lt · Longhorn", "Nasty Rt · Raccoon", "Tank Rt · Rhino", "Tank Lt · Lion", "Tank Lt · Leopard", "Tank Rt · Ram"],
-      pass: ["Nasty Rt · Lion Owl", "Nasty Lt · Owl", "Nasty Rt · Owl", "Nasty Rt · Rhino Now", "Nasty Lt · Lion Now", "Doubles · Eagle", "Doubles · Sparrow", "Doubles · Robin", "Trips Rt · Hawk", "Doubles · Owl", "Doubles · Falcon"],
+      pass: ["Nasty Rt · Lion Owl", "Nasty Lt · Owl", "Nasty Rt · Owl", "Nasty Rt · Rhino Now", "Nasty Lt · Lion Now", "Doubles · Eagle", "Doubles · Sparrow", "Doubles · Robin", "Trips Rt · Hawk"],
       third_short: ["I Rt · Moose", "Tank Rt · Moose", "Nasty Lt · Lynx", "Nasty Rt · Rabbit", "Tank Rt · Rhino", "I Lt · Lion"],
       third_long: ["Doubles · Raven", "Doubles · Lark", "Trips Rt · Hawk", "Doubles · Rolo", "Doubles · Lifesaver", "Doubles · Falcon"],
       redzone: ["Nasty Lt · Lion", "Nasty Rt · Owl", "Tank Rt · Owl", "Nasty Rt · Laffy", "Nasty Lt · Reese's", "Nasty Lt · Lizard", "I Rt · Rhino", "Doubles · Eagle"],
