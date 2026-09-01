@@ -4533,8 +4533,10 @@ function TeamScriptPrint({ data }) {
 
 function CallSheetPrint({ data }) {
   const cs = data.callSheet || {};
+  /* a box of ordinary size never splits across a column (an orphaned row with
+     no label reads as the wrong situation); only a giant list may flow */
   const box = (s) => (
-    <div key={s.key} className="p-cs-box">
+    <div key={s.key} className={"p-cs-box" + ((cs[s.key] || []).length <= 20 ? " keep" : "")}>
       <div className="p-cs-label">{s.label}</div>
       {(cs[s.key] || []).map((pid) => {
         const p = data.plays.find((x) => x.id === pid);
@@ -4568,7 +4570,7 @@ function CallSheetPrint({ data }) {
      every call that needs no sub. Personnel is the label color. */
   const groups = sheetByPersonnel(data);
   const backBox = (group, b) => (
-    <div key={group + b.type} className="p-cs-box">
+    <div key={group + b.type} className={"p-cs-box" + (b.plays.length <= 20 ? " keep" : "")}>
       <div className={"p-cs-label " + (group === "Speed" ? "speed" : group === "Heavy" ? "heavy" : "super")}>{group} · {b.type === "Run" ? "Runs" : b.type === "Pass" ? "Passes" : b.type === "Screen" ? "Screens" : "Specials"}</div>
       {b.plays.map((p) => (
         <div key={p.id} className="p-cs-play">
@@ -5285,6 +5287,7 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
    never split an individual play row, so the wrap reads cleanly without a border
    that would look broken at the seam. */
 .p-cs-box { margin: 0 0 8px; break-inside: auto; }
+.p-cs-box.keep { break-inside: avoid; page-break-inside: avoid; }
 .p-cs-box:first-child .p-cs-label { margin-top: 0; }
 .p-cs-label { font-family: var(--disp); font-weight: 700; font-size: 12.5px; letter-spacing: 1.5px; text-transform: uppercase; background: var(--ink); color: #fff; padding: 3px 8px; break-after: avoid; }
 .p-cs-play { display: flex; align-items: center; gap: 7px; padding: 2.5px 8px; border-bottom: 1px solid var(--line); border-left: 1.5px solid var(--ink); border-right: 1.5px solid var(--ink); break-inside: avoid; }
