@@ -1137,7 +1137,7 @@ describe("call sheet front and back (end to end)", () => {
     fireEvent.click(screen.getByText("Call Sheet"));
     window.confirm = () => true;
     fireEvent.change(screen.getByLabelText("Load game plan"), { target: { value: "thompson" } });
-    await waitFor(() => expect(document.querySelectorAll(".cs-chip").length).toBeGreaterThan(40));
+    await waitFor(() => expect(document.querySelectorAll(".cs-chip").length).toBeGreaterThan(36));
     /* Nasty chips carry the SUPER HEAVY sub reminder, Tank carries HEAVY */
     const chips = [...document.querySelectorAll(".cs-chip")];
     expect(chips.some((c) => /Nasty/.test(c.textContent) && /SUPER HEAVY/.test(c.textContent))).toBe(true);

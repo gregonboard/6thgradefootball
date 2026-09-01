@@ -1045,7 +1045,7 @@ function safariSeedPlaysV11() {
 /* the two original Nasty powers never had notes; Super Heavy gives them one */
 const SUPER_HEAVY_NOTES = {
   "Nasty Rt · Rhino": "Power into the strong side: Y and the Z wing wall the edge, H jets from the backside to sell Rocket. Same picture as Nasty Rt Rocket, Raccoon, and Owl.",
-  "Nasty Lt · Lion": "Power left into Y and the Z wing, H jets from the right to sell Laser. Same picture as Nasty Lt Laser, Longhorn, and Lion Now.",
+  "Nasty Lt · Lion": "Power left into Y and the Z wing, H jets from the right to sell Laser. Same picture as Nasty Lt Laser, Longhorn, and Lion Now. Against an end who crashes inside: LT blocks HIM first and never steps past him, Y washes him down, RB bounces off Z's kick.",
 };
 function safariSeedPlays() {
   const mk = mkSeedPlay;
@@ -3969,21 +3969,26 @@ const GAME_PLANS = [
     name: "Thompson (4-4) · Tue Sept 8",
     gameLabel: "vs Thompson",
     keys: [
-      "THOMPSON 4-4: eight in the box, one safety. They will not honor the wide X. Cushion over X = candy: Laffy from Nasty Rt, Reese's from Nasty Lt, and the Now RPOs are free all night.",
-      "THEIR RIGHT END lines up over OUR LEFT tackle: fast, crashes inside. Nasty Rt Lion puts the H wing on him (ride him in, RB bounces). Everything outside him is open: Laser, Leopard, Longhorn from Nasty Lt. Rewind comes back behind him.",
-      "THEIR LEFT INSIDE BACKER lines up over OUR RIGHT guard: 60% of their tackles. Run at him only with a wall (Nasty Rt Rhino, Tank Rt Rhino). Make him wrong: Lynx and Lizard away, Owl and Lion Owl behind him when he fills.",
-      "NASTY RUNS IT, SPEED THROWS IT: Z is a wing in Super Heavy, so the only Nasty throws are Y's Owls (same kid), X's smokes, and the Now read. Every other bird comes from Doubles or Trips with the catchers on the field.",
+      "THOMPSON 4-4: eight in the box, one safety, and the corner on the wing side will creep in as a ninth. They will not honor the wide X. Cushion over X = candy: Laffy from Nasty Rt, Reese's from Nasty Lt, and the Now reads are free all night.",
+      "THEIR RIGHT END lines up over OUR LEFT tackle: fast, crashes inside. LT rule all night: the end is coming to you, block HIM first, never step past him. Nasty Rt Lion puts the H wing on him too. Everything outside him is open: Leopard, Laser, Longhorn from Nasty Lt, and LARK sprints right around a man who runs himself inside.",
+      "THEIR LEFT INSIDE BACKER lines up over OUR RIGHT guard: 60% of their tackles. Left is home: Lion, Leopard, Lynx, Lizard, Longhorn all run away from him. Run at him only with a wall (Nasty Rt Rhino, Tank Rhino). Make him wrong: Owl and Lion Owl pop Y behind him the snap after he fills.",
+      "NASTY RUNS IT, SPEED THROWS IT: Z is a wing in Super Heavy, so the only Nasty throws are Y's Owls (same kid), X's smokes, and the Now read. Every other bird comes from Doubles or Trips with the catchers on the field. Speed swaps one kid (the wing for Z).",
       "THE SHOT: Speed personnel, Doubles Eagle, called right after a Nasty drive while the safety is still thinking run. X post behind him, Z go clears the corner, Y drags. One look, then the drag.",
-      "TEMPO: Nasty Lt is home this week; MIRROR flips it to Nasty Rt. Up two scores in the 4th: milk it.",
+      "SUBS AND TEMPO: Super Heavy for whole drives (no subs, Nasty Lt is home, MIRROR flips it). Heavy only at the sticks and the goal line. Backup H: he leads and blocks first (Leopard, Lion), then gets the jet once they stop chasing him. Up two scores in the 4th: milk it.",
     ],
     sheet: {
-      openers: ["Nasty Lt · Lion", "Nasty Rt · Laffy", "Nasty Lt · Laser", "Nasty Rt · Rhino", "Nasty Rt · Lion Owl", "Nasty Lt · Longhorn"],
-      run: ["Nasty Lt · Lion", "Nasty Rt · Rhino", "Nasty Rt · Lion", "Nasty Lt · Rhino", "Nasty Lt · Laser", "Nasty Rt · Rocket", "Nasty Lt · Leopard", "Nasty Rt · Ram", "Nasty Lt · Lynx", "Nasty Rt · Rabbit", "Nasty Lt · Lizard", "Nasty Rt · Renegade", "Nasty Lt · Longhorn", "Nasty Rt · Raccoon", "Tank Rt · Rhino", "Tank Lt · Lion", "Tank Lt · Leopard", "Tank Rt · Ram"],
+      /* the first drive is all Super Heavy (zero subs), all away from the freak
+         except one Rhino to set up the Owls, and the backup H leads twice before
+         he ever carries: RB, X, RB, RB, Y, H touch it */
+      openers: ["Nasty Lt · Lion", "Nasty Rt · Laffy", "Nasty Lt · Leopard", "Nasty Rt · Rhino", "Nasty Rt · Lion Owl", "Nasty Lt · Laser"],
+      /* left (away from the freak, at the crasher) listed first; each word's mirror beside it */
+      run: ["Nasty Lt · Lion", "Nasty Rt · Rhino", "Nasty Lt · Leopard", "Nasty Rt · Ram", "Nasty Lt · Laser", "Nasty Rt · Rocket", "Nasty Lt · Longhorn", "Nasty Rt · Raccoon", "Nasty Lt · Lynx", "Nasty Rt · Rabbit", "Nasty Lt · Lizard", "Nasty Rt · Renegade", "Nasty Rt · Lion", "Nasty Lt · Rhino", "Tank Lt · Lion", "Tank Rt · Rhino"],
       pass: ["Nasty Rt · Lion Owl", "Nasty Lt · Owl", "Nasty Rt · Owl", "Nasty Rt · Rhino Now", "Nasty Lt · Lion Now", "Doubles · Eagle", "Doubles · Sparrow", "Doubles · Robin", "Trips Rt · Hawk"],
-      third_short: ["I Rt · Moose", "Tank Rt · Moose", "Nasty Lt · Lynx", "Nasty Rt · Rabbit", "Tank Rt · Rhino", "I Lt · Lion"],
-      third_long: ["Doubles · Raven", "Doubles · Lark", "Trips Rt · Hawk", "Doubles · Rolo", "Doubles · Lifesaver", "Doubles · Falcon"],
-      redzone: ["Nasty Lt · Lion", "Nasty Rt · Owl", "Tank Rt · Owl", "Nasty Rt · Laffy", "Nasty Lt · Reese's", "Nasty Lt · Lizard", "I Rt · Rhino", "Doubles · Eagle"],
-      goalline: ["I Rt · Moose", "I Rt · Rhino", "I Lt · Lion", "Tank Rt · Owl", "Nasty Lt · Lion", "Tank Rt · Rhino"],
+      third_short: ["I Rt · Moose", "Tank Rt · Moose", "Nasty Lt · Lynx", "I Lt · Lion", "Tank Lt · Lion", "Nasty Rt · Rabbit"],
+      /* Lark first: sprint TOWARD an end who crashes inside, he takes himself out of contain */
+      third_long: ["Doubles · Lark", "Doubles · Raven", "Trips Rt · Hawk", "Doubles · Falcon", "Doubles · Rolo", "Doubles · Lifesaver"],
+      redzone: ["Nasty Lt · Lion", "Nasty Rt · Owl", "Tank Rt · Owl", "Nasty Rt · Laffy", "Nasty Lt · Reese's", "Nasty Lt · Lizard", "I Lt · Lion", "Doubles · Eagle"],
+      goalline: ["I Rt · Moose", "I Lt · Lion", "Nasty Lt · Lion", "Tank Rt · Owl", "I Rt · Rhino", "Tank Rt · Rhino"],
       special: ["Nasty Rt · Rewind", "Doubles · Rainbow", "Doubles · Loop"],
     },
   },
