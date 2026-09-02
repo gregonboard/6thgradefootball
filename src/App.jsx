@@ -4017,6 +4017,45 @@ function sheetByPersonnel(data) {
   })).filter((g) => g.boxes.length);
 }
 
+/* ---- top-down prep (Greg, Sept 2): load everything installed, cross off what
+   you will not call, and the boxes format themselves. A play lands in every
+   situation the recipe names it for, else in its natural bucket by type. ---- */
+const SITUATION_SHORT = { openers: "Openers", run: "Runs", pass: "Passes", third_short: "3rd short", third_long: "3rd long", redzone: "Red zone", goalline: "Goal line", special: "Special" };
+const bucketForPlay = (p) => (p.concept === "sneak" ? "third_short" : p.type === "Run" ? "run" : p.type === "Pass" ? "pass" : "special");
+function situationsFor(play) {
+  const keys = Object.entries(CALL_SHEET_RECIPE).filter(([, names]) => names.includes(play.name)).map(([k]) => k);
+  return keys.length ? keys : [bucketForPlay(play)];
+}
+function addPlayToSheet(cs, play) {
+  const out = { ...cs };
+  for (const key of situationsFor(play)) {
+    const cur = out[key] || [];
+    if (cur.includes(play.id)) continue;
+    if (key === "openers" && cur.length >= 6) continue; /* openers is literally the first six */
+    out[key] = [...cur, play.id];
+  }
+  /* named only for a full openers box: never let a play fall off the sheet */
+  if (!Object.values(out).some((ids) => (ids || []).includes(play.id))) {
+    const b = bucketForPlay(play);
+    out[b] = [...(out[b] || []), play.id];
+  }
+  return out;
+}
+const removePlayFromSheet = (cs, id) => Object.fromEntries(Object.entries(cs).map(([k, ids]) => [k, (ids || []).filter((x) => x !== id)]));
+const installedConceptPlays = (data) => {
+  const wk = data.seasonWeek || 1;
+  return data.plays.filter((p) => (wk >= 9 || !p.week || p.week <= wk) && p.concept && CONCEPTS[p.concept] && p.concept !== "blank");
+};
+function loadInstalledOntoSheet(data) {
+  const cs = data.callSheet || {};
+  const anyOn = Object.values(cs).some((ids) => (ids || []).length);
+  if (!anyOn) return buildCallSheet(data); /* empty sheet: the recipe's own order */
+  let out = { ...cs };
+  const placed = new Set(Object.values(out).flat());
+  for (const p of [...installedConceptPlays(data)].sort((a, b) => a.num - b.num)) if (!placed.has(p.id)) out = addPlayToSheet(out, p);
+  return out;
+}
+
 function buildCallSheet(data) {
   const wk = data.seasonWeek || 1;
   const installed = data.plays.filter((p) => wk >= 9 || !p.week || p.week <= wk);
@@ -4036,10 +4075,9 @@ function buildCallSheet(data) {
      natural box by type (runs->base runs, passes->base passes, screens &
      tricks->specials, the sneak->short yardage). */
   const placed = new Set(Object.values(cs).flat());
-  const bucketFor = (p) => (p.concept === "sneak" ? "third_short" : p.type === "Run" ? "run" : p.type === "Pass" ? "pass" : "special");
   for (const p of installed) {
     if (!p.concept || !CONCEPTS[p.concept] || placed.has(p.id)) continue;
-    const key = bucketFor(p);
+    const key = bucketForPlay(p);
     cs[key] = [...(cs[key] || []), p.id];
     placed.add(p.id);
   }
@@ -4049,6 +4087,13 @@ function buildCallSheet(data) {
 function CallSheetTab({ data, up, onPrint, onPrintScript }) {
   const cs = data.callSheet || {};
   const plays = data.plays;
+  const [pickGroup, setPickGroup] = useState("All");
+  const [hideOff, setHideOff] = useState(false);
+  const installed = [...installedConceptPlays(data)].sort((a, b) => a.num - b.num);
+  const onSheet = new Set(Object.values(cs).flat());
+  const boxesHolding = (id) => SITUATIONS.filter((s) => (cs[s.key] || []).includes(id)).map((s) => s.key);
+  const togglePlay = (p) => up({ callSheet: onSheet.has(p.id) ? removePlayFromSheet(cs, p.id) : addPlayToSheet(cs, p) });
+  const pickRows = installed.filter((p) => (pickGroup === "All" || personnelOf(p) === pickGroup) && (!hideOff || onSheet.has(p.id)));
 
   const addTo = (key, playId) => {
     if (!playId) return;
@@ -4085,7 +4130,33 @@ function CallSheetTab({ data, up, onPrint, onPrintScript }) {
           <button className="btn" onClick={onPrint} disabled={!anyAssigned}>Print Call Sheet</button>
         </div>
       </div>
-      <p className="hint">Slot plays into game situations. A play can live in more than one box. Print, laminate, call the game. The print is front and back: situations on the front, every play on the sheet grouped by personnel (Speed / Heavy / Super Heavy) on the back.</p>
+      <p className="hint">The sheet, formatted by situation. A play can live in more than one box; add or remove here to hand-tune. The print is front and back: situations on the front, every play on the sheet grouped by personnel (Speed / Heavy / Super Heavy) on the back.</p>
+      <div className="check-head cs-pick-head">
+        <b>Plays on this sheet ({installed.filter((p) => onSheet.has(p.id)).length} of {installed.length} installed)</b>
+        <div className="cs-pick-tools">
+          <button className="btn small" onClick={() => up({ callSheet: loadInstalledOntoSheet(data) })} title="Puts every installed play on the sheet, each in the situations it belongs to. Then uncheck what you will not call.">Load everything installed</button>
+          <select className="cell" style={{ width: "auto" }} value={pickGroup} onChange={(e) => setPickGroup(e.target.value)} aria-label="Personnel filter">
+            <option value="All">All personnel</option>
+            {PERSONNEL_ORDER.map((g) => <option key={g} value={g}>{g}</option>)}
+          </select>
+          <label className="wrist-killtoggle"><input type="checkbox" checked={hideOff} onChange={(e) => setHideOff(e.target.checked)} /> Hide plays off the sheet</label>
+        </div>
+      </div>
+      <p className="hint" style={{ marginTop: 0 }}>Prep top-down: load everything installed, uncheck what you will not call this week, and the situation boxes below format themselves. A checked play lands in every situation it belongs to; the boxes stay editable.</p>
+      <div className="check-list cs-pick">
+        {pickRows.map((p) => {
+          const on = onSheet.has(p.id);
+          const sits = (on ? boxesHolding(p.id) : situationsFor(p)).map((k) => SITUATION_SHORT[k] || k).join(" · ");
+          return (
+            <label key={p.id} className={"check-row" + (on ? "" : " off")}>
+              <input type="checkbox" checked={on} onChange={() => togglePlay(p)} aria-label={`On sheet: ${playCallLabel(p)}`} />
+              <b className="mono">#{p.num}</b> <span className="cs-pick-call">{playCallLabel(p)}</span><PersonnelTag p={p} /> <span className="type-dot" style={{ background: TYPE_COLORS[p.type] }} />
+              <span className="cs-pick-sits">{on ? sits : `would land: ${sits}`}</span>
+            </label>
+          );
+        })}
+        {pickRows.length === 0 && <div className="empty pad">Nothing to show. Change the filter, or turn the WEEK dial up.</div>}
+      </div>
       <textarea className="cs-keys-edit" aria-label="Opponent keys" rows={4} placeholder="Opponent keys, one per line. They print in a strip under the call sheet header (what their front does, who to run away from, the shot)." value={data.csKeys || ""} onChange={(e) => up({ csKeys: e.target.value })} />
       <div className="cs-grid">
         {SITUATIONS.map((s) => (
@@ -4863,6 +4934,13 @@ tbody tr { cursor: pointer; }
 .p-cs-formpre { font-family: var(--disp); font-weight: 600; letter-spacing: .3px; text-transform: uppercase; color: #6B6F76; }
 .heavy-tag { display: inline-block; font-family: var(--disp); font-weight: 700; font-size: 9px; letter-spacing: 1px; background: #B7791F; color: #fff; padding: 1px 5px; border-radius: 3px; margin-left: 5px; vertical-align: middle; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .heavy-tag.super { background: #8E1B27; }
+.cs-pick-head { padding-top: 10px; flex-wrap: wrap; gap: 8px; }
+.cs-pick-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cs-pick { max-height: 420px; margin: 0 0 6px; }
+.cs-pick .check-row.off { opacity: .5; }
+.cs-pick .check-row.off .cs-pick-call { text-decoration: line-through; }
+.cs-pick-call { font-family: var(--disp); font-weight: 600; letter-spacing: .3px; text-transform: uppercase; }
+.cs-pick-sits { margin-left: auto; font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; padding-left: 8px; }
 .cs-keys-edit { display: block; width: 100%; box-sizing: border-box; margin: 0 0 12px; padding: 8px 10px; font: inherit; font-size: 13px; line-height: 1.4; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); resize: vertical; }
 .play-svg.book { width: 100%; border: none; }
 .book-notes { padding: 4px 8px; font-size: 10px; color: var(--muted); border-top: 1px solid var(--line); }
@@ -5343,4 +5421,4 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
   );
 }
 
-export { normalizeData, practiceGroupsFor, pgForPos, slotsFor, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, buildCallSheet, genDef, DEF_FRONTS, DEF_COVERAGES, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots, store, GAME_PLANS, applyGamePlan, sheetByPersonnel, personnelOf, OFF_SCHEMES, CallSheetPrint, WristPrint, PlayDiagram, Styles };
+export { normalizeData, practiceGroupsFor, pgForPos, slotsFor, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, buildCallSheet, genDef, DEF_FRONTS, DEF_COVERAGES, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots, store, GAME_PLANS, applyGamePlan, sheetByPersonnel, personnelOf, OFF_SCHEMES, CallSheetPrint, WristPrint, PlayDiagram, Styles, situationsFor, addPlayToSheet, removePlayFromSheet, loadInstalledOntoSheet, CallSheetTab };

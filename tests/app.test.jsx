@@ -1005,7 +1005,7 @@ describe("supabase sync", () => {
 });
 
 /* ---------- Sept 1: Nasty goes Super Heavy (Greg's ask) ---------- */
-import { GAME_PLANS, applyGamePlan, sheetByPersonnel, personnelOf, OFF_SCHEMES } from "../src/App.jsx";
+import { GAME_PLANS, applyGamePlan, sheetByPersonnel, personnelOf, OFF_SCHEMES, situationsFor, addPlayToSheet, removePlayFromSheet, loadInstalledOntoSheet } from "../src/App.jsx";
 describe("super heavy (Sept 1)", () => {
   it("Nasty puts X wide on the line, both ways, and stays legal", () => {
     const rt = formSpots("Nasty Rt"), lt = formSpots("Nasty Lt");
@@ -1176,5 +1176,75 @@ describe("call sheet front and back (end to end)", () => {
     expect(sel).toBeTruthy();
     fireEvent.change(sel, { target: { value: "Super Heavy" } });
     await waitFor(() => expect(screen.getByText("Wing (Z)")).toBeTruthy());
+  });
+});
+
+/* ---------- Sept 2: top-down call sheet prep (Greg's ask) ---------- */
+describe("call sheet top-down prep", () => {
+  it("a play lands in every situation the recipe names, else its bucket", () => {
+    const d = normalizeData({ seasonWeek: 9 });
+    const rhino = d.plays.find((p) => p.name === "Doubles · Rhino");
+    expect(situationsFor(rhino)).toEqual(["openers", "run", "redzone", "goalline"]);
+    const nastyLynx = d.plays.find((p) => p.name === "Nasty Lt · Lynx");
+    expect(situationsFor(nastyLynx)).toEqual(["run"]); /* not in the recipe: a Run */
+    expect(situationsFor(d.plays.find((p) => p.name === "Tank Rt · Moose"))).toEqual(["third_short"]);
+    let cs = addPlayToSheet({}, rhino);
+    expect(cs.openers).toEqual([rhino.id]); expect(cs.run).toEqual([rhino.id]);
+    cs = addPlayToSheet(cs, rhino); /* idempotent */
+    expect(cs.run.length).toBe(1);
+    cs = removePlayFromSheet(cs, rhino.id);
+    expect(Object.values(cs).flat()).toEqual([]);
+    /* openers full: the seventh opener still lands somewhere */
+    const full = { openers: ["a", "b", "c", "d", "e", "f"] };
+    const owl = d.plays.find((p) => p.name === "Doubles · Owl");
+    const cs2 = addPlayToSheet(full, owl);
+    expect(cs2.openers.length).toBe(6);
+    expect(cs2.pass).toContain(owl.id);
+  });
+  it("Load everything installed covers every installed play once, and adds to a partial sheet without touching picks", () => {
+    const d = normalizeData({ seasonWeek: 9 });
+    const cs = loadInstalledOntoSheet(d);
+    const installed = d.plays.filter((p) => p.concept && p.concept !== "blank");
+    const on = new Set(Object.values(cs).flat());
+    for (const p of installed) expect(on.has(p.id), p.name).toBe(true);
+    /* partial sheet: the coach's openers survive, missing plays are added */
+    const rhino = d.plays.find((p) => p.name === "Doubles · Rhino");
+    const partial = { openers: [rhino.id] };
+    const cs2 = loadInstalledOntoSheet({ ...d, callSheet: partial });
+    expect(cs2.openers[0]).toBe(rhino.id);
+    expect(new Set(Object.values(cs2).flat()).size).toBe(installed.length);
+    /* WEEK dial respected: at week 1 only week-1 plays load */
+    const wk1 = loadInstalledOntoSheet({ ...d, seasonWeek: 1, callSheet: {} });
+    const ids1 = new Set(Object.values(wk1).flat());
+    for (const id of ids1) expect(d.plays.find((p) => p.id === id).week).toBe(1);
+  });
+  it("end to end: load everything, cross a play off, it leaves every box; check it back, it comes home", async () => {
+    window.localStorage.clear();
+    render(<App />);
+    await waitFor(() => expect(screen.getByText("VESTAVIA HILLS REBELS")).toBeTruthy());
+    fireEvent.change(screen.getByLabelText("Season week"), { target: { value: "9" } });
+    fireEvent.click(screen.getByText("Call Sheet"));
+    fireEvent.click(screen.getByText("Load everything installed"));
+    await waitFor(() => expect(document.querySelectorAll(".cs-chip").length).toBeGreaterThan(80));
+    const rows = document.querySelectorAll(".cs-pick .check-row");
+    expect(rows.length).toBeGreaterThan(80);
+    expect([...rows].every((r) => r.querySelector("input").checked)).toBe(true);
+    /* cross off Doubles Rhino */
+    const box = screen.getByLabelText("On sheet: HAMMER · Rhino");
+    fireEvent.click(box);
+    await waitFor(() => expect(box.checked).toBe(false));
+    expect([...document.querySelectorAll(".cs-chip")].some((c) => /^1\s*HAMMER · Rhino/.test(c.textContent))).toBe(false);
+    expect(box.closest(".check-row").textContent).toMatch(/would land: Openers · Runs · Red zone · Goal line/);
+    /* the header count dropped by one */
+    expect(screen.getByText(/Plays on this sheet/).textContent).toMatch(/\d+ of \d+/);
+    /* check it back: it returns to its situations */
+    fireEvent.click(box);
+    await waitFor(() => expect(box.checked).toBe(true));
+    const rhinoChips = [...document.querySelectorAll(".cs-chip")].filter((c) => /^1\s*HAMMER · Rhino/.test(c.textContent));
+    expect(rhinoChips.length).toBe(4);
+    /* personnel filter narrows the list */
+    fireEvent.change(screen.getByLabelText("Personnel filter"), { target: { value: "Super Heavy" } });
+    await waitFor(() => expect([...document.querySelectorAll(".cs-pick .check-row")].every((r) => /Nasty/.test(r.textContent))).toBe(true));
+    cleanup();
   });
 });
