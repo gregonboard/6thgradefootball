@@ -761,7 +761,7 @@ const CONCEPTS = {
   owl:     { fam: "Pass",   dirs: [""],         words: { "": "Owl" }, carrier: "Y", signal: "Circles over the eyes", how: "Everyone sells Rhino, and Owl is ALWAYS Rhino action to the right: the line hears HAMMER with no R or L word and that means Rhino rules, every time. Y slips into the seam behind the linebackers, QB fakes and pops it over their heads. OWL behind any run word (Lion Owl, Rocket Owl, Laser Owl) is this same shot off that run's action: always thrown, the fake is the play.", read: "Fake, find Y, throw it now. Covered? Tuck it and run the Rhino path. The most unfair play we own." },
   falcon:  { fam: "Pass",   dirs: [""],         words: { "": "Falcon" }, carrier: "WR", signal: "Both arms soar", how: "Four verticals, slots bend to the seams, RB checks down.", read: "Coach picks the target before the snap. No pick, or one deep safety in the middle: throw the seam on the FAR side of him." },
   flood:   { fam: "Pass",   dirs: ["Rt", "Lt"], words: { Rt: "Raven", Lt: "Lark" }, carrier: "WR", signal: "Wing out flat, run the fingers sideways, then point", how: "Sprint-out flood: QB moves the launch point to the call side with the RB leading. Three levels stacked in front of him: go to clear it, deep out at 10, flat at 4. Half the field, one look at a time, and his legs are the third answer.", read: "Deep out first. Covered? Flat. Both covered? RUN for the sticks and get down or get out of bounds." },
-  eagle:   { fam: "Pass",   dirs: [""],         words: { "": "Eagle" }, carrier: "WR", signal: "Full wingspan flex", how: "The shot. Post and go outside, Y drags underneath, H and RB stay in to protect seven strong.", read: "One look deep for two seconds, then take the drag." },
+  eagle:   { fam: "Pass",   dirs: [""],         words: { "": "Eagle" }, carrier: "WR", signal: "Full wingspan flex", how: "The shot. Post and go outside, Y drags underneath, RB stays in to protect, and H's bubble is the hot throw if they bring the house. From Super Heavy the H wing stays in too: seven blocking.", read: "One look deep for two seconds, then take the drag. Blitz? H's bubble, now." },
   bubble:  { fam: "Screen", dirs: ["Rt", "Lt"], words: { Rt: "Reese's", Lt: "Laffy" }, carrier: "WR", signal: "Rub the belly, then point", how: "SMOKE screen (July 28 ruling: an outside man drifting wider made the throw a lateral floater, pick-six bait). Called-side outside WR takes ONE step back and shows his numbers while the jet fake pulls the second level; Y walls the first man inside. Ball arrives instantly and a hair FORWARD, then he gets NORTH.", read: "Catch and throw NOW, slightly forward, outside shoulder. Pressed over the screen? MIRROR it before the snap. Never late, never behind him." },
   slip:    { fam: "Screen", dirs: ["Rt", "Lt"], words: { Rt: "Rolo", Lt: "Lifesaver" }, carrier: "RB", signal: "Take a big bite, then point", how: "QB drifts, the line lets the rush through and releases, RB slips out behind it.", read: "Let the rush come, then dump it over their heads." },
   reverse: { fam: "Special", dirs: ["Rt", "Lt"], words: { Rt: "Rewind", Lt: "Loop" }, carrier: "WR", signal: "Spin a finger backward, then point", how: "The R or L points where the ball ENDS, not where it starts. Full jet fake the OTHER way first, then the backside WR brings it back behind everyone chasing: Rewind fakes left and X carries right, Loop fakes right and Z carries left. Once a game, when they start flying to the jet.", read: "None. Sell the fake, hand it deep." },
@@ -792,12 +792,21 @@ const callWord = (c, dir, tags = []) => {
   const base = CONCEPTS[c] ? CONCEPTS[c].words[dir || ""] || CONCEPTS[c].words.Rt : "";
   return tags.length ? `${base} ${tags.join(" ")}` : base;
 };
+/* the outside receiver on a side of THIS formation (X and Z swap sides in a
+   Lt look), so the highlighted carrier matches what the diagram draws */
+const outsideReceiverOf = (formation, side) => {
+  const spots = formSpots(formation || "Doubles");
+  const cands = ["X", "Z"].filter((L) => spots[L]);
+  if (!cands.length) return null;
+  return cands.reduce((best, L) => ((spots[L][0] - 50) * side > (spots[best][0] - 50) * side ? L : best), cands[0]);
+};
 const playCarrier = (p) => {
   const c = CONCEPTS[p.concept];
   if (!c) return null;
-  if (p.concept === "bubble") return p.dir === "Lt" ? "X" : "Z";
-  if (p.concept === "rbpass") return p.dir === "Lt" ? "X" : "Z";
-  if (p.concept === "reverse") return p.dir === "Lt" ? "Z" : "X";
+  const s = p.dir === "Lt" ? -1 : 1;
+  if (p.concept === "bubble") return outsideReceiverOf(p.formation, s);
+  if (p.concept === "rbpass") return outsideReceiverOf(p.formation, s);
+  if (p.concept === "reverse") return outsideReceiverOf(p.formation, -s);
   if ((p.tags || []).includes("Now")) return c.carrier + " / X";
   if ((p.tags || []).includes("Owl")) return "Y";
   return c.carrier;
@@ -810,7 +819,7 @@ const ASSIGNMENTS = {
   jet:     { OL: "Everybody stretch playside and run.", QB: "YOU own the ball. Press it into H's basket as he crosses. If the mesh feels wrong, keep it and run the Raccoon path. Never chase him with the ball.", RB: "Fake the power away. Sell it.", H: "Make a basket, NEVER slow down, squeeze when you feel it. Your only job is speed.", Y: "Arc release, go find the safety.", XZ: "Playside walls off inside: get in the way, stay high, no kill shots. Backside blocks his man." },
   keep:    { OL: "Stretch playside just like Rocket.", QB: "Fake the flip, tuck it, follow the RB around the edge. Score or get down: never take the second hit.", RB: "Lead through the edge, block the first color you see.", H: "Motion full speed, fake it, keep sprinting.", Y: "Arc to the safety.", XZ: "Block the man over you." },
   stretch: { OL: "Stretch playside and RUN. Cover him up, stay on your feet, do not win a wrestling match.", QB: "Open playside, hand it WIDE to the RB, fake the keep after.", RB: "Take it flat, race to the numbers, one cut upfield the moment you see grass. No grass at the numbers? Plant and slam it NORTH inside: their whole defense just overran you.", H: "Jet motion full speed, but this one is not yours: turn up at the edge and lead. Block the first color outside Y.", Y: "Reach the end and run him where he wants to go. The RB cuts off your butt.", XZ: "Playside stalks the corner. Backside sprints his man deep and away." },
-  counter: { OL: "Playside blocks down and seals anyone chasing the pullers. Backside guard kicks, backside tackle wraps and leads. Center walls the backside A gap behind them.", QB: "Open away first, then hand it back.", RB: "Jab step away, be patient, then hit it behind the wrappers.", H: "Jet motion away. Sell it.", Y: "Block down hard.", XZ: "Block the man over you." },
+  counter: { OL: "Playside blocks down and seals anyone chasing the pullers. Backside guard kicks, backside tackle wraps and leads. Center walls the backside A gap behind them.", QB: "Open away first, then hand it back.", RB: "Jab step away, be patient, then hit it behind the wrappers.", H: "No motion on the counter. Stay wide and block the man over you; the RB's jab step is the decoy.", Y: "Block down hard.", XZ: "Block the man over you." },
   sneak:   { OL: "Fire out low. One yard war.", QB: "Snap and surge behind the center. Two hands on the ball.", RB: "Push the pile.", H: "Get big, wall off.", Y: "Get big, wall off.", XZ: "Block the man over you." },
   sparrow: { OL: "Set and punch. Ball is out fast.", QB: "Pick the widest cushion before the snap. Catch, throw, done.", RB: "Check the rush, leak to the flat.", H: "Slant at 4: three steps, cut across his face.", Y: "Stick at 5, sit in the window.", XZ: "Hitch at 5. Turn around, show your numbers. Pressed? Nod and GO: your hitch just became a fly route." },
   robin:   { OL: "Set and punch. Ball out quick.", QB: "Flat first. If he jumps it, the slant is behind him. All covered: your RB is sitting in the middle.", RB: "Check the rush, then settle in the MIDDLE at 4. The slants just emptied it for you.", H: "Arrow to the flat right now.", Y: "Flat.", XZ: "Slant. Three steps, cut across his face." },
@@ -818,7 +827,7 @@ const ASSIGNMENTS = {
   owl:     { OL: "Block Rhino, RIGHT, every time: no R or L after HAMMER means Owl, and Owl means Rhino rules. Make it look exactly the same.", QB: "Fake Rhino big, pop it to Y over their heads. Covered? Tuck and run the Rhino path: your line is already run blocking.", RB: "Fake Rhino, run angry without the ball.", H: "Jet motion, sell it.", Y: "Sell the block one count, slip behind the linebackers, eyes up fast.", XZ: "Block like it's a run." },
   falcon:  { OL: "Best pass set of the day. Give him time.", QB: "Coach picks the target before the snap. Trust it. One safety deep? The seam on his far side wins.", RB: "Checkdown at 5.", H: "Seam.", Y: "Seam.", XZ: "Go. Run through his shoulder." },
   flood:   { OL: "Pass set, then slide with the QB. He is moving; move with him. Nobody crosses your face.", QB: "Sprint to the call, shoulders square so you can still throw. Deep out, then flat, then RUN. First down, then down or out of bounds.", RB: "You are his bodyguard. Lead the sprint and block the first color off the edge.", H: "Cross to the call side, deep out at 10. Snap your head around fast.", Y: "Flat at 4 on the call side. Be his easy answer.", XZ: "Called side runs the GO to pull the top off. Backside runs the post: stay alive, he might find you." },
-  eagle:   { OL: "Max protect. Nobody touches him.", QB: "One look deep for two counts, then take the drag.", RB: "Block first. Always.", H: "Stay in and block. You are the bodyguard.", Y: "Drag at 10. Be the answer.", XZ: "X runs the post. Z runs the go." },
+  eagle:   { OL: "Max protect. Nobody touches him.", QB: "One look deep for two counts, then take the drag. They bring the house: H's bubble, right now.", RB: "Block first. Always.", H: "Bubble: one step out, turn, show your numbers. You are the hot throw if they blitz; otherwise stay out of the way.", Y: "Drag at 10. Be the answer.", XZ: "X runs the post. Z runs the go." },
   bubble:  { OL: "Set and punch. Do not go downfield.", QB: "Catch and throw it NOW, a hair forward, outside shoulder. Never late, never behind him.", RB: "Fake.", H: "Jet motion, sell it.", Y: "Wall the first defender inside: get in his way, stay high.", XZ: "Called side: ONE step back, show your numbers, catch, get NORTH now. Other side blocks his man." },
   slip:    { OL: "Block one count, let them through, release flat.", QB: "Drift back, let them come, dump it over their heads.", RB: "Let the rush go by, slip out behind them, eyes up fast.", H: "Run your man off deep.", Y: "Run him off.", XZ: "Run them off deep." },
   reverse: { OL: "Stretch like Rocket, then wall off.", QB: "Fake to H, then YOU own the second exchange too: press it deep into the reverse man's basket.", RB: "Fake away.", H: "Full Rocket fake. Best acting on the team.", Y: "Arc, find the safety.", XZ: "Backside man comes around deep, makes a basket, and sprints. Called side blocks down." },
@@ -1665,7 +1674,7 @@ function todayStr() {
 
 /* ============================================================ */
 /* ============================================================
-   DEFENSE MODE — 4-4 / 4-3, two coverages, two blitzes. Kid-simple.
+   DEFENSE MODE: 4-4 / 4-3, two coverages, two blitzes. Kid-simple.
    Its own tiny diagram engine (LOS at y=22, offense gray below,
    defense navy above; deep = toward y=0).
    ============================================================ */
@@ -1742,21 +1751,21 @@ const DEF_RULES = [
 ];
 const DEF_GAPS = {
   "4-4": [
-    ["Ends (E)", "C gap — outside the tackle. You have CONTAIN: keep everything inside you."],
-    ["Tackles (T)", "B gap — outside the guard. Fire low, do not get moved."],
-    ["Mike & Will (M/W)", "A gap — next to the center. Downhill the second it's a run."],
-    ["Sam & Buck (S/B)", "D gap — outside the tight end. FORCE everything back inside."],
+    ["Ends (E)", "C gap: outside the tackle. You have CONTAIN: keep everything inside you."],
+    ["Tackles (T)", "B gap: outside the guard. Fire low, do not get moved."],
+    ["Mike & Will (M/W)", "A gap: next to the center. Downhill the second it's a run."],
+    ["Sam & Buck (S/B)", "D gap: outside the tight end. FORCE everything back inside."],
   ],
   "4-3": [
-    ["Ends (E)", "C gap / CONTAIN — box the play, keep it inside."],
-    ["Tackles (T)", "A gap — either side of the center. Push the pocket."],
-    ["Mike (M)", "The open gap — fill downhill, you're the closer."],
-    ["Sam & Will (S/W)", "B gap and the backside — scrape over the top, chase everything."],
+    ["Ends (E)", "C gap / CONTAIN: box the play, keep it inside."],
+    ["Tackles (T)", "A gap: either side of the center. Push the pocket."],
+    ["Mike (M)", "The open gap: fill downhill, you're the closer."],
+    ["Sam & Will (S/W)", "B gap and the backside: scrape over the top, chase everything."],
   ],
   "GOAL LINE": [
-    ["Ends (E)", "Outside shoulder of the end man — squeeze and CONTAIN, no bounce outside."],
-    ["Tackles (T)", "B gap — get low, get penetration, knock the blocker back."],
-    ["Noses (N)", "A gap — split the center and guard, do not get moved an inch."],
+    ["Ends (E)", "Outside shoulder of the end man: squeeze and CONTAIN, no bounce outside."],
+    ["Tackles (T)", "B gap: get low, get penetration, knock the blocker back."],
+    ["Noses (N)", "A gap: split the center and guard, do not get moved an inch."],
     ["Mike & Will (M/W)", "Plug the first open gap and meet the back IN the hole."],
   ],
 };
@@ -1979,7 +1988,7 @@ function DefensePrint({ data }) {
   const nm = (c) => [c.front, DEF_COVERAGES[c.cov].label.match(/\((\w+)\)/)[1], c.stunt !== "none" ? DEF_STUNTS[c.stunt].label : "", c.blitz !== "none" ? DEF_BLITZES[c.blitz].label : ""].filter(Boolean).join(" · ");
   return (
     <div className="sheet">
-      <PrintHead title="Defense — Coach Sheet" right={<div className="p-meta">{todayStr()}</div>} />
+      <PrintHead title="Defense · Coach Sheet" right={<div className="p-meta">{todayStr()}</div>} />
       <div className="def-rules-print">
         {DEF_RULES.map((r) => <div key={r.n} className="def-rule"><b>{r.n}</b><div><b>{r.t}</b> {r.d}</div></div>)}
       </div>
@@ -2024,7 +2033,7 @@ function DefensePrint({ data }) {
 }
 
 /* ============================================================
-   GAME DAY — coach responsibilities & gameday plan (from Richard's sheet)
+   GAME DAY: coach responsibilities & gameday plan (from Richard's sheet)
    ============================================================ */
 const GD_PREGAME = [
   { id: "water", task: "Fill up & bring water bottles", owner: "" },
@@ -2037,7 +2046,7 @@ const GD_PREGAME = [
 const GD_WARMUP = [
   { id: "arrive", mins: 10, task: "Arrive, get taped, gather", owner: "", note: "Boys who need tape arrive early" },
   { id: "warm", mins: 10, task: "Warm-up + pregame speech", owner: "" },
-  { id: "group", mins: 10, task: "Group work — OL/DL · WR/DB/RB", owner: "" },
+  { id: "group", mins: 10, task: "Group work: OL/DL · WR/DB/RB", owner: "" },
   { id: "runthru", mins: 10, task: "Run through plays", owner: "" },
   { id: "caps", mins: 5, task: "Captains & reminders", owner: "Greg" },
   { id: "sideline", mins: 5, task: "Get to the sideline, run the banner", owner: "" },
@@ -2086,7 +2095,7 @@ function GameDayTab({ data, up, onPrint }) {
     const extra = cur && !coaches.includes(cur) ? [cur] : [];
     return (
       <select className="gd-owner" value={cur} onChange={(e) => setOwner(id, e.target.value)}>
-        <option value="">— who? —</option>
+        <option value="">who?</option>
         {coaches.map((c) => <option key={c} value={c}>{c}</option>)}
         {extra.map((c) => <option key={c} value={c}>{c}</option>)}
       </select>
@@ -2112,7 +2121,7 @@ function GameDayTab({ data, up, onPrint }) {
 
         <div className="gd-sec">WARM-UP · {gdWarmTotal} min</div>
         {GD_WARMUP.map((r) => (
-          <div key={r.id} className="gd-row"><span className="gd-mins">{r.mins}'</span><span className="gd-task">{r.task}{r.note ? <span className="gd-note"> — {r.note}</span> : null}</span>{ownerInput(r.id, r.owner)}</div>
+          <div key={r.id} className="gd-row"><span className="gd-mins">{r.mins}'</span><span className="gd-task">{r.task}{r.note ? <span className="gd-note"> · {r.note}</span> : null}</span>{ownerInput(r.id, r.owner)}</div>
         ))}
       </section>
 
@@ -2136,7 +2145,7 @@ function GameDayTab({ data, up, onPrint }) {
         <div className="gd-sec">REMINDERS</div>
         <div className="gd-reminders">
           <div>One cadence all game: <b>"Set… GO."</b></div>
-          <div>Tempo is a gearbox: Turbo / Base / Milk. <b>Up two scores in the 4th — stop tapping, milk the clock.</b></div>
+          <div>Tempo is a gearbox: Turbo / Base / Milk. <b>Up two scores in the 4th: stop tapping, milk the clock.</b></div>
           <div>Timeouts: 1st half ☐ ☐ ☐ · 2nd half ☐ ☐ ☐</div>
         </div>
       </section>
@@ -2177,7 +2186,7 @@ function GameDayPlanPrint({ data }) {
       </div>
       <div className="gp-foot">
         <span><b>Up two scores in the 4th: stop tapping, milk the clock.</b></span>
-        <span>Timeouts — 1st: ☐ ☐ ☐ &nbsp; 2nd: ☐ ☐ ☐</span>
+        <span>Timeouts · 1st: ☐ ☐ ☐ &nbsp; 2nd: ☐ ☐ ☐</span>
       </div>
     </div>
   );
@@ -2191,11 +2200,21 @@ export default function App() {
   const [syncBlocked, setSyncBlocked] = useState(false);
   const loaded = useRef(false);
   const saveTimer = useRef(null);
+  const offlineEdits = useRef(false); // the coach changed something while the cloud was unreachable
+  const saveChain = useRef(Promise.resolve()); // cloud writes go out one at a time, in order
 
   const loadProgram = async () => {
     try {
       const raw = await store.get(STORAGE_KEY);
-      setData((cur) => (raw ? normalizeData(JSON.parse(raw)) : cur || SEED));
+      /* Reconnecting after offline edits: the cloud copy is the default, but the
+         coach chooses. Cancel keeps this device's version and, now that a real
+         cloud read exists, the next autosave pushes it up (a full program, chosen
+         on purpose, never an unconfirmed empty state). */
+      const keepMine = raw && offlineEdits.current && typeof window.confirm === "function" &&
+        !window.confirm("You made changes while offline. OK loads the shared program from the cloud and drops those changes. Cancel keeps YOUR version and saves it to the cloud.");
+      offlineEdits.current = false;
+      if (!keepMine) setData((cur) => (raw ? normalizeData(JSON.parse(raw)) : cur || SEED));
+      else setData((cur) => ({ ...cur })); /* nudge the autosave */
       setSyncBlocked(false);
       loaded.current = true; // cloud state confirmed -> safe to autosave
     } catch (e) {
@@ -2228,18 +2247,19 @@ export default function App() {
     if (!loaded.current) return;
     setSaveState("saving");
     clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async () => {
-      try {
-        await store.set(STORAGE_KEY, JSON.stringify(data));
-        setSaveState("saved");
-      } catch (e) {
-        setSaveState("error");
-      }
+    saveTimer.current = setTimeout(() => {
+      /* chain behind any write still in flight so a slow older response can never
+         land after (and silently undo) a newer one */
+      const body = JSON.stringify(data);
+      saveChain.current = saveChain.current
+        .catch(() => {})
+        .then(() => store.set(STORAGE_KEY, body))
+        .then(() => setSaveState("saved"), () => setSaveState("error"));
     }, 700);
     return () => clearTimeout(saveTimer.current);
   }, [data]);
 
-  const up = (patch) => setData((d) => ({ ...d, ...patch }));
+  const up = (patch) => { if (!loaded.current) offlineEdits.current = true; setData((d) => ({ ...d, ...patch })); };
 
   if (!data) {
     return (
@@ -2247,7 +2267,7 @@ export default function App() {
         {syncBlocked ? (
           <>
             <div style={{ fontWeight: 700, color: "#C32032" }}>Can't reach the cloud right now.</div>
-            <div style={{ maxWidth: 380 }}>Your program is safe in the cloud — we just didn't load it, and we won't save anything empty over it. Check your connection and try again.</div>
+            <div style={{ maxWidth: 380 }}>Your program is safe in the cloud: we just didn't load it, and we won't save anything empty over it. Check your connection and try again.</div>
             <button onClick={loadProgram} style={{ background: "#C32032", color: "#fff", border: 0, borderRadius: 8, padding: "10px 18px", fontWeight: 700, cursor: "pointer" }}>Retry</button>
           </>
         ) : (
@@ -2274,7 +2294,7 @@ export default function App() {
       <div className="app-ui">
         {syncBlocked && (
           <div className="offline-banner no-print">
-            Working offline — can't reach the cloud. Your program is safe there; changes here won't be saved until this reconnects.
+            Working offline: can't reach the cloud. Your program is safe there; changes here won't be saved until this reconnects.
             <button onClick={loadProgram}>Retry</button>
           </div>
         )}
@@ -2335,7 +2355,7 @@ export default function App() {
 }
 
 /* ============================================================
-   ROSTER & DEPTH CHART — 1st/2nd/3rd team slots per position
+   ROSTER & DEPTH CHART: 1st/2nd/3rd team slots per position
    ============================================================ */
 function RosterTab({ data, up, onPrint, onPrintGroups, onPrintFormations }) {
   const [name, setName] = useState("");
@@ -2432,19 +2452,19 @@ function RosterTab({ data, up, onPrint, onPrintGroups, onPrintFormations }) {
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>#</th><th>Name</th><th>Offense</th><th>Defense</th><th></th></tr>
+              <tr><th>#</th><th>Name</th><th>Offense <span className="th-sub">{offScheme(data)}</span></th><th>Defense <span className="th-sub">{defScheme(data)}</span></th><th></th></tr>
             </thead>
             <tbody>
               {data.players.map((p) => (
                 <tr key={p.id}>
-                  <td><input className="cell num" value={p.num} onChange={(e) => setPlayer(p.id, { num: e.target.value })} /></td>
-                  <td><input className="cell" value={p.name} onChange={(e) => setPlayer(p.id, { name: e.target.value })} /></td>
-                  <td className="assign off-assign">{byRoster("off", p.id) || <span className="unfilled">—</span>}</td>
-                  <td className="assign def-assign">{byRoster("def", p.id) || <span className="unfilled">—</span>}</td>
+                  <td><input className="cell num" aria-label={`Jersey number for ${p.name || "player"}`} value={p.num} onChange={(e) => setPlayer(p.id, { num: e.target.value })} /></td>
+                  <td><input className="cell" aria-label="Player name" value={p.name} onChange={(e) => setPlayer(p.id, { name: e.target.value })} /></td>
+                  <td className="assign off-assign">{byRoster("off", p.id) || <span className="unfilled">open</span>}</td>
+                  <td className="assign def-assign">{byRoster("def", p.id) || <span className="unfilled">open</span>}</td>
                   <td className="row-actions">
-                    <button title="Move up" onClick={() => move(p.id, -1)}>↑</button>
-                    <button title="Move down" onClick={() => move(p.id, 1)}>↓</button>
-                    <button title="Remove" className="danger" onClick={() => remove(p.id)}>✕</button>
+                    <button title="Move up" aria-label={`Move ${p.name || "player"} up`} onClick={() => move(p.id, -1)}>↑</button>
+                    <button title="Move down" aria-label={`Move ${p.name || "player"} down`} onClick={() => move(p.id, 1)}>↓</button>
+                    <button title="Remove" aria-label={`Remove ${p.name || "player"}`} className="danger" onClick={() => remove(p.id)}>✕</button>
                   </td>
                 </tr>
               ))}
@@ -2465,12 +2485,12 @@ function RosterTab({ data, up, onPrint, onPrintGroups, onPrintFormations }) {
               <button className={"side-btn" + (depthSide === "def" ? " active def" : "")} onClick={() => setDepthSide("def")}>Defense</button>
             </div>
             {depthSide === "off" && (
-              <select className="cell" value={offScheme(data)} onChange={(e) => up({ offScheme: e.target.value })}>
+              <select className="cell" aria-label="Offense personnel group" value={offScheme(data)} onChange={(e) => up({ offScheme: e.target.value })}>
                 {Object.keys(OFF_SCHEMES).map((k) => <option key={k} value={k}>{OFF_SCHEME_LABELS[k] || k}</option>)}
               </select>
             )}
             {depthSide === "def" && (
-              <select className="cell" value={defScheme(data)} onChange={(e) => up({ defScheme: e.target.value })}>
+              <select className="cell" aria-label="Defensive front" value={defScheme(data)} onChange={(e) => up({ defScheme: e.target.value })}>
                 {Object.keys(DEF_SCHEMES).map((k) => <option key={k} value={k}>{k} front</option>)}
               </select>
             )}
@@ -2499,10 +2519,11 @@ function RosterTab({ data, up, onPrint, onPrintGroups, onPrintFormations }) {
                       <td key={i}>
                         <select
                           className={"cell slot" + (i === 0 && !slots[i] ? " missing" : "")}
+                          aria-label={`${pos} ${["1st", "2nd", "3rd"][i]} team`}
                           value={slots[i] ? slots[i].id : ""}
                           onChange={(e) => setSlot(depthSide, pos, i, e.target.value)}
                         >
-                          <option value="">—</option>
+                          <option value="">open</option>
                           {data.players.map((p) => (
                             <option key={p.id} value={p.id}>{p.num ? `#${p.num} ` : ""}{p.name}</option>
                           ))}
@@ -2537,7 +2558,7 @@ function RosterTab({ data, up, onPrint, onPrintGroups, onPrintFormations }) {
 
 
 /* ============================================================
-   FORMATION VIEW — big screen depth chart
+   FORMATION VIEW: big screen depth chart
    ============================================================ */
 function FormationView({ data, up, startSide, onClose, onPrintFormations }) {
   const [side, setSide] = useState(startSide || "offense");
@@ -2557,6 +2578,9 @@ function FormationView({ data, up, startSide, onClose, onPrintFormations }) {
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") { school ? setSchool(null) : onClose(); return; }
+      /* a focused select or button owns its own arrow and space keys */
+      const tag = (document.activeElement && document.activeElement.tagName) || "";
+      if (["SELECT", "INPUT", "TEXTAREA", "BUTTON"].includes(tag)) return;
       if (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === " ") {
         e.preventDefault();
         if (school) advanceSchool();
@@ -2611,18 +2635,18 @@ function FormationView({ data, up, startSide, onClose, onPrintFormations }) {
             </select>
           )}
           {side === "offense" && !school && form === "base" && (
-            <select className="fv-scheme" value={offScheme(data)} onChange={(e) => up({ offScheme: e.target.value })}>
+            <select className="fv-scheme" aria-label="Offense personnel group" value={offScheme(data)} onChange={(e) => up({ offScheme: e.target.value })}>
               {Object.keys(OFF_SCHEMES).map((k) => <option key={k} value={k}>{OFF_SCHEME_LABELS[k] || k}</option>)}
             </select>
           )}
           {side === "defense" && (
-            <select className="fv-scheme" value={defScheme(data)} onChange={(e) => up({ defScheme: e.target.value })}>
+            <select className="fv-scheme" aria-label="Defensive front" value={defScheme(data)} onChange={(e) => up({ defScheme: e.target.value })}>
               {Object.keys(DEF_SCHEMES).map((k) => <option key={k} value={k}>{k}</option>)}
             </select>
           )}
         </div>
         <div className="fv-actions">
-          <span className="fv-hint">{school ? "Tap or Space: reveal, then next · Esc exits school" : "Space flips sides · Esc closes"}</span>
+          <span className="fv-hint">{school ? "Tap or Space: reveal, then next · Esc exits school" : "Space or arrow keys flip sides · Esc closes"}</span>
           {side === "offense" && !school && <button className="btn gold" onClick={() => setSchool({ i: 0, revealed: false })}>Formation School</button>}
           {school && <button className="btn ghost dark" onClick={() => setSchool(null)}>Exit School</button>}
           {side === "offense" && !school && <button className="btn ghost dark" onClick={onPrintFormations}>Print Cards</button>}
@@ -2672,7 +2696,7 @@ function FormationView({ data, up, startSide, onClose, onPrintFormations }) {
 }
 
 /* ============================================================
-   PRACTICE PLANNER — library with filters + multi-station periods
+   PRACTICE PLANNER: library with filters + multi-station periods
    ============================================================ */
 function PracticeTab({ data, up, onPrint }) {
   const [d, setD] = useState({ name: "", cat: "Team", group: "All", mins: 10, notes: "" });
@@ -2739,10 +2763,10 @@ function PracticeTab({ data, up, onPrint }) {
   const savedPlans = data.savedPlans || [];
   const savePlan = () => {
     const suggested = (practice.title && practice.title !== "Practice Plan" ? practice.title : "") || practice.date || todayStr();
-    const nm = window.prompt("Name this plan:", suggested);
+    const nm = (window.prompt("Name this plan:", suggested) || "").trim();
     if (!nm) return;
     const snap = JSON.parse(JSON.stringify(practice));
-    up({ savedPlans: [{ id: uid(), name: nm.trim(), savedAt: todayStr(), plan: snap }, ...savedPlans] });
+    up({ savedPlans: [{ id: uid(), name: nm, savedAt: todayStr(), plan: snap }, ...savedPlans] });
   };
   const loadPlan = () => {
     const sp = savedPlans.find((s) => s.id === planPick);
@@ -3100,10 +3124,15 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
     if (!src) return;
     if (src.concept && src.dir) {
       const nd = src.dir === "Rt" ? "Lt" : "Rt";
-      up({ plays: [...plays, { ...src, id: uid(), num: nextNum, dir: nd, custom: null, name: `${src.formation} · ${callWord(src.concept, nd, src.tags || [])}` }] });
+      const name = `${src.formation} · ${callWord(src.concept, nd, src.tags || [])}`;
+      const existing = plays.find((x) => x.name === name);
+      if (existing) { setSel(existing.id); return; } /* the twin already exists: go to it, never mint a duplicate number */
+      const twin = { ...src, id: uid(), num: nextNum, dir: nd, custom: null, name };
+      up({ plays: [...plays, twin] });
+      setSel(twin.id);
       return;
     }
-    const flip = (s) => (/right|rt\b/i.test(s) ? s.replace(/Right/gi, "Left").replace(/\bRt\b/gi, "Lt") : /left|lt\b/i.test(s) ? s.replace(/Left/gi, "Right").replace(/\bLt\b/gi, "Rt") : s + " Copy");
+    const flip = (s) => (/\bRight\b|\bRt\b/i.test(s) ? s.replace(/\bRight\b/gi, "Left").replace(/\bRt\b/gi, "Lt") : /\bLeft\b|\bLt\b/i.test(s) ? s.replace(/\bLeft\b/gi, "Right").replace(/\bLt\b/gi, "Rt") : s + " Copy");
     up({ plays: [...plays, { ...src, id: uid(), num: nextNum, name: flip(src.name) }] });
   };
   const remove = (id) => {
@@ -3112,7 +3141,13 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
     const cs = {};
     for (const k of Object.keys(data.callSheet || {})) cs[k] = (data.callSheet[k] || []).filter((pid) => pid !== id);
     const selWrist = data.wrist.selected === null ? null : data.wrist.selected.filter((pid) => pid !== id);
-    up({ plays: plays.filter((x) => x.id !== id), callSheet: cs, wrist: { ...data.wrist, selected: selWrist } });
+    /* the opening script and its position, and any kill check pointing here */
+    const oldScript = data.script || [];
+    const removedBefore = oldScript.slice(0, data.scriptPos || 0).filter((pid) => pid === id).length;
+    const script = oldScript.filter((pid) => pid !== id);
+    const scriptPos = Math.max(0, Math.min(script.length, (data.scriptPos || 0) - removedBefore));
+    const rest = plays.filter((x) => x.id !== id).map((x) => (x.killId === id ? { ...x, killId: null } : x));
+    up({ plays: rest, callSheet: cs, wrist: { ...data.wrist, selected: selWrist }, script, scriptPos });
     if (sel === id) setSel(null);
   };
 
@@ -3191,7 +3226,7 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
                   <td className="play-name-cell">{p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
                     ? <b>{p.formation} · {lineCallFor(p) && <span className="row-line">{lineCallFor(p)} ·</span>} {callWord(p.concept, p.dir, p.tags || [])}</b>
                     : <b>{lineCallFor(p) && <span className="row-line">{lineCallFor(p)} ·</span>} {p.name}</b>}{p.concept && <span className="drill-notes"> {CONCEPTS[p.concept] ? "" : ""}</span>}</td>
-                  <td><span className="type-dot" style={{ background: TYPE_COLORS[p.type] || "#5B616B" }} /></td>
+                  <td><span className="type-dot" title={p.type} style={{ background: TYPE_COLORS[p.type] || "#5B616B" }} /></td>
                   <td><button className={"core-star" + (p.core ? " on" : "")} title="Core = one-word sideline call" onClick={(e) => { e.stopPropagation(); setPlay(p.id, { core: !p.core }); }}>★</button></td>
                   <td className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>{p.week || ""}</td>
                   <td className="row-actions">
@@ -3288,8 +3323,8 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
                     </div>
                   )}
                   <div className="new-look">
-                    <select value={lookForm} onChange={(e) => setLookForm(e.target.value)}>
-                      {PLAY_FORM_NAMES.filter((f) => f !== selected.formation).map((f) => <option key={f}>{f}</option>)}
+                    <select value={lookForm} onChange={(e) => setLookForm(e.target.value)} aria-label="Formation for this look">
+                      {PLAY_FORM_NAMES.filter((f) => f !== selected.formation && (f !== "Empty" || emptyOK(selected.concept))).map((f) => <option key={f}>{f}</option>)}
                     </select>
                     <button className="btn small" onClick={addLook}>Add This Look #{nextNum}</button>
                     <span className="hint" style={{ margin: 0 }}>Same play, new costume. Kids learn nothing new.</span>
@@ -3310,7 +3345,7 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
 }
 
 /* ============================================================
-   SIDELINE CALLER — three-speed tempo, tap to call, self-scout
+   SIDELINE CALLER: three-speed tempo, tap to call, self-scout
    ============================================================ */
 const RESULTS = ["Loss", "0-3", "4-9", "10+", "TD", "TO"];
 function CallerTab({ data, up }) {
@@ -3327,16 +3362,13 @@ function CallerTab({ data, up }) {
   };
   const setResult = (id, r) => up({ callLog: log.map((e) => (e.id === id ? { ...e, result: r } : e)) });
   const removeEntry = (id) => up({ callLog: log.filter((e) => e.id !== id) });
-  const turbo = () => { const p = last && plays.find((x) => x.id === last.playId); if (p) logCall(p, "TURBO"); };
-  const mirror = () => {
-    const p = last && plays.find((x) => x.id === last.playId);
-    if (!p) return;
-    if (p.concept && p.dir) {
-      const twin = plays.find((x) => x.concept === p.concept && x.formation === p.formation && x.dir === (p.dir === "Rt" ? "Lt" : "Rt"));
-      if (twin) return logCall(twin, "MIRROR");
-    }
-    logCall(p, "MIRROR");
-  };
+  const lastPlay = last ? plays.find((x) => x.id === last.playId) || null : null;
+  const twinOf = (p) => (p && p.concept && p.dir ? plays.find((x) => x.concept === p.concept && x.formation === p.formation && x.dir === (p.dir === "Rt" ? "Lt" : "Rt") && JSON.stringify(x.tags || []) === JSON.stringify(p.tags || [])) || null : null);
+  const lastTwin = twinOf(lastPlay);
+  const turbo = () => { if (lastPlay) logCall(lastPlay, "TURBO"); };
+  /* MIRROR only ever calls the real twin; with no twin the button is off (a
+     silent repeat mislabeled MIRROR would defeat the never-twice rule) */
+  const mirror = () => { if (lastTwin) logCall(lastTwin, "MIRROR"); };
   const clearGame = () => {
     if (!window.confirm(`Clear the log for "${game || "this game"}"?`)) return;
     up({ callLog: log.filter((e) => e.game !== game) });
@@ -3370,6 +3402,7 @@ function CallerTab({ data, up }) {
   const [pkgPicks, setPkgPicks] = useState(["", "", ""]);
   const addPkg = () => {
     if (!pkgName.trim() || pkgPicks.some((x) => !x)) return;
+    if (new Set(pkgPicks).size !== pkgPicks.length) { window.alert("A package is three DIFFERENT snaps. Pick three different plays."); return; }
     up({ packages: [...packages, { id: uid(), name: pkgName.trim().toUpperCase(), ids: [...pkgPicks] }] });
     setPkgName(""); setPkgPicks(["", "", ""]);
   };
@@ -3431,8 +3464,8 @@ function CallerTab({ data, up }) {
           </div>
         </div>
         <div className="tempo-row">
-          <button className="tempo-btn turbo" disabled={!last || (last.label || "").startsWith("TURBO")} onClick={turbo} title="Same play again, snap it now. Never twice in a row.">TURBO</button>
-          <button className="tempo-btn mirror" disabled={!last} onClick={mirror} title="Same play, other direction">MIRROR</button>
+          <button className="tempo-btn turbo" disabled={!lastPlay || (last.label || "").startsWith("TURBO")} onClick={turbo} title="Same play again, snap it now. Never twice in a row.">TURBO</button>
+          <button className="tempo-btn mirror" disabled={!lastTwin} onClick={mirror} title={lastTwin ? "Same play, other direction" : lastPlay ? "No mirror of this play in this formation" : "Same play, other direction"}>MIRROR</button>
           {last && (() => { const lp = plays.find((x) => x.id === last.playId); return <span className="last-call">Last: <b>{lp ? playCallLabel(lp) : last.word || last.label}</b></span>; })()}
           <label className="tag-check" style={{ marginLeft: "auto" }} title="Tapping a play flashes its giant number to hold up. The board IS the call.">
             <input type="checkbox" checked={boardMode} onChange={(e) => setBoardMode(e.target.checked)} />Board mode
@@ -3576,7 +3609,7 @@ function CallerTab({ data, up }) {
                   <tr key={w}>
                     <td><b>{w}</b></td>
                     <td className="center mono">{s.calls}</td>
-                    <td className="center mono">{s.graded ? Math.round((s.wins / s.graded) * 100) + "%" : "—"}</td>
+                    <td className="center mono">{s.graded ? Math.round((s.wins / s.graded) * 100) + "%" : "n/a"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -3644,7 +3677,7 @@ const ROUTE_TABLE = [
   { bird: "Hawk", X: "Curl (backside)", H: "Cross behind Y", Y: "Wheel up sideline", Z: "Curl at 8", RB: "Check, leak" },
   { bird: "Owl", X: "Block", H: "Jet fake", Y: "Seam behind LBs", Z: "Block", RB: "Fake Rhino" },
   { bird: "Falcon", X: "Go", H: "Seam", Y: "Seam", Z: "Go", RB: "Checkdown" },
-  { bird: "Eagle", X: "Post", H: "Block", Y: "Drag at 10", Z: "Go", RB: "Block" },
+  { bird: "Eagle", X: "Post", H: "Bubble (hot)", Y: "Drag at 10", Z: "Go", RB: "Block" },
 ];
 
 function RoutesPrint({ data }) {
@@ -3702,7 +3735,7 @@ function PassBreakdown() {
 }
 
 /* ============================================================
-   TEACH MODE — fullscreen play presenter for chalk talks
+   TEACH MODE: fullscreen play presenter for chalk talks
    ============================================================ */
 function TeachMode({ plays, startId, onClose }) {
   const list = [...plays].filter((p) => p.concept && CONCEPTS[p.concept]).sort((a, z) => a.num - z.num);
@@ -3770,7 +3803,8 @@ function TeachMode({ plays, startId, onClose }) {
 
 /* ---- printable job cards: one card per position, kid language ---- */
 function JobsPrint() {
-  const order = ["power", "trap", "jet", "keep", "counter", "sneak", "sparrow", "robin", "hawk", "owl", "falcon", "eagle", "bubble", "slip", "reverse"];
+  /* every concept in the book, runs first, so a new word can never be left off the cards */
+  const order = ["Run", "Pass", "Screen", "Special"].flatMap((fam) => Object.keys(CONCEPTS).filter((k) => k !== "blank" && CONCEPTS[k].fam === fam));
   return (
     <div className="sheet">
       <PrintHead title="My Job Cards" right={<div className="p-meta">One card per position. Kid language. Laminate them.</div>} />
@@ -3875,23 +3909,26 @@ function SystemPrint() {
     ["TRAP", "Rabbit / Lynx", "Quick trap up the middle. Hits before they blink."],
     ["STRETCH", "Rocket / Laser", "Jet sweep. H takes it at full speed."],
     ["STRETCH", "Raccoon / Longhorn", "QB keeps behind the jet fake."],
+    ["STRETCH", "Ram / Leopard", "Everybody reaches and runs, H leads, RB takes the wide give."],
     ["WRAP", "Renegade / Lizard", "Counter, opposite the flow. Week 6."],
     ["SURGE", "Moose", "QB sneak behind the big center."],
     ["QUICK", "Sparrow", "Hitches at 5. Ball out now."],
     ["QUICK", "Robin", "Slants and flats. The money concept."],
-    ["WALL", "Hawk", "Curls at 8 with flats under."],
+    ["WALL", "Hawk", "Three levels on Y's side: curl, wheel, cross. QB reads one man."],
     ["HAMMER", "Owl", "Looks exactly like Rhino. TE slips behind the linebackers."],
     ["WALL", "Falcon", "Four verticals. Coach picks the target."],
-    ["WALL", "Eagle", "The deep shot, seven blocking."],
-    ["QUICK", "Reese's / Laffy", "Bubble screen behind the jet fake."],
+    ["WALL", "Eagle", "The deep shot: post and go, H's bubble is the hot throw."],
+    ["WALL", "Raven / Lark", "Sprint-out flood. Deep out, flat, or the QB runs."],
+    ["QUICK", "Reese's / Laffy", "Smoke to the outside man behind the jet fake."],
     ["GATE", "Rolo / Lifesaver", "Let the rush in, RB slips out behind it."],
     ["STRETCH", "Rewind / Loop", "The reverse. Once a game."],
+    ["STRETCH", "Rainbow / Lightning", "The halfback pass off Ram. Off the board, once a game."],
   ];
   return (
     <div className="sheet">
       <PrintHead title="The White Team Offense on One Page" right={<div className="p-meta">Hand this to every coach. This is the whole offense.</div>} />
       <div className="sys-rules">
-        <div className="sys-rule"><b>1</b><span><b>Bird = pass. Candy = screen. Everything else RUNS.</b> Six birds fly. Four candies trick. Any other word is an animal on the ground: run it, block your man. Not sure? Block your man.</span></div>
+        <div className="sys-rule"><b>1</b><span><b>Bird = pass. Candy = screen. Everything else RUNS.</b> Eight birds fly. Four candies trick. Any other word is an animal on the ground: run it, block your man. Not sure? Block your man.</span></div>
         <div className="sys-rule"><b>2</b><span><b>R goes right. L goes left.</b> Rhino runs right, Lion runs left. If a kid can spell, he knows the direction.</span></div>
         <div className="sys-rule"><b>3</b><span><b>Your word is the only word.</b> Linemen listen for the FIRST word (their blocking). Everyone else listens for the SECOND word. Nobody decodes the whole call.</span></div>
         <div className="sys-rule"><b>4</b><span><b>"Set... GO." Every snap, all season.</b> One cadence. Zero procedure penalties.</span></div>
@@ -4099,6 +4136,7 @@ function CallSheetTab({ data, up, onPrint, onPrintScript }) {
     if (!playId) return;
     const cur = cs[key] || [];
     if (cur.includes(playId)) return;
+    if (key === "openers" && cur.length >= 6) { window.alert("Openers is the first six. Take one off before adding another."); return; }
     up({ callSheet: { ...cs, [key]: [...cur, playId] } });
   };
   const removeFrom = (key, playId) =>
@@ -4130,7 +4168,6 @@ function CallSheetTab({ data, up, onPrint, onPrintScript }) {
           <button className="btn" onClick={onPrint} disabled={!anyAssigned}>Print Call Sheet</button>
         </div>
       </div>
-      <p className="hint">The sheet, formatted by situation. A play can live in more than one box; add or remove here to hand-tune. The print is front and back: situations on the front, every play on the sheet grouped by personnel (Speed / Heavy / Super Heavy) on the back.</p>
       <div className="check-head cs-pick-head">
         <b>Plays on this sheet ({installed.filter((p) => onSheet.has(p.id)).length} of {installed.length} installed)</b>
         <div className="cs-pick-tools">
@@ -4158,6 +4195,7 @@ function CallSheetTab({ data, up, onPrint, onPrintScript }) {
         {pickRows.length === 0 && <div className="empty pad">Nothing to show. Change the filter, or turn the WEEK dial up.</div>}
       </div>
       <textarea className="cs-keys-edit" aria-label="Opponent keys" rows={4} placeholder="Opponent keys, one per line. They print in a strip under the call sheet header (what their front does, who to run away from, the shot)." value={data.csKeys || ""} onChange={(e) => up({ csKeys: e.target.value })} />
+      <p className="hint">The sheet, formatted by situation. A play can live in more than one box; add or remove here to hand-tune. The print is front and back: situations on the front, every play on the sheet grouped by personnel (Speed / Heavy / Super Heavy) on the back.</p>
       <div className="cs-grid">
         {SITUATIONS.map((s) => (
           <div key={s.key} className="cs-box">
@@ -4169,12 +4207,12 @@ function CallSheetTab({ data, up, onPrint, onPrintScript }) {
                 return (
                   <span key={pid} className="cs-chip" style={{ borderColor: TYPE_COLORS[p.type] }}>
                     <b>{p.num}</b> {playCallLabel(p)}<PersonnelTag p={p} />
-                    <button onClick={() => removeFrom(s.key, pid)}>✕</button>
+                    <button aria-label={`Remove ${playCallLabel(p)} from ${s.label}`} onClick={() => removeFrom(s.key, pid)}>✕</button>
                   </span>
                 );
               })}
             </div>
-            <select value="" onChange={(e) => addTo(s.key, e.target.value)}>
+            <select value="" aria-label={`Add play to ${s.label}`} onChange={(e) => addTo(s.key, e.target.value)}>
               <option value="">+ Add play…</option>
               {[...plays].sort((a, b) => a.num - b.num)
                 .filter((p) => !(cs[s.key] || []).includes(p.id))
@@ -4232,7 +4270,7 @@ function WristTab({ data, up, onPrint, onPrintRoutes }) {
             </select>
           </label>
           <label className="wrist-killtoggle" title="Prints each play's kill number (K8 = if the box is heavy, kill to #8). Week 4+ only.">
-            <input type="checkbox" checked={!!w.kills} onChange={(e) => setW({ kills: e.target.checked })} /> Show kill checks
+            <input type="checkbox" checked={!!w.kills} disabled={wk < 4} onChange={(e) => setW({ kills: e.target.checked })} /> Show kill checks{wk < 4 ? " (week 4+)" : ""}
           </label>
         </div>
         <p className="hint">Each card is a 4" × 2" insert for one slot on the band. Your {active.length} plays split evenly across {w.cols} card{w.cols > 1 ? "s" : ""} (card 1 gets the lowest numbers), and the text on each auto-sizes to fit. Print, cut, and load the cards in order. "Copies" repeats the whole set for more players.</p>
@@ -4264,6 +4302,7 @@ function WristTab({ data, up, onPrint, onPrintRoutes }) {
             <button className="btn" onClick={onPrint} disabled={active.length === 0}>Print Wristbands</button>
         </div>
         <div className="wrist-preview-wrap">
+          {active.length === 0 && <div className="empty pad">No plays selected. Tap "All installed" or "Call sheet" above, or check plays in the list.</div>}
           {splitWristCards(active, w.cols).map((cardPlays, i, arr) => (
             <WristCard key={i} plays={cardPlays} title={w.title} index={i} total={arr.length} cols={w.cardCols || 1} />
           ))}
@@ -4331,7 +4370,7 @@ function WristCard({ plays, title, index, total, cols }) {
 }
 
 /* ============================================================
-   PRACTICE GROUPS — one click, three coaching groups
+   PRACTICE GROUPS: one click, three coaching groups
    ============================================================ */
 function PracticeGroupsView({ data, up, onClose, onPrint }) {
   const { out, multi, unassigned } = practiceGroupsFor(data);
@@ -4411,7 +4450,7 @@ function GroupsPrint({ data }) {
                     <td>{p.name}{groups.length > 1 ? <span className="p-meta"> (also {groups.filter((g) => g !== key).map(label).join(", ")})</span> : null}</td>
                   </tr>
                 ))}
-                {out[key].length === 0 && <tr><td>—</td></tr>}
+                {out[key].length === 0 && <tr><td>none</td></tr>}
               </tbody>
             </table>
           </div>
@@ -4425,7 +4464,7 @@ function GroupsPrint({ data }) {
 }
 
 /* ============================================================
-   FORMATION CARDS PRINT — every installed look with 1st-team names
+   FORMATION CARDS PRINT: every installed look with 1st-team names
    ============================================================ */
 function FormationsPrint({ data }) {
   const week = (data.seasonWeek || 1) >= 9 ? 6 : data.seasonWeek || 1;
@@ -4479,7 +4518,7 @@ function PrintLayer({ target, data, onClose }) {
   return (
     <div className="print-layer">
       <div className="print-toolbar no-print">
-        <span>Print preview — use landscape for the call sheet, portrait for everything else.</span>
+        <span>Print preview. The call sheet picks its own paper from the Call Sheet tab; everything else is portrait.</span>
         <div>
           <button className="btn" onClick={() => window.print()}>Print</button>
           <button className="btn ghost" onClick={onClose}>Close</button>
@@ -4531,7 +4570,7 @@ function PracticePrint({ data }) {
         <div className="p-meta">{data.practice.date || todayStr()}</div>
         <div className="p-meta">Start {fmtTime(parseStart(data.practice.start))} · {total} min</div>
       </>} />
-      {installLine && <div className="p-installs"><b>WEEK {wk} INSTALLS:</b> {installLine} <span className="p-installs-note">— every drill below feeds these. Kids say their job out loud before team reps.</span></div>}
+      {installLine && <div className="p-installs"><b>WEEK {wk} INSTALLS:</b> {installLine} <span className="p-installs-note">every drill below feeds these. Kids say their job out loud before team reps.</span></div>}
       <table className="p-table">
         <thead>
           <tr><th style={{ width: "17%" }}>Time</th><th>Period · Stations run at the same time</th><th style={{ width: "7%" }}>Min</th></tr>
@@ -4593,7 +4632,7 @@ function TeamScriptPrint({ data }) {
   return (
     <div className="sheet">
       <PrintHead title="Team Period Script" right={<div className="p-meta">{rows.length} reps · {todayStr()}</div>} />
-      <div className="ts-note">Read down in order. Call the big NUMBER to your QB — he finds it on his wristband. Check it off, then go.</div>
+      <div className="ts-note">Read down in order. Call the big NUMBER to your QB: he finds it on his wristband. Check it off, then go.</div>
       <ol className="ts-list">
         {rows.map((r, i) => (
           <li key={i} className="ts-row">
@@ -4627,7 +4666,7 @@ function CallSheetPrint({ data }) {
           </div>
         );
       })}
-      {(cs[s.key] || []).length === 0 && <div className="p-cs-empty">—</div>}
+      {(cs[s.key] || []).length === 0 && <div className="p-cs-empty">none</div>}
     </div>
   );
   const keyRow = (
@@ -4735,7 +4774,7 @@ function GameDayPrint({ data }) {
         </thead>
         <tbody>
           {data.players.map((p) => (
-            <tr key={p.id} className="gd-row">
+            <tr key={p.id} className="gd-print-row">
               <td className="mono center"><b>{p.num}</b></td>
               <td>{p.name}</td>
               <td>{assignmentsFor(data, "off", p.id).map((a) => `${a.pos} ${a.team}`).join(" · ")}</td>
@@ -4746,7 +4785,7 @@ function GameDayPrint({ data }) {
           ))}
         </tbody>
       </table>
-      <div className="p-foot"><span>Every kid plays. Track it so nobody gets missed.</span><span>Final: ____ — ____</span></div>
+      <div className="p-foot"><span>Every kid plays. Track it so nobody gets missed.</span><span>Final: ____ to ____</span></div>
     </div>
   );
 }
@@ -4934,6 +4973,7 @@ tbody tr { cursor: pointer; }
 .p-cs-formpre { font-family: var(--disp); font-weight: 600; letter-spacing: .3px; text-transform: uppercase; color: #6B6F76; }
 .heavy-tag { display: inline-block; font-family: var(--disp); font-weight: 700; font-size: 9px; letter-spacing: 1px; background: #B7791F; color: #fff; padding: 1px 5px; border-radius: 3px; margin-left: 5px; vertical-align: middle; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .heavy-tag.super { background: #8E1B27; }
+.th-sub { font-weight: 500; font-size: 10px; letter-spacing: .5px; color: var(--muted); margin-left: 4px; }
 .cs-pick-head { padding-top: 10px; flex-wrap: wrap; gap: 8px; }
 .cs-pick-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .cs-pick { max-height: 420px; margin: 0 0 6px; }
@@ -5015,7 +5055,6 @@ tbody tr { cursor: pointer; }
 .def-sit-call { font-family: var(--disp); font-weight: 700; font-size: 12px; color: var(--red); letter-spacing: .5px; }
 .def-sit-why { font-size: 11.5px; color: var(--muted); }
 .def-signal { padding: 0 16px 8px; font-size: 12px; color: var(--muted); letter-spacing: .3px; }
-.def-signal::first-letter { }
 .def-sit-no { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 11px; margin-right: 2px; }
 .def-sectionhead { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 1.5px; border-bottom: 2px solid var(--ink); padding-bottom: 3px; margin: 14px 0 8px; }
 .def-sit-table { width: 100%; border-collapse: collapse; font-size: 11px; }
@@ -5223,12 +5262,10 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .wrist-killtoggle { flex-direction: row; align-items: center; gap: 6px; text-transform: none; letter-spacing: 0; font-weight: 500; }
 .wrist-fitline { margin: 0 16px 10px; font-size: 12.5px; color: var(--muted); }
 .wrist-fitline b { color: var(--ink); }
-.wrist-warn { margin: 0 16px 10px; padding: 8px 10px; background: #FFF3CD; border: 1.5px dashed #b8860b; font-size: 12px; line-height: 1.4; }
 .wrist-preview-wrap { padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 16px; overflow-x: auto; background: repeating-linear-gradient(45deg, #F4F2ED, #F4F2ED 12px, #EFEDE6 12px, #EFEDE6 24px); }
 .wrist-card { width: 4in; height: 2in; background: #fff; border: 2px solid var(--ink); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
 .wrist-title { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: 3px; text-align: center; background: var(--ink); color: #fff; padding: 2px 0; text-transform: uppercase; }
 .wrist-cols { flex: 1; display: grid; padding: 0 .12in 0 .28in; }
-.wrist-col.single { flex: 1; }
 .wrist-card-no { color: rgba(255,255,255,.7); font-weight: 500; margin-left: 4px; }
 .wrist-col { border-right: 1.5px solid var(--ink); display: flex; flex-direction: column; min-width: 0; }
 .wrist-col:last-child { border-right: none; }
@@ -5239,7 +5276,7 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .wp-name { font-family: var(--disp); font-weight: 500; font-size: 14px; letter-spacing: 0; text-transform: uppercase; flex: 1; min-width: 0; color: var(--ink); display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: .3em; white-space: nowrap; padding: 0 4px; overflow: hidden; }
 .wp-name b { font-weight: 500; }
 .wp-call { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-@media (max-width: 640px) { .wrist-preview-wrap { transform-origin: top left; overflow-x: auto; } }
+@media (max-width: 640px) { .wrist-preview-wrap { transform-origin: top left; overflow-x: auto; } .cs-pick-sits { display: none; } .cs-pick-head { flex-direction: column; align-items: flex-start; } }
 
 /* ---- mobile (game-day phones) ---- */
 @media (max-width: 640px) {
@@ -5382,7 +5419,6 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 .p-cs-play:last-child { border-bottom: none; }
 .p-cs-num { color: #fff; font-family: var(--mono); font-weight: 700; font-size: 11px; min-width: 22px; text-align: center; padding: 1px 0; }
 .p-cs-name { font-family: var(--disp); font-weight: 600; font-size: 15px; letter-spacing: .5px; text-transform: uppercase; flex: 1; }
-.p-cs-form { font-size: 10px; color: var(--muted); }
 .p-cs-empty { padding: 8px; color: var(--line); }
 /* the opponent keys strip under the front header */
 .p-cs-keys { margin: 0 0 8px; padding: 4px 8px; border: 1.5px solid var(--ink); font-size: 10.5px; line-height: 1.3; columns: 2; column-gap: .28in; break-inside: avoid; }
@@ -5404,7 +5440,7 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
 
 .wrist-print-grid { display: grid; grid-template-columns: repeat(auto-fill, 4in); gap: .25in; justify-content: center; }
 .wrist-cut { border: 1.5px dashed #9DA1A8; padding: .08in; width: fit-content; }
-.gd-row td { padding: 10px 6px; }
+.gd-print-row td { padding: 10px 6px; }
 .snap-cells { display: flex; gap: 4px; flex-wrap: wrap; }
 .snap-box { width: 15px; height: 15px; border: 1.2px solid var(--ink); display: inline-block; }
 
@@ -5415,10 +5451,10 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
   .sheet { box-shadow: none; width: auto; min-height: 0; padding: 0; }
   .root { background: #fff; }
   @page { margin: 0.45in; }
-  .p-cat, .p-cs-num, .p-cs-label, .p-mark, .wrist-title, .wp-num, .wrist-play, .cat-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .p-cat, .p-cs-num, .p-cs-label, .p-mark, .wrist-title, .wp-num, .wrist-play, .cat-bar, .pc-badge, .line-chip, .book-line, .cr-line, .key-dot, .type-dot, .p-group { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 `}</style>
   );
 }
 
-export { normalizeData, practiceGroupsFor, pgForPos, slotsFor, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, buildCallSheet, genDef, DEF_FRONTS, DEF_COVERAGES, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots, store, GAME_PLANS, applyGamePlan, sheetByPersonnel, personnelOf, OFF_SCHEMES, CallSheetPrint, WristPrint, PlayDiagram, Styles, situationsFor, addPlayToSheet, removePlayFromSheet, loadInstalledOntoSheet, CallSheetTab };
+export { normalizeData, practiceGroupsFor, pgForPos, slotsFor, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, buildCallSheet, genDef, DEF_FRONTS, DEF_COVERAGES, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots, store, GAME_PLANS, applyGamePlan, sheetByPersonnel, personnelOf, OFF_SCHEMES, CallSheetPrint, WristPrint, PlayDiagram, Styles, situationsFor, addPlayToSheet, removePlayFromSheet, loadInstalledOntoSheet, CallSheetTab, playCarrier };

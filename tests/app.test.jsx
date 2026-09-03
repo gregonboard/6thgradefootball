@@ -851,6 +851,49 @@ describe("supabase sync", () => {
     expect(screen.queryByText(/Working offline/i)).toBeNull();
   });
 
+  it("edits made offline survive a reconnect when the coach chooses, and reach the cloud", async () => {
+    cloudOn();
+    window.localStorage.setItem("vh6-coach-data-v1", JSON.stringify({ ...JSON.parse(JSON.stringify(SEED)), seasonWeek: 2 }));
+    let online = false;
+    const posted = [];
+    const cloudCopy = { ...JSON.parse(JSON.stringify(SEED)), seasonWeek: 5 };
+    global.fetch = (url, opts) => {
+      if (opts && opts.method === "POST") { posted.push(JSON.parse(opts.body)); return Promise.resolve({ ok: true, json: async () => [] }); }
+      if (!online) return Promise.reject(new TypeError("down"));
+      return Promise.resolve({ ok: true, json: async () => [{ value: cloudCopy }] });
+    };
+    await load();
+    fireEvent.change(screen.getByLabelText("Season week"), { target: { value: "3" } }); // an offline edit
+    expect(posted.length, "nothing goes to the cloud while offline").toBe(0);
+    online = true;
+    window.confirm = () => false; // Cancel = keep MY version
+    fireEvent.click(screen.getByText(/tap to reconnect/i));
+    await waitFor(() => expect(screen.queryByText(/Working offline/i)).toBeNull(), { timeout: 3000 });
+    expect(screen.getByLabelText("Season week").value).toBe("3");
+    await waitFor(() => expect(posted.length).toBeGreaterThan(0), { timeout: 3000 });
+    const last = posted[posted.length - 1];
+    const body = Array.isArray(last) ? last[0] : last;
+    expect((body.value || body).seasonWeek).toBe(3);
+  });
+  it("reconnect with OK drops the offline edits and loads the cloud copy", async () => {
+    cloudOn();
+    window.localStorage.setItem("vh6-coach-data-v1", JSON.stringify({ ...JSON.parse(JSON.stringify(SEED)), seasonWeek: 2 }));
+    let online = false;
+    const cloudCopy = { ...JSON.parse(JSON.stringify(SEED)), seasonWeek: 5 };
+    global.fetch = (url, opts) => {
+      if (opts && opts.method === "POST") return Promise.resolve({ ok: true, json: async () => [] });
+      if (!online) return Promise.reject(new TypeError("down"));
+      return Promise.resolve({ ok: true, json: async () => [{ value: cloudCopy }] });
+    };
+    await load();
+    fireEvent.change(screen.getByLabelText("Season week"), { target: { value: "3" } });
+    online = true;
+    let asked = 0;
+    window.confirm = () => { asked++; return true; };
+    fireEvent.click(screen.getByText(/tap to reconnect/i));
+    await waitFor(() => expect(screen.getByLabelText("Season week").value).toBe("5"), { timeout: 3000 });
+    expect(asked).toBe(1);
+  });
   it("store.get throws on a failed cloud read instead of returning empty", async () => {
     cloudOn();
     global.fetch = () => Promise.resolve({ ok: false, status: 500, json: async () => ({}) });
@@ -1005,7 +1048,7 @@ describe("supabase sync", () => {
 });
 
 /* ---------- Sept 1: Nasty goes Super Heavy (Greg's ask) ---------- */
-import { GAME_PLANS, applyGamePlan, sheetByPersonnel, personnelOf, OFF_SCHEMES, situationsFor, addPlayToSheet, removePlayFromSheet, loadInstalledOntoSheet } from "../src/App.jsx";
+import { GAME_PLANS, applyGamePlan, sheetByPersonnel, personnelOf, OFF_SCHEMES, situationsFor, addPlayToSheet, removePlayFromSheet, loadInstalledOntoSheet, playCarrier } from "../src/App.jsx";
 describe("super heavy (Sept 1)", () => {
   it("Nasty puts X wide on the line, both ways, and stays legal", () => {
     const rt = formSpots("Nasty Rt"), lt = formSpots("Nasty Lt");
@@ -1246,5 +1289,20 @@ describe("call sheet top-down prep", () => {
     fireEvent.change(screen.getByLabelText("Personnel filter"), { target: { value: "Super Heavy" } });
     await waitFor(() => expect([...document.querySelectorAll(".cs-pick .check-row")].every((r) => /Nasty/.test(r.textContent))).toBe(true));
     cleanup();
+  });
+});
+
+describe("Sept 3 sweep", () => {
+  it("the highlighted carrier follows the formation's mirror, like the diagram", () => {
+    const d = normalizeData({ seasonWeek: 9 });
+    const by = (n) => d.plays.find((p) => p.name === n);
+    expect(playCarrier(by("Doubles · Reese's"))).toBe("Z");
+    expect(playCarrier(by("Doubles · Laffy"))).toBe("X");
+    expect(playCarrier(by("Nasty Lt · Reese's"))).toBe("X"); /* X is wide RIGHT in Nasty Lt */
+    expect(playCarrier(by("Nasty Rt · Laffy"))).toBe("X");
+    expect(playCarrier(by("Bunch Lt · Laffy"))).toBe("Z");  /* Z is the outside man on the left in Bunch Lt */
+    expect(playCarrier(by("Doubles · Rewind"))).toBe("X");
+    expect(playCarrier(by("Doubles · Loop"))).toBe("Z");
+    expect(playCarrier(by("Doubles · Rainbow"))).toBe("Z");
   });
 });
