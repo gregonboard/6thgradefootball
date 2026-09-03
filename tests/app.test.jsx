@@ -1330,3 +1330,35 @@ describe("Sept 3 sweep, engine", () => {
     expect(d.safariVersion).toBe(16);
   });
 });
+
+describe("Raven / Lark: Z post-corner (Greg, Sept 3)", () => {
+  it("Z runs the post-corner from either side; X keeps go on the call side, post backside", () => {
+    const rt = genPlayElements("flood", formSpots("Doubles"), "Rt", [], "Doubles");
+    const lt = genPlayElements("flood", formSpots("Doubles"), "Lt", [], "Doubles");
+    for (const el of [rt, lt]) {
+      const z = el.Z.find((e) => e.kind === "route").pts;
+      expect(z.length).toBe(4);
+      expect(z[2][0]).toBeLessThan(z[1][0]);    /* post: breaks inside (Z is on the right) */
+      expect(z[3][0]).toBeGreaterThan(z[2][0]); /* corner: breaks back outside */
+      expect(z[3][1]).toBeLessThan(z[2][1]);    /* and deeper */
+    }
+    expect(rt.X.find((e) => e.kind === "route").pts.length).toBe(3); /* Raven: X backside, the post */
+    expect(lt.X.find((e) => e.kind === "route").pts.length).toBe(2); /* Lark: X call side, straight go */
+    /* Doubles Lt puts Z on the left: still a post-corner, mirrored */
+    const dl = genPlayElements("flood", formSpots("Doubles Lt"), "Rt", [], "Doubles Lt");
+    const zl = dl.Z.find((e) => e.kind === "route").pts;
+    expect(zl[2][0]).toBeGreaterThan(zl[1][0]);
+    expect(zl[3][0]).toBeLessThan(zl[2][0]);
+  });
+  it("the Bird Route Card covers Raven / Lark", async () => {
+    window.localStorage.clear();
+    render(<App />);
+    await waitFor(() => expect(screen.getByText("VESTAVIA HILLS REBELS")).toBeTruthy());
+    fireEvent.click(screen.getByText("Wristbands"));
+    fireEvent.click(screen.getByText("Print Route Cards"));
+    await waitFor(() => expect(document.querySelector(".routes-table")).toBeTruthy());
+    const row = [...document.querySelectorAll(".routes-table tr")].find((r) => /Raven/.test(r.textContent));
+    expect(row && /Post-corner/.test(row.textContent)).toBe(true);
+    cleanup();
+  });
+});
