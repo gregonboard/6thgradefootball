@@ -333,7 +333,7 @@ describe("seeds", () => {
     expect(names).toContain("Tank Rt · Owl");
     expect(names.filter((n) => n === "Tank Rt · Owl").length).toBe(1);
     expect(v3.plays.length).toBe(85); // everything a fresh install gets, no dupes
-    expect(v3.safariVersion).toBe(15);
+    expect(v3.safariVersion).toBe(16);
     expect(v3.packages.map((p) => p.name)).toContain("CHEETAH");
     const rocket = v3.plays.find((p) => p.name === "Doubles · Rocket");
     const reeses = v3.plays.find((p) => p.name === "Doubles · Reese's");
@@ -530,7 +530,7 @@ describe("normalizeData migration", () => {
     expect(keepLt.name).toContain("Longhorn"); // derived names propagate the rename
     expect(d.savedPlans.some((s) => /day 1/i.test(s.name))).toBe(true);
     expect(d.players[0].name).toBe("Old Kid"); // user data untouched
-    expect(d.safariVersion).toBe(15);
+    expect(d.safariVersion).toBe(16);
   });
   it("does not double-seed on a second load", () => {
     const once = normalizeData({ safariVersion: 2, plays: SEED.plays.map((p) => ({ ...p })) });
@@ -1119,7 +1119,7 @@ describe("super heavy (Sept 1)", () => {
     const wing = jobsFor({ concept: "power", dir: "Lt", formation: "Nasty Rt", tags: [] });
     expect(wing.H).toMatch(/WING/);
     expect(wing.H).not.toMatch(/motion full speed/i);
-    expect(wing.XZ).toMatch(/Z is a WING/);
+    expect(wing.XZ).toMatch(/Z is the WING/);
     const back = jobsFor({ concept: "power", dir: "Rt", formation: "Nasty Rt", tags: [] });
     expect(back.H).toMatch(/Jet motion/);
     expect(jobsFor({ concept: "eagle", dir: "", formation: "Nasty Lt", tags: [] }).H).toMatch(/block/i);
@@ -1132,7 +1132,7 @@ describe("super heavy (Sept 1)", () => {
     for (const n of ["Nasty Rt · Lion", "Nasty Lt · Rhino", "Nasty Rt · Rabbit", "Nasty Lt · Lynx", "Nasty Rt · Renegade", "Nasty Lt · Lizard", "Nasty Rt · Owl", "Nasty Lt · Owl", "Nasty Rt · Lion Owl", "Nasty Rt · Laffy", "Nasty Lt · Reese's", "Nasty Rt · Rhino Now", "Nasty Lt · Lion Now", "Nasty Rt · Rewind"]) {
       expect(names.filter((x) => x === n).length, n).toBe(1);
     }
-    expect(v14.safariVersion).toBe(15);
+    expect(v14.safariVersion).toBe(16);
     expect(v14.plays.find((p) => p.name === "Nasty Rt · Rhino").note).toMatch(/Super Heavy|Y and the Z wing/);
     /* numbers append after the highest existing one, unique */
     const nums = v14.plays.map((p) => p.num);
@@ -1304,5 +1304,29 @@ describe("Sept 3 sweep", () => {
     expect(playCarrier(by("Doubles · Rewind"))).toBe("X");
     expect(playCarrier(by("Doubles · Loop"))).toBe("Z");
     expect(playCarrier(by("Doubles · Rainbow"))).toBe("Z");
+  });
+});
+
+describe("Sept 3 sweep, engine", () => {
+  it("Owl-tagged runs hand out play-action cards; the line keeps its run card", () => {
+    const lionOwl = jobsFor({ concept: "power", dir: "Lt", formation: "Doubles", tags: ["Owl"] });
+    expect(lionOwl.RB).toMatch(/without the ball/);
+    expect(lionOwl.QB).toMatch(/ALWAYS thrown/);
+    expect(lionOwl.Y).toBe(ASSIGNMENTS.owl.Y);
+    expect(lionOwl.OL).toBe(ASSIGNMENTS.power.OL);
+    const rocketOwl = jobsFor({ concept: "jet", dir: "Rt", formation: "Doubles", tags: ["Owl"] });
+    expect(rocketOwl.H).toMatch(/EMPTY/);
+    expect(jobsFor({ concept: "power", dir: "Rt", formation: "Doubles", tags: [] }).RB).toBe(ASSIGNMENTS.power.RB);
+  });
+  it("trap cards describe the kick-out blocking the diagram draws", () => {
+    expect(ASSIGNMENTS.trap.OL).toMatch(/KICK OUT/);
+    expect(ASSIGNMENTS.trap.Y).toMatch(/kick out/i);
+    expect(jobsFor({ concept: "sneak", dir: "", formation: "I Rt", tags: [] }).QB.match(/two hands/gi).length).toBe(1);
+  });
+  it("v16 rewrites the six stale Nasty notes once", () => {
+    const d = normalizeData({ safariVersion: 15, plays: SEED.plays.map((p) => (p.name === "Nasty Rt · Rocket" ? { ...p, note: "Condensed splits pull the defense inside, jet outruns everything to the open edge." } : p)) });
+    expect(d.plays.find((p) => p.name === "Nasty Rt · Rocket").note).toMatch(/Super Heavy jet right/);
+    expect(d.plays.some((p) => /ondensed splits/.test(p.note || ""))).toBe(false);
+    expect(d.safariVersion).toBe(16);
   });
 });

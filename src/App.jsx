@@ -169,9 +169,9 @@ const installedForms = (week) => PLAY_FORM_NAMES.filter((f) => (FORM_WEEKS[f] ||
 const PLAY_POS_PREFS = {
   LT: ["LT"], LG: ["LG"], C: ["C"], RG: ["RG"], RT: ["RT"], QB: ["QB"],
   X: ["WR (X)"],
-  Y: ["TE", "Slot (Y)", "Wing"],
-  H: ["Slot (H)", "Slot (Y)", "Wing", "FB", "TE"],
-  Z: ["WR (Z)", "Wing (Z)", "Wing", "Slot (Y)", "TE", "FB"],
+  Y: ["TE", "Slot (Y)"],
+  H: ["Slot (H)", "Slot (Y)", "FB", "TE"],
+  Z: ["WR (Z)", "Wing (Z)", "Slot (Y)", "TE", "FB"],
   RB: ["RB", "HB", "FB"],
 };
 const PLAY_RESOLVE_ORDER = ["LT", "LG", "C", "RG", "RT", "QB", "X", "Y", "H", "Z", "RB"];
@@ -815,7 +815,7 @@ const playCarrier = (p) => {
 /* ---- kid-language jobs: what each position does on every concept ---- */
 const ASSIGNMENTS = {
   power:   { OL: "Playside blocks down. Backside guard pulls and leads through the hole. Backside tackle steps DOWN first and walls the man over the pulled guard, then hinges on any chaser.", QB: "Open playside, hand it deep, fake the keep after.", RB: "Downhill off Y's hip. Follow the pulling guard.", H: "Jet motion full speed. Sell it like you have the ball.", Y: "Block down hard. You are the edge of the wall.", XZ: "Block the man over you." },
-  trap:    { OL: "Center and playside block down. Backside guard traps the first man past center.", QB: "Quick handoff, then fake a rollout.", RB: "One step, hit the A gap NOW. It will be open.", H: "Stay wide, block your man.", Y: "Climb to the linebacker.", XZ: "Block the man over you." },
+  trap:    { OL: "Playside guard and tackle KICK OUT. Center and backside tackle block down. Backside guard pulls and traps the first man past center.", QB: "Quick handoff, then fake a rollout.", RB: "One step, hit the A gap NOW. It will be open.", H: "Stay wide, block your man.", Y: "Playside: kick out with the tackle. Backside: climb to the linebacker.", XZ: "Block the man over you." },
   jet:     { OL: "Everybody stretch playside and run.", QB: "YOU own the ball. Press it into H's basket as he crosses. If the mesh feels wrong, keep it and run the Raccoon path. Never chase him with the ball.", RB: "Fake the power away. Sell it.", H: "Make a basket, NEVER slow down, squeeze when you feel it. Your only job is speed.", Y: "Arc release, go find the safety.", XZ: "Playside walls off inside: get in the way, stay high, no kill shots. Backside blocks his man." },
   keep:    { OL: "Stretch playside just like Rocket.", QB: "Fake the flip, tuck it, follow the RB around the edge. Score or get down: never take the second hit.", RB: "Lead through the edge, block the first color you see.", H: "Motion full speed, fake it, keep sprinting.", Y: "Arc to the safety.", XZ: "Block the man over you." },
   stretch: { OL: "Stretch playside and RUN. Cover him up, stay on your feet, do not win a wrestling match.", QB: "Open playside, hand it WIDE to the RB, fake the keep after.", RB: "Take it flat, race to the numbers, one cut upfield the moment you see grass. No grass at the numbers? Plant and slam it NORTH inside: their whole defense just overran you.", H: "Jet motion full speed, but this one is not yours: turn up at the edge and lead. Block the first color outside Y.", Y: "Reach the end and run him where he wants to go. The RB cuts off your butt.", XZ: "Playside stalks the corner. Backside sprints his man deep and away." },
@@ -858,20 +858,30 @@ const superHeavyJobs = (play, base) => {
   const spots = formSpots(play.formation);
   const s = play.dir === "Lt" ? -1 : 1;
   const hPlayside = spots.H && (spots.H[0] - 50) * s > 0;
-  const out = { ...base, XZ: base.XZ + " Z is a WING in Super Heavy: on every run word, block the end man on your side like a lineman." };
+  const out = { ...base, XZ: "X: " + base.XZ + " Z is the WING in Super Heavy: on every run word, block the end man on your side like a lineman." };
   if (play.concept === "eagle") out.H = "Stay in and block the end on your side. You are the bodyguard: nobody touches him.";
   else if (hPlayside && WING_KICK_CONCEPTS.includes(play.concept) && !(play.tags || []).includes("Jet"))
     out.H = WING_H_JOBS[play.concept] || "You are the playside WING: no motion. Block the end man on your side. If he crashes inside, ride him inside and the RB bounces off your back.";
   return out;
 };
+/* OWL behind a run word: the run is theater and Y is the play. The line's card
+   never changes (they block the run), everyone else's says fake. */
+const owlTagJobs = (play, base) => ({
+  ...base,
+  QB: (play.concept === "jet" ? "Sell the mesh with H at full speed, keep the ball, " : "Fake the give BIG, ") + "then pop it to Y over the backers. ALWAYS thrown. Covered? Tuck it and run the fake's path.",
+  RB: "Fake it like it is yours. Run angry without the ball.",
+  H: play.concept === "jet" ? "Full-speed motion, make the basket, sprint out EMPTY. The fake is the play." : base.H,
+  Y: ASSIGNMENTS.owl.Y,
+});
 const jobsFor = (play) => {
-  const base = ASSIGNMENTS[play.concept];
+  let base = ASSIGNMENTS[play.concept];
   if (!base) return base;
+  if ((play.tags || []).includes("Owl") && play.concept !== "owl") base = owlTagJobs(play, base);
   if (FORM_GROUP[play.formation] === "Super Heavy") return superHeavyJobs(play, base);
   if (!/^I (Rt|Lt)$/.test(play.formation || "")) return base;
   return {
     ...base,
-    QB: "UNDER CENTER: secure the snap with two hands first. " + base.QB,
+    QB: (/two hands/i.test(base.QB) ? "UNDER CENTER: secure the snap first. " : "UNDER CENTER: secure the snap with two hands first. ") + base.QB,
     H: I_FB_JOBS[play.concept] || "You are the FB in the I: lead where the play goes and hit the first wrong-colored jersey.",
     RB: "Deep tailback: " + base.RB,
   };
@@ -909,8 +919,8 @@ function safariSeedPlaysV3() {
     note(mk(32, "Doubles Lt", "jet", "Lt", false, 2), "H aligns right in Doubles Lt, so this is his natural full-speed cross. Use this Laser if the return motion from Doubles is ugly."),
     note(mk(33, "Bunch Rt", "bubble", "Rt", false, 5), "Bubble behind the bunch wall. Three blockers in a phone booth, ball outside them."),
     note(mk(34, "Bunch Lt", "bubble", "Lt", false, 5), "Bubble behind the bunch wall, left."),
-    note(mk(35, "Nasty Rt", "jet", "Rt", false, 5), "Condensed splits pull the defense inside, jet outruns everything to the open edge."),
-    note(mk(36, "Nasty Lt", "jet", "Lt", false, 5), "Condensed splits, jet to the open left edge."),
+    note(mk(35, "Nasty Rt", "jet", "Rt", false, 5), "Super Heavy jet right: H comes from the backside wing, Y and the Z wing wall the edge, X is wide to hold the corner. Same picture as Nasty Rt Rhino, Raccoon, and Owl."),
+    note(mk(36, "Nasty Lt", "jet", "Lt", false, 5), "Super Heavy jet left: H crosses from the right wing, Y and the Z wing wall the left edge. Same picture as Nasty Lt Lion, Longhorn, and Lion Now."),
     note(mk(37, "Stack", "robin", "", false, 5), "Slant-flat off stacked releases. The rub is legal because it's a natural release."),
     note(mk(38, "Trips Rt", "jet", "Lt", false, 5), "Jet WEAK, away from trips. They shift to the numbers, H outruns the short side."),
     note(mk(39, "Trips Lt", "jet", "Rt", false, 5), "Jet weak to the right, away from trips."),
@@ -934,8 +944,8 @@ function safariSeedPlaysV5() {
   return [
     note(mk(43, "Bunch Rt", "jet", "Rt", false, 5), "Jet into the bunch: three blockers in a phone booth and the fastest kid outside them."),
     note(mk(44, "Bunch Lt", "jet", "Lt", false, 5), "Jet into the bunch, left."),
-    note(mk(45, "Nasty Rt", "stretch", "Rt", false, 5), "Stretch from condensed splits. They pinch inside, RB has the whole field."),
-    note(mk(46, "Nasty Lt", "stretch", "Lt", false, 5), "Nasty reach, left."),
+    note(mk(45, "Nasty Rt", "stretch", "Rt", false, 5), "Super Heavy stretch right: everybody reaches, H leads from the backside wing, RB races to the edge behind Y and the Z wing."),
+    note(mk(46, "Nasty Lt", "stretch", "Lt", false, 5), "Super Heavy stretch left: H leads from the right wing, RB races to the edge behind Y and the Z wing."),
     note(mk(47, "Tank Rt", "stretch", "Rt", false, 4), "The heavy sweep. They load the middle for Tank Rhino, we go around the pile."),
     note(mk(48, "Tank Lt", "stretch", "Lt", false, 4), "Heavy sweep, left."),
     note(mk(49, "Trips Rt", "power", "Rt", false, 3), "Power at a box that emptied chasing three receivers. When they match trips, run right at what's left."),
@@ -1020,7 +1030,7 @@ function safariSeedPlaysV10() {
     note(mk(73, "Doubles", "power", "Lt", false, 5, ["Owl"]), "The LEFT Owl. Everyone sells Lion, and this one is ALWAYS thrown: QB fakes the give and pops Y over the backers flowing to the hammer. Same rule as Owl: the fake is the play."),
     note(mk(74, "Doubles", "jet", "Rt", false, 5, ["Owl"]), "Play action off our best action, always thrown. Sell the Rocket mesh at full speed; the backers who have been burned all night sprint for the sideline, and Y slips into the seam they just emptied. QB fakes the give and pops it."),
     note(mk(75, "Doubles", "jet", "Lt", false, 5, ["Owl"]), "Laser Owl: the seam off left jet action, always thrown."),
-    note(mk(76, "Nasty Rt", "keep", "Rt", false, 5), "The Nasty back door. Identical picture to Nasty Rocket, and the condensed splits mean the edge is a mile wide. When their end starts chasing the jet, QB keeps behind him with the RB leading and walks out the back."),
+    note(mk(76, "Nasty Rt", "keep", "Rt", false, 5), "The Nasty back door. Identical picture to Nasty Rocket. When their end starts chasing the jet, QB keeps behind him with the RB leading and walks out the back."),
     note(mk(77, "Nasty Lt", "keep", "Lt", false, 5), "Nasty Longhorn: the back door, left."),
   ];
 }
@@ -1370,7 +1380,7 @@ function generatePractice(data, totalMins = 75) {
 SEED.packages = seedPackages();
 applyKillPairs(SEED.plays);
 SEED.plays.forEach((p) => { if (!p.note && CHAIN_NOTES[p.name]) p.note = CHAIN_NOTES[p.name]; });
-SEED.safariVersion = 12;
+SEED.safariVersion = 16; /* SEED.plays already carries every seeded batch */
 SEED.savedPlans = [
   { id: uid(), name: "Day 1 · Helmets (Routes + Formations)", savedAt: "library", plan: day1Plan(SEED.drills) },
   { id: uid(), name: "Week 2 · Jet Series Install (Rocket, Raccoon, Owl)", savedAt: "library", plan: week2Plan(SEED.drills) },
@@ -1610,6 +1620,23 @@ function normalizeData(parsed) {
     plays = [...plays, ...safariSeedPlaysV11().filter((p) => !haveV15.has(p.name)).map((p) => ({ ...p, id: uid(), num: base15 + (++n15) }))];
     plays = plays.map((p) => (!p.note && SUPER_HEAVY_NOTES[p.name] ? { ...p, note: SUPER_HEAVY_NOTES[p.name] } : p));
   }
+  // v16 (Sept 3 sweep): Nasty's X went wide on Sept 1, so the six original Nasty
+  // notes that still said "condensed splits" get their Super Heavy text.
+  if (!(parsed.safariVersion >= 16)) {
+    const NOTE_SWAPS_16 = {
+      "Condensed splits pull the defense inside, jet outruns everything to the open edge.":
+        "Super Heavy jet right: H comes from the backside wing, Y and the Z wing wall the edge, X is wide to hold the corner. Same picture as Nasty Rt Rhino, Raccoon, and Owl.",
+      "Condensed splits, jet to the open left edge.":
+        "Super Heavy jet left: H crosses from the right wing, Y and the Z wing wall the left edge. Same picture as Nasty Lt Lion, Longhorn, and Lion Now.",
+      "Stretch from condensed splits. They pinch inside, RB has the whole field.":
+        "Super Heavy stretch right: everybody reaches, H leads from the backside wing, RB races to the edge behind Y and the Z wing.",
+      "Nasty reach, left.":
+        "Super Heavy stretch left: H leads from the right wing, RB races to the edge behind Y and the Z wing.",
+      "The Nasty back door. Identical picture to Nasty Rocket, and the condensed splits mean the edge is a mile wide. When their end starts chasing the jet, QB keeps behind him with the RB leading and walks out the back.":
+        "The Nasty back door. Identical picture to Nasty Rocket. When their end starts chasing the jet, QB keeps behind him with the RB leading and walks out the back.",
+    };
+    plays = plays.map((p) => (p.note && NOTE_SWAPS_16[p.note] ? { ...p, note: NOTE_SWAPS_16[p.note] } : p));
+  }
   // Concept play names are derived, so vocabulary updates flow through automatically.
   plays = plays.map((p) =>
     p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
@@ -1638,7 +1665,7 @@ function normalizeData(parsed) {
     gameLabel: parsed.gameLabel || "",
     script: parsed.script || [],
     scriptPos: parsed.scriptPos || 0,
-    safariVersion: 15,
+    safariVersion: 16,
     defense: normDefense(parsed.defense),
     csKeys: typeof parsed.csKeys === "string" ? parsed.csKeys : "",
     seasonWeek: parsed.seasonWeek || 1,
