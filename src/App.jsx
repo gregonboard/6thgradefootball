@@ -1630,6 +1630,9 @@ function normalizeData(parsed) {
         "Super Heavy jet left: H crosses from the right wing, Y and the Z wing wall the left edge. Same picture as Nasty Lt Lion, Longhorn, and Lion Now.",
       "Stretch from condensed splits. They pinch inside, RB has the whole field.":
         "Super Heavy stretch right: everybody reaches, H leads from the backside wing, RB races to the edge behind Y and the Z wing.",
+      /* the live save still carries the pre-rename REACH wording */
+      "Reach from condensed splits. They pinch inside, RB has the whole field.":
+        "Super Heavy stretch right: everybody reaches, H leads from the backside wing, RB races to the edge behind Y and the Z wing.",
       "Nasty reach, left.":
         "Super Heavy stretch left: H leads from the right wing, RB races to the edge behind Y and the Z wing.",
       "The Nasty back door. Identical picture to Nasty Rocket, and the condensed splits mean the edge is a mile wide. When their end starts chasing the jet, QB keeps behind him with the RB leading and walks out the back.":
