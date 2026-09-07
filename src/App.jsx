@@ -1128,6 +1128,19 @@ function safariSeedPlaysV12() {
     note(mk(96, "Doubles", "power", "Lt", false, 5, ["Heron"]), "Lion Heron: the same leak off the left hammer. X clears the corner, H arrives in the flat behind the fake."),
   ];
 }
+/* v18 (Sept 7, Greg's ask): Heron in the heavy sets. Tank's big H shuffles and
+   fakes the kick he always makes; the I fullback steps into the hole and slips
+   out the C gap. Same word, same flat, new muscle. */
+function safariSeedPlaysV13() {
+  const mk = mkSeedPlay;
+  const note = (p, n) => ({ ...p, note: n });
+  return [
+    note(mk(97, "Tank Rt", "power", "Rt", false, 5, ["Heron"]), "Tank Heron: the big H shuffles and fakes the kick-out they have watched all night, then leaks to the flat. RB runs Rhino empty and takes the end. Z clears. Goal-line gold: everyone is in the pile."),
+    note(mk(98, "Tank Lt", "power", "Lt", false, 5, ["Heron"]), "Tank Lion Heron: the leak off the left heavy hammer. X clears the corner."),
+    note(mk(99, "I Rt", "power", "Rt", false, 5, ["Heron"]), "I Heron: under center, the fullback takes one step into the hole to sell the lead, then slips out the C gap to the flat. Tailback runs Rhino empty and blocks the end. Rain-day play action."),
+    note(mk(100, "I Lt", "power", "Lt", false, 5, ["Heron"]), "I Lion Heron: the fullback leak, left."),
+  ];
+}
 /* the two original Nasty powers never had notes; Super Heavy gives them one */
 const SUPER_HEAVY_NOTES = {
   "Nasty Rt · Rhino": "Power into the strong side: Y and the Z wing wall the edge, H jets from the backside to sell Rocket. Same picture as Nasty Rt Rocket, Raccoon, and Owl.",
@@ -1295,7 +1308,7 @@ const RAW_SEED = {
   ],
   practice: { date: "", start: "17:30", title: "Practice Plan", items: [] },
   savedPlans: [],
-  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7(), ...safariSeedPlaysV8(), ...safariSeedPlaysV9(), ...safariSeedPlaysV10(), ...safariSeedPlaysV11(), ...safariSeedPlaysV12()],
+  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7(), ...safariSeedPlaysV8(), ...safariSeedPlaysV9(), ...safariSeedPlaysV10(), ...safariSeedPlaysV11(), ...safariSeedPlaysV12(), ...safariSeedPlaysV13()],
   callLog: [],
   gameLabel: "",
   script: [],
@@ -1447,7 +1460,7 @@ function generatePractice(data, totalMins = 75) {
 SEED.packages = seedPackages();
 applyKillPairs(SEED.plays);
 SEED.plays.forEach((p) => { if (!p.note && CHAIN_NOTES[p.name]) p.note = CHAIN_NOTES[p.name]; });
-SEED.safariVersion = 17; /* SEED.plays already carries every seeded batch */
+SEED.safariVersion = 18; /* SEED.plays already carries every seeded batch */
 SEED.savedPlans = [
   { id: uid(), name: "Day 1 · Helmets (Routes + Formations)", savedAt: "library", plan: day1Plan(SEED.drills) },
   { id: uid(), name: "Week 2 · Jet Series Install (Rocket, Raccoon, Owl)", savedAt: "library", plan: week2Plan(SEED.drills) },
@@ -1714,6 +1727,13 @@ function normalizeData(parsed) {
     let n17 = 0;
     plays = [...plays, ...safariSeedPlaysV12().filter((p) => !haveV17.has(p.name)).map((p) => ({ ...p, id: uid(), num: base17 + (++n17) }))];
   }
+  // v18 (Sept 7): Heron in Tank and the I.
+  if (!(parsed.safariVersion >= 18)) {
+    const haveV18 = new Set(plays.map((p) => p.name));
+    const base18 = plays.reduce((m, p) => Math.max(m, Number(p.num) || 0), 0);
+    let n18 = 0;
+    plays = [...plays, ...safariSeedPlaysV13().filter((p) => !haveV18.has(p.name)).map((p) => ({ ...p, id: uid(), num: base18 + (++n18) }))];
+  }
   // Concept play names are derived, so vocabulary updates flow through automatically.
   plays = plays.map((p) =>
     p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
@@ -1742,7 +1762,7 @@ function normalizeData(parsed) {
     gameLabel: parsed.gameLabel || "",
     script: parsed.script || [],
     scriptPos: parsed.scriptPos || 0,
-    safariVersion: 17,
+    safariVersion: 18,
     defense: normDefense(parsed.defense),
     csKeys: typeof parsed.csKeys === "string" ? parsed.csKeys : "",
     seasonWeek: parsed.seasonWeek || 1,
