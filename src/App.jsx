@@ -743,6 +743,42 @@ function genPlayElements(conceptKey, spots, dir, tags = [], formation) {
     el["Y"] = [{ kind: "carry", pts: [[yx, yy], [yx, yy - 4], [yx + bend, yy - 14]] }];
     if (has("QB")) add("QB", "throw", [at("QB"), [yx + bend * 0.7, yy - 11]]);
   }
+  if (tags.includes("Heron") && conceptKey === "power" && has("H")) {
+    /* HERON behind Rhino/Lion (Greg, Sept 7): H's ball off the run fake. H gets to
+       the play-side edge (motion if he starts backside), fakes his block one
+       count, leaks to the flat and turns up. RB runs his Rhino path empty and
+       blocks the end H left; the play-side outside man clears the corner with a
+       GO; QB fakes, takes two steps toward the play, throws the flat. */
+    for (const L of Object.keys(el)) el[L] = el[L].map((e) => (e.kind === "carry" ? { ...e, kind: "fake" } : e));
+    const [hx, hy] = at("H");
+    const flat = [edge + s * 8, 20];
+    const up = [edge + s * 9, 8];
+    const leak = (from) => [{ kind: "route", pts: [from, flat, up] }];
+    if (hIsFB) {
+      const step = [50 + s * 5, 28];
+      el["H"] = [{ kind: "fake", pts: [[hx, hy], step] }, ...leak(step)];
+    } else if (heavy) {
+      const inX = hx - s * 5;
+      el["H"] = [{ kind: "motion", pts: [[hx, hy], [hx - s * 2.5, hy + 1], [inX, hy + 1]] }, { kind: "fake", pts: [[inX, hy + 1], [hx + s * 2, hy - 1]] }, ...leak([hx + s * 2, hy - 1])];
+    } else if (hPlayside) {
+      const stub = [hx + s * 3, hy - 1.5];
+      el["H"] = [{ kind: "fake", pts: [[hx, hy], stub] }, ...leak(stub)];
+    } else {
+      const across = hx < 50 ? [[hx, hy], [42, 29], [56, 29]] : [[hx, hy], [58, 29], [44, 29]];
+      const arrive = [edge - s * 1, 27];
+      el["H"] = [{ kind: "motion", pts: across }, { kind: "fake", pts: [across[2], arrive] }, ...leak(arrive)];
+    }
+    if (has("RB")) {
+      const [rx, ry] = at("RB");
+      el["RB"] = [{ kind: "fake", pts: [[rx, ry], [50 + s * 4, 29], [50 + s * 12, 26]] }, { kind: "block", pts: [[50 + s * 12, 26], [edge + s * 1, 24]] }];
+    }
+    if (has("QB")) {
+      const [qx, qy] = at("QB");
+      el["QB"] = [{ kind: "fake", pts: [[qx, qy], [qx - s * 2, qy + 0.5], [qx + s * 7, qy + 0.5]] }, { kind: "throw", pts: [[qx + s * 7, qy + 0.5], flat] }];
+    }
+    const clear = outsideAt(s);
+    if (clear) el[clear] = [{ kind: "route", pts: [at(clear), [at(clear)[0], at(clear)[1] - 19]] }];
+  }
   if (tags.includes("Max")) {
     if (has("H") && !tags.includes("Now")) el["H"] = [{ kind: "block", pts: [at("H"), [at("H")[0], at("H")[1] - 3]] }];
     if (has("RB") && !tags.includes("Wheel")) el["RB"] = [{ kind: "block", pts: [at("RB"), [at("RB")[0], at("RB")[1] - 3]] }];
@@ -762,7 +798,7 @@ const CONCEPTS = {
   sparrow: { fam: "Pass",   dirs: [""],         words: { "": "Sparrow" }, carrier: "WR", signal: "Pinch fingers, small bird", how: "Hitches outside, H slants behind them, Y sticks at 5. Ball out now. Against press, the pressed hitch automatically becomes a GO. (H ran an out in v1; Greg ruled it collided with X's hitch.)", read: "Pick the widest cushion before the snap and throw it on rhythm. No cushion anywhere means they pressed: throw the GO over the presser or take Y at 5." },
   robin:   { fam: "Pass",   dirs: [""],         words: { "": "Robin" }, carrier: "WR", signal: "Flap the elbows", how: "Slants outside, arrows to the flats, and the RB settles in the middle the slants just emptied. The 6th grade money concept.", read: "Flat first. Covered means the slant is open behind it. Everything covered: the RB is sitting alone in the middle." },
   hawk:    { fam: "Pass",   dirs: [""],         words: { "": "Hawk" }, carrier: "WR", signal: "One arm soars", how: "Three levels on Y's side: Z curls at 8, Y wheels up the sideline (last year's touchdown route), and H sells one hard bubble step AWAY, then crosses shallow behind Y. The backer who could sink under the wheel now has H arriving in his face. X curls backside as the escape.", read: "One man: the flat defender on Y's side. He runs deep with the wheel: throw H underneath. He jumps H: the wheel is six. Blitz: H's bubble is one step away. Scramble: X is curling behind you." },
-  owl:     { fam: "Pass",   dirs: [""],         words: { "": "Owl" }, carrier: "Y", signal: "Circles over the eyes", how: "Everyone sells Rhino, and Owl is ALWAYS Rhino action to the right: the line hears HAMMER with no R or L word and that means Rhino rules, every time. Y slips into the seam behind the linebackers, QB fakes and pops it over their heads. OWL behind any run word (Lion Owl, Rocket Owl, Laser Owl) is this same shot off that run's action: always thrown, the fake is the play.", read: "Fake, find Y, throw it now. Covered? Tuck it and run the Rhino path. The most unfair play we own." },
+  owl:     { fam: "Pass",   dirs: [""],         words: { "": "Owl" }, carrier: "Y", signal: "Circles over the eyes", how: "Everyone sells Rhino, and Owl is ALWAYS Rhino action to the right: the line hears HAMMER with no R or L word and that means Rhino rules, every time. Y slips into the seam behind the linebackers, QB fakes and pops it over their heads. OWL behind any run word (Lion Owl, Rocket Owl, Laser Owl) is this same shot off that run's action: always thrown, the fake is the play. HERON behind Rhino or Lion is the same idea for H: fake the block, leak to the flat.", read: "Fake, find Y, throw it now. Covered? Tuck it and run the Rhino path. The most unfair play we own." },
   falcon:  { fam: "Pass",   dirs: [""],         words: { "": "Falcon" }, carrier: "WR", signal: "Both arms soar", how: "Four verticals, slots bend to the seams, RB checks down.", read: "Coach picks the target before the snap. No pick, or one deep safety in the middle: throw the seam on the FAR side of him." },
   flood:   { fam: "Pass",   dirs: ["Rt", "Lt"], words: { Rt: "Raven", Lt: "Lark" }, carrier: "WR", signal: "Wing out flat, run the fingers sideways, then point", how: "Sprint-out flood: QB moves the launch point to the call side with the RB leading. Three levels stacked in front of him: deep out at 10, flat at 4, and the top pulled off by a go. Z runs the post-corner on every flood, from either side. Half the field, one look at a time, and his legs are the third answer.", read: "Deep out first. Covered? Flat. Both covered? RUN for the sticks and get down or get out of bounds. Z's post-corner is the late shot when they all chase you." },
   eagle:   { fam: "Pass",   dirs: [""],         words: { "": "Eagle" }, carrier: "WR", signal: "Full wingspan flex", how: "The shot. Post and go outside, Y drags underneath, RB stays in to protect, and H's bubble is the hot throw if they bring the house. From Super Heavy the H wing stays in too: seven blocking.", read: "One look deep for two seconds, then take the drag. Blitz? H's bubble, now." },
@@ -813,6 +849,7 @@ const playCarrier = (p) => {
   if (p.concept === "reverse") return outsideReceiverOf(p.formation, -s);
   if ((p.tags || []).includes("Now")) return c.carrier + " / X";
   if ((p.tags || []).includes("Owl")) return "Y";
+  if ((p.tags || []).includes("Heron")) return "H";
   return c.carrier;
 };
 
@@ -858,13 +895,13 @@ const WING_H_JOBS = {
   bubble: "You are the playside WING: block the end man on your side and stay on him. X is coming north right behind you.",
   keep: "You are the playside WING: block the end man on your side. The QB is coming around your block.",
 };
-const superHeavyJobs = (play, base) => {
+const superHeavyJobs = (play, base, heron = false) => {
   const spots = formSpots(play.formation);
   const s = play.dir === "Lt" ? -1 : 1;
   const hPlayside = spots.H && (spots.H[0] - 50) * s > 0;
   const out = { ...base, XZ: "X: " + base.XZ + " Z is the WING in Super Heavy: on every run word, block the end man on your side like a lineman." };
   if (play.concept === "eagle") out.H = "Stay in and block the end on your side. You are the bodyguard: nobody touches him.";
-  else if (hPlayside && WING_KICK_CONCEPTS.includes(play.concept) && !(play.tags || []).includes("Jet"))
+  else if (hPlayside && !heron && WING_KICK_CONCEPTS.includes(play.concept) && !(play.tags || []).includes("Jet"))
     out.H = WING_H_JOBS[play.concept] || "You are the playside WING: no motion. Block the end man on your side. If he crashes inside, ride him inside and the RB bounces off your back.";
   return out;
 };
@@ -877,29 +914,44 @@ const owlTagJobs = (play, base) => ({
   H: play.concept === "jet" ? "Full-speed motion, make the basket, sprint out EMPTY. The fake is the play." : base.H,
   Y: ASSIGNMENTS.owl.Y,
 });
+/* HERON behind Rhino/Lion: H's ball off the run fake. One sentence for H in
+   every formation; the line's card never changes. */
+const HERON_JOBS = {
+  QB: "Fake Rhino BIG, two steps toward the play, throw H in the flat NOW. Flat defender sitting on him? H is turning up: throw it over him, or run and get down.",
+  RB: "Run your Rhino path without the ball and block the first color at the edge. The end is yours: H just left him.",
+  H: "HERON is YOUR ball. Get to the play-side edge (motion if you start backside), fake your block for ONE count, leak to the flat, turn up the sideline if nobody is there.",
+  XZ: "Called side runs the GO to pull the corner out of the flat. Backside blocks his man.",
+};
+const heronTagJobs = (base) => ({ ...base, ...HERON_JOBS });
 const jobsFor = (play) => {
   let base = ASSIGNMENTS[play.concept];
   if (!base) return base;
-  if ((play.tags || []).includes("Owl") && play.concept !== "owl") base = owlTagJobs(play, base);
-  if (FORM_GROUP[play.formation] === "Super Heavy") return superHeavyJobs(play, base);
+  const tags = play.tags || [];
+  if (tags.includes("Owl") && play.concept !== "owl") base = owlTagJobs(play, base);
+  const heron = tags.includes("Heron") && play.concept === "power";
+  if (heron) base = heronTagJobs(base);
+  if (FORM_GROUP[play.formation] === "Super Heavy") return superHeavyJobs(play, base, heron);
   if (!/^I (Rt|Lt)$/.test(play.formation || "")) return base;
   return {
     ...base,
     QB: (/two hands/i.test(base.QB) ? "UNDER CENTER: secure the snap first. " : "UNDER CENTER: secure the snap with two hands first. ") + base.QB,
-    H: I_FB_JOBS[play.concept] || "You are the FB in the I: lead where the play goes and hit the first wrong-colored jersey.",
+    H: heron ? "You are the FB: one step into the hole to sell the lead, then out through the C gap to the flat and turn up. " + HERON_JOBS.H : (I_FB_JOBS[play.concept] || "You are the FB in the I: lead where the play goes and hit the first wrong-colored jersey."),
     RB: "Deep tailback: " + base.RB,
   };
 };
 const JOB_GROUPS = [["OL", "O-Line"], ["QB", "Quarterback"], ["RB", "Running Back"], ["H", "H (Slot)"], ["Y", "Y (Tight End)"], ["XZ", "X and Z (Outside)"]];
 const jobKeyFor = (label) => (["LT", "LG", "C", "RG", "RT"].includes(label) ? "OL" : label === "X" || label === "Z" ? "XZ" : label);
 
+/* the card color: a play-action tag (Owl, Heron) behind a run word is a Pass */
+const PASS_TAGS = ["Owl", "Heron"];
+const playTypeFor = (concept, tags = []) => (tags.some((t) => PASS_TAGS.includes(t)) ? "Pass" : CONCEPTS[concept] ? CONCEPTS[concept].fam : "Run");
 /* ---- seeded Safari playbook ---- */
 function mkSeedPlay(num, formation, concept, dir, core, week, tags) {
   return {
     id: uid(), num, formation, concept, dir: dir || "", tags: tags || [], core: !!core, week,
     name: `${formation} · ${callWord(concept, dir, tags || [])}`,
     /* an OWL-tagged run is really play action, so the card colors say Pass */
-    type: (tags || []).includes("Owl") ? "Pass" : CONCEPTS[concept].fam === "Screen" ? "Screen" : CONCEPTS[concept].fam,
+    type: playTypeFor(concept, tags || []),
     note: "",
   };
 }
@@ -1063,6 +1115,17 @@ function safariSeedPlaysV11() {
     note(mk(90, "Nasty Rt", "power", "Rt", false, 5, ["Now"]), "THE RPO from Super Heavy: Rhino right into the wall of Y and Z, H jets from the backside. QB reads X's corner BEFORE the snap: cushion, throw the smoke to X now; pressed, hand Rhino."),
     note(mk(91, "Nasty Lt", "power", "Lt", false, 5, ["Now"]), "The RPO, left: Lion into Y and Z, H jets from the backside, X on the right is the pre-snap smoke read."),
     note(mk(94, "Nasty Rt", "reverse", "Rt", false, 5), "Special. Laser fake to the LEFT, then X (wide left) brings it back RIGHT behind a defense chasing the jet. Off the board only, once a game, after the jets have them flying."),
+  ];
+}
+/* v17 (Sept 7, Greg's ask): HERON, the third answer off the hammer. Owl is Y's
+   ball behind the run fake; Heron is H's. Seeded from home base; Add This Look
+   puts it in any formation, and the engine already knows every H alignment. */
+function safariSeedPlaysV12() {
+  const mk = mkSeedPlay;
+  const note = (p, n) => ({ ...p, note: n });
+  return [
+    note(mk(95, "Doubles", "power", "Rt", false, 5, ["Heron"]), "H's ball off Rhino. He motions like every Rhino, fakes his block on the end for one count, and leaks to the flat the force player just vacated to tackle Rhino. RB runs his path empty and blocks that end. Z clears the corner. QB: fake, two steps, throw it NOW."),
+    note(mk(96, "Doubles", "power", "Lt", false, 5, ["Heron"]), "Lion Heron: the same leak off the left hammer. X clears the corner, H arrives in the flat behind the fake."),
   ];
 }
 /* the two original Nasty powers never had notes; Super Heavy gives them one */
@@ -1232,7 +1295,7 @@ const RAW_SEED = {
   ],
   practice: { date: "", start: "17:30", title: "Practice Plan", items: [] },
   savedPlans: [],
-  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7(), ...safariSeedPlaysV8(), ...safariSeedPlaysV9(), ...safariSeedPlaysV10(), ...safariSeedPlaysV11()],
+  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7(), ...safariSeedPlaysV8(), ...safariSeedPlaysV9(), ...safariSeedPlaysV10(), ...safariSeedPlaysV11(), ...safariSeedPlaysV12()],
   callLog: [],
   gameLabel: "",
   script: [],
@@ -1384,7 +1447,7 @@ function generatePractice(data, totalMins = 75) {
 SEED.packages = seedPackages();
 applyKillPairs(SEED.plays);
 SEED.plays.forEach((p) => { if (!p.note && CHAIN_NOTES[p.name]) p.note = CHAIN_NOTES[p.name]; });
-SEED.safariVersion = 16; /* SEED.plays already carries every seeded batch */
+SEED.safariVersion = 17; /* SEED.plays already carries every seeded batch */
 SEED.savedPlans = [
   { id: uid(), name: "Day 1 · Helmets (Routes + Formations)", savedAt: "library", plan: day1Plan(SEED.drills) },
   { id: uid(), name: "Week 2 · Jet Series Install (Rocket, Raccoon, Owl)", savedAt: "library", plan: week2Plan(SEED.drills) },
@@ -1644,6 +1707,13 @@ function normalizeData(parsed) {
     };
     plays = plays.map((p) => (p.note && NOTE_SWAPS_16[p.note] ? { ...p, note: NOTE_SWAPS_16[p.note] } : p));
   }
+  // v17 (Sept 7): Heron, H's play action off Rhino/Lion.
+  if (!(parsed.safariVersion >= 17)) {
+    const haveV17 = new Set(plays.map((p) => p.name));
+    const base17 = plays.reduce((m, p) => Math.max(m, Number(p.num) || 0), 0);
+    let n17 = 0;
+    plays = [...plays, ...safariSeedPlaysV12().filter((p) => !haveV17.has(p.name)).map((p) => ({ ...p, id: uid(), num: base17 + (++n17) }))];
+  }
   // Concept play names are derived, so vocabulary updates flow through automatically.
   plays = plays.map((p) =>
     p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
@@ -1672,7 +1742,7 @@ function normalizeData(parsed) {
     gameLabel: parsed.gameLabel || "",
     script: parsed.script || [],
     scriptPos: parsed.scriptPos || 0,
-    safariVersion: 16,
+    safariVersion: 17,
     defense: normDefense(parsed.defense),
     csKeys: typeof parsed.csKeys === "string" ? parsed.csKeys : "",
     seasonWeek: parsed.seasonWeek || 1,
@@ -3143,7 +3213,7 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
     const p = {
       id: uid(), num: nextNum, formation: b.formation, concept: b.concept,
       dir: needsDir ? b.dir : "", tags: bTags, core: false, week: null,
-      name: buildName, type: concept.fam === "Screen" ? "Screen" : concept.fam === "Special" ? "Special" : concept.fam, note: "",
+      name: buildName, type: playTypeFor(b.concept, bTags), note: "",
     };
     up({ plays: [...plays, p] });
     setSel(p.id);
@@ -3224,7 +3294,7 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
                 <option value="Rt">Rt</option><option value="Lt">Lt</option>
               </select>
             )}
-            {["Jet", "Now", "Wheel", "Max", ...(seasonWeek >= 5 ? ["Owl"] : [])].map((t) => (
+            {["Jet", "Now", "Wheel", "Max", ...(seasonWeek >= 5 ? ["Owl"] : []), ...(seasonWeek >= 5 && b.concept === "power" ? ["Heron"] : [])].map((t) => (
               <label key={t} className={"tag-check" + (bTags.includes(t) ? " on" : "")}>
                 <input type="checkbox" checked={bTags.includes(t)} onChange={() => toggleTag(t)} />{t}
               </label>
@@ -3712,6 +3782,7 @@ const ROUTE_TABLE = [
   { bird: "Owl", X: "Block", H: "Jet fake", Y: "Seam behind LBs", Z: "Block", RB: "Fake Rhino" },
   { bird: "Falcon", X: "Go", H: "Seam", Y: "Seam", Z: "Go", RB: "Checkdown" },
   { bird: "Eagle", X: "Post", H: "Bubble (hot)", Y: "Drag at 10", Z: "Go", RB: "Block" },
+  { bird: "Heron (Rhino / Lion Heron)", X: "Go (call side) / Block", H: "Fake block, leak to the flat, turn up", Y: "Block down", Z: "Go (call side) / Block", RB: "Fake Rhino, block the end" },
   { bird: "Raven / Lark", X: "Go (call side) / Post (backside)", H: "Deep out at 10 (call side)", Y: "Flat at 4 (call side)", Z: "Post-corner", RB: "Lead the sprint, block" },
 ];
 
@@ -3951,6 +4022,7 @@ function SystemPrint() {
     ["QUICK", "Robin", "Slants and flats. The money concept."],
     ["WALL", "Hawk", "Three levels on Y's side: curl, wheel, cross. QB reads one man."],
     ["HAMMER", "Owl", "Looks exactly like Rhino. TE slips behind the linebackers."],
+    ["HAMMER", "Rhino Heron / Lion Heron", "Looks exactly like Rhino. H fakes his block and leaks to the flat."],
     ["WALL", "Falcon", "Four verticals. Coach picks the target."],
     ["WALL", "Eagle", "The deep shot: post and go, H's bubble is the hot throw."],
     ["WALL", "Raven / Lark", "Sprint-out flood. Deep out, flat, or the QB runs."],

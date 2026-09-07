@@ -57,7 +57,7 @@ describe("vocabulary", () => {
     for (const want of ["Doubles · Raven", "Trips Rt · Raven", "Doubles · Hawk", "Empty · Robin", "Empty · Reese's", "Empty · Laffy"]) {
       expect(names, want + " is seeded").toContain(want);
     }
-    expect(SEED.plays.length).toBe(85);
+    expect(SEED.plays.length).toBe(87);
   });
   it("never installs a formation before its first play", () => {
     for (const f of Object.keys(FORM_WEEKS)) {
@@ -283,7 +283,7 @@ describe("seeds", () => {
     for (const want of ["Bunch Rt · Rocket", "Nasty Rt · Ram", "Tank Rt · Ram", "Trips Rt · Rhino", "Tank Lt · Leopard"]) {
       expect(names, want + " is seeded").toContain(want);
     }
-    expect(SEED.plays.length).toBe(85); // 71 after the Aug 17 cuts + the 14 Nasty looks (v15) // the v13 weaponized layer (5)
+    expect(SEED.plays.length).toBe(87); // 71 after the Aug 17 cuts + the 14 Nasty looks (v15) // the v13 weaponized layer (5)
   });
   it("renames the jet drill in place so saved plans keep their links", () => {
     const old = { players: [], drills: [{ id: "d-keep", name: "Jet Touch Pass Timing", cat: "Group", group: "Skill (QB/RB/WR/TE)", mins: 12, notes: "old" }], libVersion: 4, safariVersion: 6, day1Seeded: true, week2Seeded: true, savedPlans: [], plays: SEED.plays.map((p) => ({ ...p })) };
@@ -332,15 +332,15 @@ describe("seeds", () => {
     const names = v3.plays.map((p) => p.name);
     expect(names).toContain("Tank Rt · Owl");
     expect(names.filter((n) => n === "Tank Rt · Owl").length).toBe(1);
-    expect(v3.plays.length).toBe(85); // everything a fresh install gets, no dupes
-    expect(v3.safariVersion).toBe(16);
+    expect(v3.plays.length).toBe(87); // everything a fresh install gets, no dupes
+    expect(v3.safariVersion).toBe(17);
     expect(v3.packages.map((p) => p.name)).toContain("CHEETAH");
     const rocket = v3.plays.find((p) => p.name === "Doubles · Rocket");
     const reeses = v3.plays.find((p) => p.name === "Doubles · Reese's");
     expect(rocket.killId).toBe(reeses.id);
     // running it again must change nothing (Greg's live data reloads every session)
     const again = normalizeData(JSON.parse(JSON.stringify(v3)));
-    expect(again.plays.length).toBe(85);
+    expect(again.plays.length).toBe(87);
     expect(again.packages.length).toBe(v3.packages.length);
   });
   it("v13: cuts the Orbit/Zip/Rhino-Peek plays, seeds the weaponized layer, fixes stale notes", () => {
@@ -530,7 +530,7 @@ describe("normalizeData migration", () => {
     expect(keepLt.name).toContain("Longhorn"); // derived names propagate the rename
     expect(d.savedPlans.some((s) => /day 1/i.test(s.name))).toBe(true);
     expect(d.players[0].name).toBe("Old Kid"); // user data untouched
-    expect(d.safariVersion).toBe(16);
+    expect(d.safariVersion).toBe(17);
   });
   it("does not double-seed on a second load", () => {
     const once = normalizeData({ safariVersion: 2, plays: SEED.plays.map((p) => ({ ...p })) });
@@ -1132,7 +1132,7 @@ describe("super heavy (Sept 1)", () => {
     for (const n of ["Nasty Rt · Lion", "Nasty Lt · Rhino", "Nasty Rt · Rabbit", "Nasty Lt · Lynx", "Nasty Rt · Renegade", "Nasty Lt · Lizard", "Nasty Rt · Owl", "Nasty Lt · Owl", "Nasty Rt · Lion Owl", "Nasty Rt · Laffy", "Nasty Lt · Reese's", "Nasty Rt · Rhino Now", "Nasty Lt · Lion Now", "Nasty Rt · Rewind"]) {
       expect(names.filter((x) => x === n).length, n).toBe(1);
     }
-    expect(v14.safariVersion).toBe(16);
+    expect(v14.safariVersion).toBe(17);
     expect(v14.plays.find((p) => p.name === "Nasty Rt · Rhino").note).toMatch(/Super Heavy|Y and the Z wing/);
     /* numbers append after the highest existing one, unique */
     const nums = v14.plays.map((p) => p.num);
@@ -1327,7 +1327,7 @@ describe("Sept 3 sweep, engine", () => {
     const d = normalizeData({ safariVersion: 15, plays: SEED.plays.map((p) => (p.name === "Nasty Rt · Rocket" ? { ...p, note: "Condensed splits pull the defense inside, jet outruns everything to the open edge." } : p)) });
     expect(d.plays.find((p) => p.name === "Nasty Rt · Rocket").note).toMatch(/Super Heavy jet right/);
     expect(d.plays.some((p) => /ondensed splits/.test(p.note || ""))).toBe(false);
-    expect(d.safariVersion).toBe(16);
+    expect(d.safariVersion).toBe(17);
   });
 });
 
@@ -1360,5 +1360,63 @@ describe("Raven / Lark: Z post-corner (Greg, Sept 3)", () => {
     const row = [...document.querySelectorAll(".routes-table tr")].find((r) => /Raven/.test(r.textContent));
     expect(row && /Post-corner/.test(row.textContent)).toBe(true);
     cleanup();
+  });
+});
+
+describe("Heron (Greg, Sept 7): H's ball off the hammer", () => {
+  const kinds = (el, L) => (el[L] || []).map((e) => e.kind);
+  it("every H alignment gets the same job: fake the block, leak to the flat, turn up", () => {
+    /* Doubles: H is backside on Rhino, so he motions across, fakes, leaks */
+    const dbl = genPlayElements("power", formSpots("Doubles"), "Rt", ["Heron"], "Doubles");
+    expect(kinds(dbl, "H")).toEqual(["motion", "fake", "route"]);
+    /* Trips Rt with Rhino: H already play side, no motion */
+    const tr = genPlayElements("power", formSpots("Trips Rt"), "Rt", ["Heron"], "Trips Rt");
+    expect(kinds(tr, "H")).toEqual(["fake", "route"]);
+    /* Tank: shuffle, fake the kick, leak */
+    const tank = genPlayElements("power", formSpots("Tank Rt"), "Rt", ["Heron"], "Tank Rt");
+    expect(kinds(tank, "H")).toEqual(["motion", "fake", "route"]);
+    /* I: the fullback steps into the hole then out to the flat */
+    const iform = genPlayElements("power", formSpots("I Rt"), "Rt", ["Heron"], "I Rt");
+    expect(kinds(iform, "H")).toEqual(["fake", "route"]);
+    /* Nasty Lt Lion: H is the backside wing, motions like Lion; Nasty Lt Rhino: playside wing, no motion */
+    expect(kinds(genPlayElements("power", formSpots("Nasty Lt"), "Lt", ["Heron"], "Nasty Lt"), "H")).toEqual(["motion", "fake", "route"]);
+    expect(kinds(genPlayElements("power", formSpots("Nasty Lt"), "Rt", ["Heron"], "Nasty Lt"), "H")).toEqual(["fake", "route"]);
+    for (const el of [dbl, tr, tank, iform]) {
+      const route = el.H.find((e) => e.kind === "route").pts;
+      expect(route[route.length - 1][1]).toBeLessThan(route[0][1]); /* ends upfield */
+      expect(kinds(el, "RB")).toEqual(["fake", "block"]);            /* RB fakes, then owns the end */
+      expect(el.RB.some((e) => e.kind === "carry")).toBe(false);
+      expect(kinds(el, "QB")).toContain("throw");
+      const throwPt = el.QB.find((e) => e.kind === "throw").pts[1];
+      expect(route.some(([x, y]) => x === throwPt[0] && y === throwPt[1])).toBe(true); /* the throw lands on H's route */
+    }
+    /* the play-side outside man clears; on Lion from Doubles that is X */
+    const lion = genPlayElements("power", formSpots("Doubles"), "Lt", ["Heron"], "Doubles");
+    expect(kinds(lion, "X")).toEqual(["route"]);
+    expect(kinds(lion, "Z")).toEqual(["block"]);
+    expect(kinds(dbl, "Z")).toEqual(["route"]);
+    /* the line still blocks HAMMER: backside guard pulls */
+    expect(kinds(dbl, "LG")).toEqual(["route"]);
+    /* Heron means nothing on a non-power word */
+    expect(genPlayElements("jet", formSpots("Doubles"), "Rt", ["Heron"], "Doubles").H.some((e) => e.kind === "carry")).toBe(true);
+  });
+  it("cards, carrier, type, and seeds", () => {
+    const d = normalizeData({ seasonWeek: 9 });
+    const rh = d.plays.find((p) => p.name === "Doubles · Rhino Heron");
+    const lh = d.plays.find((p) => p.name === "Doubles · Lion Heron");
+    expect(rh && lh).toBeTruthy();
+    expect(rh.type).toBe("Pass");
+    expect(playCarrier(rh)).toBe("H");
+    expect(callWord("power", "Rt", ["Heron"])).toBe("Rhino Heron");
+    const jobs = jobsFor(rh);
+    expect(jobs.H).toMatch(/HERON is YOUR ball/);
+    expect(jobs.RB).toMatch(/without the ball/);
+    expect(jobs.OL).toBe(ASSIGNMENTS.power.OL);
+    expect(jobsFor({ concept: "power", dir: "Rt", formation: "I Rt", tags: ["Heron"] }).H).toMatch(/C gap/);
+    expect(jobsFor({ concept: "power", dir: "Rt", formation: "Nasty Lt", tags: ["Heron"] }).H).toMatch(/HERON is YOUR ball/);
+    /* v17 lands once on an existing v16 program */
+    const v16 = normalizeData({ safariVersion: 16, plays: SEED.plays.filter((p) => !/Heron/.test(p.name)) });
+    expect(v16.plays.filter((p) => /Heron/.test(p.name)).length).toBe(2);
+    expect(normalizeData(JSON.parse(JSON.stringify(v16))).plays.length).toBe(v16.plays.length);
   });
 });
