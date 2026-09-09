@@ -4177,23 +4177,30 @@ const GAME_PLANS = [
     key: "red",
     name: "Vestavia Red (5-3, Mike blitz) · Tue Sept 15",
     gameLabel: "vs Vestavia Red",
+    /* Audited Sept 9 against the 5-3 with an A-gap Mike and an upfield line:
+       HAMMER's down blocks USE their charge and the center's back block fills
+       the gap the puller leaves, so Rhino/Lion lead the game; TRAP hits the
+       blitzer; the jets are blocked now; QUICK is out in two seconds; the
+       sprint-outs leave the blitz behind. Cut: the jet-action Owls (the QB
+       holds the ball at the mesh with a free runner coming), Moose, counters,
+       Tank/I, and every dropback that holds the ball three seconds. */
     keys: [
-      "RED 5-3, THE MIKE BLITZES EVERY SNAP: the middle of the field is empty the moment the ball moves. Owl, Rocket Owl, Laser Owl and Robin's RB live in the hole he leaves. Lynx and Rabbit hit before he arrives.",
-      "THEY GET UPFIELD FAST: no pullers except the trap. Ram and Leopard reach and RUN past the penetration. Rolo and Lifesaver let the rush in and throw over it. Rhino and Lion are SETUP calls only, two a half, to arm Owl and Heron.",
+      "RED 5-3, THE MIKE BLITZES EVERY SNAP: the middle of the field is empty the moment the ball moves. Owl and Lion Owl pop Y into the hole he leaves. Robin's RB settles in it. Lynx and Rabbit TRAP him: the puller hits whoever shows in the gap.",
+      "THEY GET UPFIELD FAST: down blocks use their charge. HAMMER is the base: playside blocks down, the CENTER blocks BACK into the gap the puller left, so the blitz meets a body. Rhino and Lion lead the game. Ram and Leopard only once they start flying downhill.",
       "SWEEPS ARE BLOCKED NOW: Y takes the END MAN on the line on every sweep (flexed: crack down on him; tight: hook him). Outside man cracks the force. RB LEADS to the alley, no more fake. Three blockers on the three men who have been making the tackle.",
-      "PROTECTION VS THE BLITZ: QUICK passes are out in two seconds, the Mike is late. Raven and Lark move the QB away from him with the RB leading. Eagle is max protect. On Owl and Heron the RB runs his Rhino path INTO the blitzer.",
+      "PROTECTION VS THE BLITZ: QUICK passes are out in two seconds, the Mike is late. Raven and Lark take the QB away from him with the RB leading. Eagle is seven blocking. Owl, Lion Owl, and Heron ride HAMMER, so the center's back block picks up the blitz. No dropback that holds the ball three seconds.",
       "EMPTY IS THE SHOCK, NOT THE HOME: Y flexed out to crack the end. Three snaps at Turbo (Empty Rocket, Empty Robin, Empty Laffy), then back to Doubles. Empty Lt for Laser and Longhorn.",
       "TEMPO WINS THIS: a defense that blitzes every snap runs out of legs. No huddle, Turbo the quick game, make the Mike blitz forty times. Rewind and Loop when the ends chase the jet. Rainbow after Ram scores. No Moose: the nose and the Mike are stacked on the center.",
     ],
     sheet: {
-      /* make the Mike wrong six times: reach past him, throw behind him, sweep with the edge blocked, trap him, sprint away from him, seam behind him */
-      openers: ["Doubles · Ram", "Doubles · Robin", "Doubles · Rocket", "Doubles · Lynx", "Doubles · Raven", "Doubles · Rocket Owl"],
-      run: ["Doubles · Ram", "Doubles · Leopard", "Doubles · Rocket", "Doubles Lt · Laser", "Doubles · Raccoon", "Doubles · Longhorn", "Doubles · Rabbit", "Doubles · Lynx", "Empty · Rocket", "Empty Lt · Laser", "Empty · Raccoon", "Empty Lt · Longhorn", "Nasty Lt · Lion", "Nasty Rt · Rhino", "Doubles · Rhino", "Doubles · Lion"],
-      pass: ["Doubles · Robin", "Doubles · Sparrow", "Doubles · Raven", "Doubles · Lark", "Doubles · Owl", "Doubles · Rocket Owl", "Doubles · Laser Owl", "Doubles · Rhino Heron", "Doubles · Lion Heron", "Doubles · Eagle", "Empty · Robin", "Empty · Sparrow"],
-      third_short: ["Doubles · Lynx", "Doubles · Rabbit", "Nasty Lt · Lion", "Nasty Rt · Rhino", "Doubles · Ram", "Doubles · Robin"],
+      /* make the Mike wrong six times, all from Doubles: hammer into his blitz, throw behind him, sweep with the edge blocked, trap him, pop Y over him, sprint away from him */
+      openers: ["Doubles · Rhino", "Doubles · Robin", "Doubles · Rocket", "Doubles · Lynx", "Doubles · Owl", "Doubles · Raven"],
+      run: ["Doubles · Rhino", "Doubles · Lion", "Doubles · Rocket", "Doubles Lt · Laser", "Doubles · Raccoon", "Doubles · Longhorn", "Doubles · Rabbit", "Doubles · Lynx", "Doubles · Ram", "Doubles · Leopard", "Empty · Rocket", "Empty Lt · Laser", "Empty · Raccoon", "Empty Lt · Longhorn", "Nasty Lt · Lion", "Nasty Rt · Rhino"],
+      pass: ["Doubles · Robin", "Doubles · Sparrow", "Doubles · Owl", "Doubles · Lion Owl", "Doubles · Raven", "Doubles · Lark", "Doubles · Rhino Heron", "Doubles · Lion Heron", "Doubles · Eagle", "Empty · Robin", "Empty · Sparrow", "Empty · Laffy", "Empty · Reese's"],
+      third_short: ["Doubles · Lynx", "Doubles · Rabbit", "Doubles · Rhino", "Doubles · Lion", "Nasty Lt · Lion", "Nasty Rt · Rhino"],
       third_long: ["Doubles · Raven", "Doubles · Lark", "Doubles · Rolo", "Doubles · Lifesaver", "Doubles · Eagle", "Empty · Robin"],
-      redzone: ["Doubles · Rocket Owl", "Doubles · Rhino Heron", "Doubles · Robin", "Nasty Lt · Lion", "Doubles · Reese's", "Doubles · Laffy", "Doubles · Lynx", "Doubles · Lark"],
-      goalline: ["Nasty Lt · Lion", "Nasty Rt · Rhino", "Doubles · Lion Heron", "Doubles · Lynx", "Doubles · Rabbit", "Doubles · Owl"],
+      redzone: ["Doubles · Owl", "Doubles · Lion Owl", "Doubles · Rhino", "Doubles · Robin", "Doubles · Reese's", "Doubles · Laffy", "Doubles · Lynx", "Doubles · Rhino Heron"],
+      goalline: ["Nasty Lt · Lion", "Nasty Rt · Rhino", "Doubles · Rhino", "Doubles · Lynx", "Doubles · Owl", "Doubles · Lion Heron"],
       special: ["Doubles · Rewind", "Doubles · Loop", "Doubles · Rainbow"],
     },
   },

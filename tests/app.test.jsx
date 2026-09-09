@@ -1486,9 +1486,15 @@ describe("Sept 9: the sweep is blocked, Empty flexes Y, the Red plan", () => {
     const all = [...new Set(Object.values(patch.callSheet).flat())].map((id) => d.plays.find((p) => p.id === id));
     expect(all.some((p) => p.concept === "sneak")).toBe(false);
     expect(all.filter((p) => p.concept === "counter").length).toBe(0);
-    expect(all.filter((p) => p.concept === "power" && !(p.tags || []).length).length).toBeLessThanOrEqual(4); /* Rhino/Lion are setup only */
+    /* no jet-action Owls: the QB would hold the ball at the mesh with a free runner coming */
+    expect(all.some((p) => p.concept === "jet" && (p.tags || []).includes("Owl"))).toBe(false);
+    /* no dropback that holds the ball three seconds */
+    expect(all.some((p) => ["hawk", "falcon"].includes(p.concept))).toBe(false);
     expect(patch.callSheet.openers.every((id) => d.plays.find((p) => p.id === id).formation === "Doubles")).toBe(true);
-    expect(all.filter((p) => /^Empty/.test(p.formation)).length).toBeGreaterThanOrEqual(6);
+    expect(patch.callSheet.openers.map((id) => d.plays.find((p) => p.id === id).concept)).toEqual(["power", "robin", "jet", "trap", "owl", "flood"]);
+    expect(all.filter((p) => /^Empty/.test(p.formation)).length).toBeGreaterThanOrEqual(8);
+    /* the keys strip only names plays that are on the sheet */
+    for (const n of ["Empty · Laffy", "Empty · Robin", "Empty · Rocket", "Doubles · Lion Owl", "Doubles · Rainbow", "Doubles · Rewind"]) expect(all.some((p) => p.name === n), n).toBe(true);
     expect(patch.csKeys).toMatch(/MIKE BLITZES EVERY SNAP/);
     expect(all.length).toBeGreaterThanOrEqual(30);
     expect(all.length).toBeLessThanOrEqual(40);
