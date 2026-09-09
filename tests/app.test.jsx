@@ -1313,7 +1313,7 @@ describe("Sept 3 sweep", () => {
 describe("Sept 3 sweep, engine", () => {
   it("Owl-tagged runs hand out play-action cards; the line keeps its run card", () => {
     const lionOwl = jobsFor({ concept: "power", dir: "Lt", formation: "Doubles", tags: ["Owl"] });
-    expect(lionOwl.RB).toMatch(/without the ball/);
+    expect(lionOwl.RB).toMatch(/block the END/);
     expect(lionOwl.QB).toMatch(/ALWAYS thrown/);
     expect(lionOwl.Y).toBe(ASSIGNMENTS.owl.Y);
     expect(lionOwl.OL).toBe(ASSIGNMENTS.power.OL);
