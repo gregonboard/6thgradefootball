@@ -775,6 +775,28 @@ function genPlayElements(conceptKey, spots, dir, tags = [], formation) {
     /* the RB finishes his fake by blocking the end man on the play side */
     if (has("RB") && rbInBackfield) { const last = (el["RB"] || []).slice(-1)[0]; const from = last ? last.pts[Math.min(1, last.pts.length - 1)] : at("RB"); el["RB"] = [{ kind: "fake", pts: [at("RB"), from] }, { kind: "block", pts: [from, [edge + s * 1, 23]] }]; }
   }
+  if (tags.includes("Launch") && conceptKey === "jet" && has("H")) {
+    /* LAUNCH behind Rocket/Laser (Greg, Sept 9: "H is my backup QB, he can launch
+       it"): the jet sweep pass. Everyone runs Rocket. H takes the handoff, pulls
+       up at the edge behind the line, and throws HIGH to the play-side outside
+       man, who stalked the corner two counts and then ran past him. RB leads as
+       his protection, Y hooks the end, the QB leaks to the flat as the valve.
+       Nobody deep? H tucks it and runs Rocket. The line stays glued (legal). */
+    const [hx, hy] = at("H");
+    const mesh = [50 + s * 2, 29];
+    const pull = [edge - s * 4, 27.5];
+    el["H"] = [
+      { kind: "motion", pts: hx < 50 ? [[hx, hy], [44, 29], mesh] : [[hx, hy], [56, 29], mesh] },
+      { kind: "carry", pts: [mesh, [50 + s * 12, 28.5], pull] },
+    ];
+    const deep = outsideAt(s);
+    if (deep) {
+      const [dx, dy] = at(deep);
+      el[deep] = [{ kind: "route", pts: [[dx, dy], [dx - s * 1, dy - 3], [dx - s * 2, dy - 21]] }];
+      el["H"].push({ kind: "throw", pts: [pull, [dx - s * 2, dy - 17]] });
+    }
+    if (has("QB")) el["QB"] = [{ kind: "fake", pts: [at("QB"), mesh] }, { kind: "route", pts: [mesh, [50 + s * 8, 30.5], [50 + s * 18, 27]] }];
+  }
   if (tags.includes("Heron") && conceptKey === "power" && has("H")) {
     /* HERON behind Rhino/Lion (Greg, Sept 7): H's ball off the run fake. H gets to
        the play-side edge (motion if he starts backside), fakes his block one
@@ -882,6 +904,7 @@ const playCarrier = (p) => {
   if ((p.tags || []).includes("Now")) return c.carrier + " / X";
   if ((p.tags || []).includes("Owl")) return "Y";
   if ((p.tags || []).includes("Heron")) return "H";
+  if ((p.tags || []).includes("Launch") && p.concept === "jet") return outsideReceiverOf(p.formation, s);
   return c.carrier;
 };
 
@@ -955,6 +978,14 @@ const HERON_JOBS = {
   XZ: "Called side runs the GO to pull the corner out of the flat. Backside blocks his man.",
 };
 const heronTagJobs = (base) => ({ ...base, ...HERON_JOBS });
+/* LAUNCH behind Rocket/Laser: the jet sweep pass. Nine kids run Rocket. */
+const LAUNCH_JOBS = {
+  OL: "STRETCH like every Rocket but STAY GLUED to your man. Nobody drifts downfield, ever.",
+  QB: "Hand it like every Rocket. Then leak to the flat on the play side: you are his valve.",
+  H: "Take the sweep like every Rocket. Three steps past the tackle, PULL UP behind the line and throw it HIGH to the outside man behind everybody. Nobody deep, or you are past the line? Tuck it and run Rocket. Never force it.",
+  XZ: "Called side: stalk the corner two counts like you are blocking the sweep, then sprint past him deep. Backside: block your man like always.",
+};
+const launchTagJobs = (base) => ({ ...base, ...LAUNCH_JOBS });
 const jobsFor = (play) => {
   let base = ASSIGNMENTS[play.concept];
   if (!base) return base;
@@ -962,6 +993,7 @@ const jobsFor = (play) => {
   if (tags.includes("Owl") && play.concept !== "owl") base = owlTagJobs(play, base);
   const heron = tags.includes("Heron") && play.concept === "power";
   if (heron) base = heronTagJobs(base);
+  if (tags.includes("Launch") && play.concept === "jet") base = launchTagJobs(base);
   if (FORM_GROUP[play.formation] === "Super Heavy") return superHeavyJobs(play, base, heron);
   if (!/^I (Rt|Lt)$/.test(play.formation || "")) return base;
   return {
@@ -976,7 +1008,7 @@ const jobKeyFor = (label) => (["LT", "LG", "C", "RG", "RT"].includes(label) ? "O
 
 /* the card color: a play-action tag (Owl, Heron) behind a run word is a Pass */
 const PASS_TAGS = ["Owl", "Heron"];
-const playTypeFor = (concept, tags = []) => (tags.some((t) => PASS_TAGS.includes(t)) ? "Pass" : CONCEPTS[concept] ? CONCEPTS[concept].fam : "Run");
+const playTypeFor = (concept, tags = []) => (tags.includes("Launch") ? "Special" : tags.some((t) => PASS_TAGS.includes(t)) ? "Pass" : CONCEPTS[concept] ? CONCEPTS[concept].fam : "Run");
 /* ---- seeded Safari playbook ---- */
 function mkSeedPlay(num, formation, concept, dir, core, week, tags) {
   return {
@@ -1176,6 +1208,16 @@ function safariSeedPlaysV13() {
 /* v19 (Sept 9, Greg's ask): the shock sweeps. Empty with Y flexed to crack the
    end, five men wide, the jet and the keep behind it. Empty Lt gives Laser and
    Longhorn a natural cross. */
+/* v20 (Sept 9, Greg: "H on Speed is my backup QB, he can launch it"): the jet
+   sweep pass, as a tag on the jet. Laser from Doubles Lt for the natural cross. */
+function safariSeedPlaysV15() {
+  const mk = mkSeedPlay;
+  const note = (p, n) => ({ ...p, note: n });
+  return [
+    note(mk(105, "Doubles", "jet", "Rt", false, 5, ["Launch"]), "The one they will not see coming. Rocket until the corner comes up to tackle it, then H pulls up behind the line and throws it HIGH to Z, who stalked that corner two counts and ran past him. RB leads as his protection, Y hooks the end, QB leaks to the flat as the valve. Off the board only, once, after two Rockets have made the corner come up. Nobody deep: tuck it and run Rocket."),
+    note(mk(106, "Doubles Lt", "jet", "Lt", false, 5, ["Launch"]), "Laser Launch from the natural cross: H comes from the right, pulls up on the left edge, throws to Z (the outside man on the left in Doubles Lt) behind the corner who came up to stop the sweep."),
+  ];
+}
 function safariSeedPlaysV14() {
   const mk = mkSeedPlay;
   const note = (p, n) => ({ ...p, note: n });
@@ -1353,7 +1395,7 @@ const RAW_SEED = {
   ],
   practice: { date: "", start: "17:30", title: "Practice Plan", items: [] },
   savedPlans: [],
-  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7(), ...safariSeedPlaysV8(), ...safariSeedPlaysV9(), ...safariSeedPlaysV10(), ...safariSeedPlaysV11(), ...safariSeedPlaysV12(), ...safariSeedPlaysV13(), ...safariSeedPlaysV14()],
+  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7(), ...safariSeedPlaysV8(), ...safariSeedPlaysV9(), ...safariSeedPlaysV10(), ...safariSeedPlaysV11(), ...safariSeedPlaysV12(), ...safariSeedPlaysV13(), ...safariSeedPlaysV14(), ...safariSeedPlaysV15()],
   callLog: [],
   gameLabel: "",
   script: [],
@@ -1505,7 +1547,7 @@ function generatePractice(data, totalMins = 75) {
 SEED.packages = seedPackages();
 applyKillPairs(SEED.plays);
 SEED.plays.forEach((p) => { if (!p.note && CHAIN_NOTES[p.name]) p.note = CHAIN_NOTES[p.name]; });
-SEED.safariVersion = 19; /* SEED.plays already carries every seeded batch */
+SEED.safariVersion = 20; /* SEED.plays already carries every seeded batch */
 SEED.savedPlans = [
   { id: uid(), name: "Day 1 · Helmets (Routes + Formations)", savedAt: "library", plan: day1Plan(SEED.drills) },
   { id: uid(), name: "Week 2 · Jet Series Install (Rocket, Raccoon, Owl)", savedAt: "library", plan: week2Plan(SEED.drills) },
@@ -1786,6 +1828,13 @@ function normalizeData(parsed) {
     let n19 = 0;
     plays = [...plays, ...safariSeedPlaysV14().filter((p) => !haveV19.has(p.name)).map((p) => ({ ...p, id: uid(), num: base19 + (++n19) }))];
   }
+  // v20 (Sept 9): the jet sweep pass, Rocket Launch and Laser Launch.
+  if (!(parsed.safariVersion >= 20)) {
+    const haveV20 = new Set(plays.map((p) => p.name));
+    const base20 = plays.reduce((m, p) => Math.max(m, Number(p.num) || 0), 0);
+    let n20 = 0;
+    plays = [...plays, ...safariSeedPlaysV15().filter((p) => !haveV20.has(p.name)).map((p) => ({ ...p, id: uid(), num: base20 + (++n20) }))];
+  }
   // Concept play names are derived, so vocabulary updates flow through automatically.
   plays = plays.map((p) =>
     p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
@@ -1814,7 +1863,7 @@ function normalizeData(parsed) {
     gameLabel: parsed.gameLabel || "",
     script: parsed.script || [],
     scriptPos: parsed.scriptPos || 0,
-    safariVersion: 19,
+    safariVersion: 20,
     defense: normDefense(parsed.defense),
     csKeys: typeof parsed.csKeys === "string" ? parsed.csKeys : "",
     seasonWeek: parsed.seasonWeek || 1,
@@ -3368,7 +3417,7 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
                 <option value="Rt">Rt</option><option value="Lt">Lt</option>
               </select>
             )}
-            {["Jet", "Now", "Wheel", "Max", ...(seasonWeek >= 5 ? ["Owl"] : []), ...(seasonWeek >= 5 && b.concept === "power" ? ["Heron"] : [])].map((t) => (
+            {["Jet", "Now", "Wheel", "Max", ...(seasonWeek >= 5 ? ["Owl"] : []), ...(seasonWeek >= 5 && b.concept === "power" ? ["Heron"] : []), ...(seasonWeek >= 5 && b.concept === "jet" ? ["Launch"] : [])].map((t) => (
               <label key={t} className={"tag-check" + (bTags.includes(t) ? " on" : "")}>
                 <input type="checkbox" checked={bTags.includes(t)} onChange={() => toggleTag(t)} />{t}
               </label>
@@ -4097,6 +4146,7 @@ function SystemPrint() {
     ["WALL", "Hawk", "Three levels on Y's side: curl, wheel, cross. QB reads one man."],
     ["HAMMER", "Owl", "Looks exactly like Rhino. TE slips behind the linebackers."],
     ["HAMMER", "Rhino Heron / Lion Heron", "Looks exactly like Rhino. H fakes his block and leaks to the flat."],
+    ["STRETCH", "Rocket Launch / Laser Launch", "The jet sweep pass. H pulls up at the edge and throws deep to the outside man. Off the board, once."],
     ["WALL", "Falcon", "Four verticals. Coach picks the target."],
     ["WALL", "Eagle", "The deep shot: post and go, H's bubble is the hot throw."],
     ["WALL", "Raven / Lark", "Sprint-out flood. Deep out, flat, or the QB runs."],
@@ -4199,7 +4249,7 @@ const GAME_PLANS = [
       "SWEEPS ARE BLOCKED NOW: Y takes the END MAN on the line on every sweep (flexed: crack down on him; tight: hook him). Outside man cracks the force. RB LEADS to the alley, no more fake. Three blockers on the three men who have been making the tackle.",
       "PROTECTION VS THE BLITZ: on Sparrow and Robin the RB checks the A gap FIRST and blocks the blitzer; the ball is out in two seconds. Raven and Lark take the QB away from him with the RB leading. Eagle: RB blocks, H is the hot bubble. Owl, Lion Owl, and Heron ride HAMMER, so the center's back block picks up the blitz. No dropback that holds the ball three seconds.",
       "EMPTY IS THE SHOCK, NOT THE HOME: Y flexed and the RB standing up beside him, so the sweep has three blockers. Nobody blocks the Mike in Empty, so the only Empty throws are the smokes and Robin: ball gone on the first step. Three snaps at Turbo, then back to Doubles. Empty Lt for Laser and Longhorn.",
-      "TEMPO WINS THIS: a defense that blitzes every snap runs out of legs. No huddle, Turbo the quick game, make the Mike blitz forty times. Rewind or Loop ONCE, only after film shows both ends chasing the jet. No Moose: the nose and the Mike are stacked on the center.",
+      "TEMPO WINS THIS: a defense that blitzes every snap runs out of legs. No huddle, Turbo the quick game, make the Mike blitz forty times. ROCKET LAUNCH once, after two Rockets have made the corner come up: H pulls up and throws it high to Z. Rewind or Loop once, only after film shows both ends chasing the jet. No Moose.",
     ],
     sheet: {
       /* make the Mike wrong six times, all from Doubles: hammer into his blitz, throw behind him, sweep with the edge blocked, trap him, pop Y over him, sprint away from him */
@@ -4210,7 +4260,7 @@ const GAME_PLANS = [
       third_long: ["Doubles · Raven", "Doubles · Lark", "Doubles · Rolo", "Doubles · Lifesaver", "Doubles · Eagle", "Empty · Robin"],
       redzone: ["Doubles · Owl", "Doubles · Lion Owl", "Doubles · Rhino", "Doubles · Robin", "Doubles · Reese's", "Doubles · Laffy", "Doubles · Lynx", "Doubles · Rhino Heron"],
       goalline: ["Nasty Lt · Lion", "Nasty Rt · Rhino", "Doubles · Rhino", "Doubles · Lynx", "Doubles · Owl", "Doubles · Lion Heron"],
-      special: ["Doubles · Rewind", "Doubles · Loop"],
+      special: ["Doubles · Rocket Launch", "Doubles Lt · Laser Launch", "Doubles · Rewind", "Doubles · Loop"],
     },
   },
   {
