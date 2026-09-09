@@ -1499,9 +1499,17 @@ describe("Sept 9: the sweep is blocked, Empty flexes Y, the Red plan", () => {
     expect(all.some((p) => ["hawk", "falcon"].includes(p.concept))).toBe(false);
     expect(patch.callSheet.openers.every((id) => d.plays.find((p) => p.id === id).formation === "Doubles")).toBe(true);
     expect(patch.callSheet.openers.map((id) => d.plays.find((p) => p.id === id).concept)).toEqual(["power", "robin", "jet", "trap", "owl", "flood"]);
-    expect(all.filter((p) => /^Empty/.test(p.formation)).length).toBeGreaterThanOrEqual(8);
+    expect(all.filter((p) => /^Empty/.test(p.formation)).length).toBeGreaterThanOrEqual(7);
     /* the keys strip only names plays that are on the sheet */
-    for (const n of ["Empty · Laffy", "Empty · Robin", "Empty · Rocket", "Doubles · Lion Owl", "Doubles · Rainbow", "Doubles · Rewind"]) expect(all.some((p) => p.name === n), n).toBe(true);
+    for (const n of ["Empty · Laffy", "Empty · Robin", "Empty · Rocket", "Doubles · Lion Owl", "Doubles · Rewind", "Doubles · Sparrow"]) expect(all.some((p) => p.name === n), n).toBe(true);
+    /* reach blocks lose to penetration: no stretch, and no halfback pass behind it; no hitch from Empty with a free rusher */
+    expect(all.some((p) => ["stretch", "rbpass"].includes(p.concept))).toBe(false);
+    expect(all.some((p) => p.name === "Empty · Sparrow")).toBe(false);
+    /* Empty smokes: the slot RB blocks, never fakes a run he is not in position for */
+    const es = genPlayElements("bubble", formSpots("Empty"), "Rt", [], "Empty");
+    expect(es.RB.map((e) => e.kind)).toEqual(["block"]);
+    expect(genPlayElements("bubble", formSpots("Doubles"), "Rt", [], "Doubles").RB.map((e) => e.kind)).toEqual(["fake"]);
+    expect(ASSIGNMENTS.robin.RB).toMatch(/Check the blitz FIRST/);
     expect(patch.csKeys).toMatch(/MIKE BLITZES EVERY SNAP/);
     expect(all.length).toBeGreaterThanOrEqual(30);
     expect(all.length).toBeLessThanOrEqual(40);
