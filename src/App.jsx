@@ -628,7 +628,9 @@ function genPlayElements(conceptKey, spots, dir, tags = [], formation) {
       jetMotion();
       qbFake();
       if (has("Y")) add("Y", "carry", [at("Y"), [at("Y")[0] - 1, at("Y")[1] - 11], [at("Y")[0] - 2, 4]]);
-      if (has("RB")) add("RB", "fake", [at("RB"), [50 + s * 5, 28], [50 + s * 10, 24]]);
+      /* RB sells Rhino, then blocks the END: Y just released past him and he is
+         the only man who can reach the QB during the fake (Sept 9 audit) */
+      if (has("RB")) { add("RB", "fake", [at("RB"), [50 + s * 5, 28], [50 + s * 10, 24]]); add("RB", "block", [[50 + s * 10, 24], [edge + s * 1, 23]]); }
       throwTo("Y");
       break;
     case "falcon":
@@ -770,6 +772,8 @@ function genPlayElements(conceptKey, spots, dir, tags = [], formation) {
     const bend = yx <= 50 ? 3 : -3;
     el["Y"] = [{ kind: "carry", pts: [[yx, yy], [yx, yy - 4], [yx + bend, yy - 14]] }];
     if (has("QB")) add("QB", "throw", [at("QB"), [yx + bend * 0.7, yy - 11]]);
+    /* the RB finishes his fake by blocking the end man on the play side */
+    if (has("RB") && rbInBackfield) { const last = (el["RB"] || []).slice(-1)[0]; const from = last ? last.pts[Math.min(1, last.pts.length - 1)] : at("RB"); el["RB"] = [{ kind: "fake", pts: [at("RB"), from] }, { kind: "block", pts: [from, [edge + s * 1, 23]] }]; }
   }
   if (tags.includes("Heron") && conceptKey === "power" && has("H")) {
     /* HERON behind Rhino/Lion (Greg, Sept 7): H's ball off the run fake. H gets to
@@ -893,7 +897,7 @@ const ASSIGNMENTS = {
   sparrow: { OL: "Set and punch. Ball is out fast.", QB: "Pick the widest cushion before the snap. Catch, throw, done.", RB: "Check the rush, leak to the flat.", H: "Slant at 4: three steps, cut across his face.", Y: "Stick at 5, sit in the window.", XZ: "Hitch at 5. Turn around, show your numbers. Pressed? Nod and GO: your hitch just became a fly route." },
   robin:   { OL: "Set and punch. Ball out quick.", QB: "Flat first. If he jumps it, the slant is behind him. All covered and nobody blitzed: your RB is sitting in the middle.", RB: "Check the blitz FIRST: a backer through the A gap is yours, block him. Nobody comes? Settle in the MIDDLE at 4. The slants just emptied it for you.", H: "Arrow to the flat right now.", Y: "Flat.", XZ: "Slant. Three steps, cut across his face." },
   hawk:    { OL: "Real pass set. Stay square.", QB: "One man: the flat defender on Y's side. Runs with the wheel, throw H under. Jumps H, throw the wheel. Blitz, take H's bubble now.", RB: "Check the rush, then leak.", H: "Sell the bubble ONE hard step away, then slant across behind Y. Settle at 6 over the ball and keep drifting toward the wheel side.", Y: "WHEEL: flat for three steps, then turn up the sideline and GO. Last year's touchdown route.", XZ: "Push to 8, snap around. Curl. Backside man: you are his scramble answer." },
-  owl:     { OL: "Block Rhino, RIGHT, every time: no R or L after HAMMER means Owl, and Owl means Rhino rules. Make it look exactly the same.", QB: "Fake Rhino big, pop it to Y over their heads. Covered? Tuck and run the Rhino path: your line is already run blocking.", RB: "Fake Rhino, run angry without the ball.", H: "Jet motion, sell it.", Y: "Sell the block one count, slip behind the linebackers, eyes up fast.", XZ: "Block like it's a run." },
+  owl:     { OL: "Block Rhino, RIGHT, every time: no R or L after HAMMER means Owl, and Owl means Rhino rules. Make it look exactly the same.", QB: "Fake Rhino big, pop it to Y over their heads. Covered? Tuck and run the Rhino path: your line is already run blocking.", RB: "Fake Rhino, then block the END on the play side. Y just left him and he is the only man who can hit the QB.", H: "Jet motion, sell it.", Y: "Sell the block one count, slip behind the linebackers, eyes up fast.", XZ: "Block like it's a run." },
   falcon:  { OL: "Best pass set of the day. Give him time.", QB: "Coach picks the target before the snap. Trust it. One safety deep? The seam on his far side wins.", RB: "Checkdown at 5.", H: "Seam.", Y: "Seam.", XZ: "Go. Run through his shoulder." },
   flood:   { OL: "Pass set, then slide with the QB. He is moving; move with him. Nobody crosses your face.", QB: "Sprint to the call, shoulders square so you can still throw. Deep out, then flat, then RUN. First down, then down or out of bounds.", RB: "You are his bodyguard. Lead the sprint and block the first color off the edge.", H: "Cross to the call side, deep out at 10. Snap your head around fast.", Y: "Flat at 4 on the call side. Be his easy answer.", XZ: "Z: POST-CORNER every time. Stem hard, break to the post, then break back to the corner and look for the ball late. X: called side runs the GO to pull the top off; backside runs the post and stays alive." },
   eagle:   { OL: "Max protect. Nobody touches him.", QB: "One look deep for two counts, then take the drag. They bring the house: H's bubble, right now.", RB: "Block first. Always.", H: "Bubble: one step out, turn, show your numbers. You are the hot throw if they blitz; otherwise stay out of the way.", Y: "Drag at 10. Be the answer.", XZ: "X runs the post. Z runs the go." },
@@ -938,7 +942,7 @@ const superHeavyJobs = (play, base, heron = false) => {
 const owlTagJobs = (play, base) => ({
   ...base,
   QB: (play.concept === "jet" ? "Sell the mesh with H at full speed, keep the ball, " : "Fake the give BIG, ") + "then pop it to Y over the backers. ALWAYS thrown. Covered? Tuck it and run the fake's path.",
-  RB: "Fake it like it is yours. Run angry without the ball.",
+  RB: "Fake it like it is yours, then block the END on the play side. Y just left him and he is the only man who can hit the QB.",
   H: play.concept === "jet" ? "Full-speed motion, make the basket, sprint out EMPTY. The fake is the play." : base.H,
   Y: ASSIGNMENTS.owl.Y,
 });

@@ -1515,3 +1515,17 @@ describe("Sept 9: the sweep is blocked, Empty flexes Y, the Red plan", () => {
     expect(all.length).toBeLessThanOrEqual(40);
   });
 });
+
+describe("Owl protection (Sept 9 audit)", () => {
+  it("the RB fakes Rhino, then blocks the end Y released past, on Owl and every Owl-tagged run", () => {
+    const owl = genPlayElements("owl", formSpots("Doubles"), "", [], "Doubles");
+    expect(owl.RB.map((e) => e.kind)).toEqual(["fake", "block"]);
+    expect(owl.RB[1].pts[1][0]).toBeGreaterThan(70);
+    const lionOwl = genPlayElements("power", formSpots("Doubles"), "Lt", ["Owl"], "Doubles");
+    expect(lionOwl.RB.map((e) => e.kind)).toEqual(["fake", "block"]);
+    expect(lionOwl.RB[1].pts[1][0]).toBeLessThan(30);
+    expect(lionOwl.RB.some((e) => e.kind === "carry")).toBe(false);
+    expect(ASSIGNMENTS.owl.RB).toMatch(/block the END/);
+    expect(jobsFor({ concept: "power", dir: "Lt", formation: "Doubles", tags: ["Owl"] }).RB).toMatch(/block the END/);
+  });
+});
