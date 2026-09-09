@@ -36,7 +36,7 @@ const OFF_SCHEME_LABELS = { "Speed": "Speed (spread)", "Heavy": "Heavy (I / Tank
 /* which personnel group each playbook formation uses */
 const FORM_GROUP = {
   "Doubles": "Speed", "Doubles Lt": "Speed", "Trips Rt": "Speed", "Trips Lt": "Speed",
-  "Bunch Rt": "Speed", "Bunch Lt": "Speed", "Stack": "Speed", "Empty": "Speed",
+  "Bunch Rt": "Speed", "Bunch Lt": "Speed", "Stack": "Speed", "Empty": "Speed", "Empty Lt": "Speed",
   "Nasty Rt": "Super Heavy", "Nasty Lt": "Super Heavy",
   "Tank Rt": "Heavy", "Tank Lt": "Heavy", "I Rt": "Heavy", "I Lt": "Heavy",
 };
@@ -159,7 +159,7 @@ function assignmentsFor(data, side, id) {
    Single source of truth: PLAY_FORM_NAMES / formSpots drive both the
    Play Lab and the Formation View, so the two can never drift apart.
    FORM_WEEKS staggers the install to match the WEEK dial. */
-const FORM_WEEKS = { "Doubles": 1, "Doubles Lt": 1, "Trips Rt": 1, "Trips Lt": 1, "Tank Rt": 4, "Tank Lt": 4, "I Rt": 4, "I Lt": 4, "Bunch Rt": 5, "Bunch Lt": 5, "Empty": 6, "Stack": 5, "Nasty Rt": 5, "Nasty Lt": 5 };
+const FORM_WEEKS = { "Doubles": 1, "Doubles Lt": 1, "Trips Rt": 1, "Trips Lt": 1, "Tank Rt": 4, "Tank Lt": 4, "I Rt": 4, "I Lt": 4, "Bunch Rt": 5, "Bunch Lt": 5, "Empty": 6, "Empty Lt": 6, "Stack": 5, "Nasty Rt": 5, "Nasty Lt": 5 };
 const installedForms = (week) => PLAY_FORM_NAMES.filter((f) => (FORM_WEEKS[f] || 1) <= week);
 /* Map play diagram labels to depth chart positions JOINTLY: each label
    has a preference list, resolved in order, and nobody gets used twice.
@@ -355,7 +355,10 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const PLAY_FORMS = {
   "Doubles": { X: [6, 23], H: [18, 25], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [88, 25], QB: [50, 30], RB: [43, 30] },
   "Trips":   { X: [6, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [76, 26], Z: [90, 25], QB: [50, 30], RB: [43, 30] },
-  "Empty":   { X: [6, 23], H: [15, 25], RB: [24, 26], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [88, 25], QB: [50, 30] },
+  /* Empty (Sept 9 ruling): Y is FLEXED a few yards off the tackle, still on the
+     line, so he can crack DOWN on the end man on sweeps instead of hooking him.
+     Empty Lt mirrors it so Laser gets a natural cross, like Doubles Lt. */
+  "Empty":   { X: [6, 23], H: [15, 25], RB: [24, 26], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [76, 23], Z: [90, 25], QB: [50, 30] },
   "Tank":    { X: [8, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [73, 26], Z: [86, 25], QB: [50, 25.7], RB: [50, 33] },
   "Bunch":   { X: [6, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [72, 27], Z: [77, 25], QB: [50, 30], RB: [43, 30] },
   "I":       { X: [8, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [84, 25], QB: [50, 26.5], H: [50, 31], RB: [50, 35] },
@@ -364,7 +367,7 @@ const PLAY_FORMS = {
      wing off the tackle, Y tight, Z a wing outside Y. Super Heavy personnel. */
   "Nasty":   { X: [6, 23], H: [32, 26], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [74, 25], QB: [50, 30], RB: [43, 30] },
 };
-const PLAY_FORM_NAMES = ["Doubles", "Doubles Lt", "Trips Rt", "Trips Lt", "Bunch Rt", "Bunch Lt", "Stack", "Nasty Rt", "Nasty Lt", "Empty", "Tank Rt", "Tank Lt", "I Rt", "I Lt"];
+const PLAY_FORM_NAMES = ["Doubles", "Doubles Lt", "Trips Rt", "Trips Lt", "Bunch Rt", "Bunch Lt", "Stack", "Nasty Rt", "Nasty Lt", "Empty", "Empty Lt", "Tank Rt", "Tank Lt", "I Rt", "I Lt"];
 
 function formSpots(formName) {
   const lt = / Lt$/.test(formName);
@@ -442,6 +445,26 @@ function genPlayElements(conceptKey, spots, dir, tags = [], formation) {
   /* a REACH looks like a reach: a hard lateral step playside, then turn up.
      The L-shape reads clearly as stretching to the playside gap. */
   const reachOL = () => { for (const L of ["LT", "LG", "C", "RG", "RT"]) if (has(L)) add(L, "block", [at(L), [at(L)[0] + s * 4.5, at(L)[1] - 0.5], [at(L)[0] + s * 5.5, at(L)[1] - 4.5]]); };
+  /* SWEEP BLOCKING (Greg, Sept 9: "every game the outside backer and the end
+     are unblocked and making the play"). Y owns the END MAN on the line on
+     every sweep: flexed, he cracks down on him; tight, he hooks him and runs
+     him upfield; backside, he cuts off pursuit. The RB leads to the alley
+     instead of faking away (a slot "RB", as in Empty, just blocks his man). */
+  const rbInBackfield = has("RB") && Math.abs(at("RB")[0] - 50) < 12 && at("RB")[1] >= 29;
+  const yTakesEnd = () => {
+    if (!has("Y")) return;
+    const [yx, yy] = at("Y");
+    if ((yx - 50) * s <= 0) return add("Y", "block", [[yx, yy], [yx - s * 2, yy - 4]]);
+    const tackle = s > 0 ? at("RT") : at("LT");
+    const flexed = tackle && Math.abs(yx - tackle[0]) > 8;
+    if (flexed) add("Y", "block", [[yx, yy], [yx - s * 6, yy - 3.5]]);
+    else add("Y", "block", [[yx, yy], [yx + s * 3.5, yy - 2], [yx + s * 2, yy - 5.5]]);
+  };
+  const rbLeadsEdge = () => {
+    if (!has("RB")) return;
+    if (rbInBackfield) add("RB", "block", [at("RB"), [50 + s * 10, 29], [edge + s * 4, 22]]);
+    else add("RB", "block", [at("RB"), [at("RB")[0], at("RB")[1] - 4]]);
+  };
   const throwTo = (L, i = 1) => { if (has("QB") && el[L]) { const r = el[L].find((e) => e.kind === "route" || e.kind === "carry"); if (r) add("QB", "throw", [at("QB"), r.pts[Math.min(i, r.pts.length - 1)]]); } };
 
   /* mirrored route helper: dx is drawn for a LEFT-side player, flipped for right */
@@ -477,7 +500,7 @@ function genPlayElements(conceptKey, spots, dir, tags = [], formation) {
     }
     case "jet":
       reachOL();
-      if (has("Y")) add("Y", "block", [at("Y"), [at("Y")[0] + s * 5, at("Y")[1] - 7], [at("Y")[0] + s * 7, at("Y")[1] - 12]]);
+      yTakesEnd();
       { const P = outsideAt(s); if (P) add(P, "block", [at(P), [at(P)[0] - s * 5, at(P)[1] - 5]]); }
       { const B = outsideAt(-s); if (B) add(B, "block", [at(B), [at(B)[0], at(B)[1] - 4]]); }
       if (has("H")) {
@@ -488,17 +511,17 @@ function genPlayElements(conceptKey, spots, dir, tags = [], formation) {
         /* QB-owned handoff at the mesh; broken mesh = QB keeps on the Raccoon path */
         if (has("QB")) add("QB", "fake", [at("QB"), [mesh[0], mesh[1]]]);
       }
-      if (has("RB")) add("RB", "fake", [at("RB"), [50 - s * 6, 27], [50 - s * 10, 22]]);
+      rbLeadsEdge();
       break;
     case "keep":
       reachOL();
-      /* Y arcs to the safety (his job text), receivers block the man over them */
-      if (has("Y")) add("Y", "block", [at("Y"), [at("Y")[0] + s * 5, at("Y")[1] - 7], [at("Y")[0] + s * 7, at("Y")[1] - 12]]);
+      /* same edge as the sweep: Y takes the end, receivers block the man over them */
+      yTakesEnd();
       for (const L of ["X", "Z"]) if (has(L)) add(L, "block", [at(L), [at(L)[0], at(L)[1] - 4]]);
       jetMotion(false);
       if (has("H") && !hIsWing) add("H", "fake", [[50 + s * 2, 29], [edge, 26]]);
       if (has("QB")) add("QB", "carry", [at("QB"), [50 + s * 10, 28], [50 + s * 22, 23], [50 + s * 26, 10]]);
-      if (has("RB")) add("RB", "block", [at("RB"), [50 + s * 12, 27]]);
+      rbLeadsEdge();
       break;
     case "counter":
       blockAll([backG, backT]);
@@ -790,7 +813,7 @@ function genPlayElements(conceptKey, spots, dir, tags = [], formation) {
 const CONCEPTS = {
   power:   { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Rhino", Lt: "Lion" }, carrier: "RB", signal: "Fist to the nose like a horn, then point", how: "Playside blocks down, backside guard pulls and leads. RB downhill off the edge of the double team. Jet motion dresses it up; from the I, the FB leads through the same hole instead.", read: "None. This is the hammer." },
   trap:    { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Rabbit", Lt: "Lynx" }, carrier: "RB", signal: "Two-finger bunny hops, then point", how: "Quick hitter. Backside guard traps the first man past center. No motion: this is the changeup that punishes upfield tackles.", read: "None. Hits before they blink." },
-  jet:     { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Rocket", Lt: "Laser" }, carrier: "H", signal: "Arm launches off the palm, then point", how: "H sprints off motion and NEVER slows: he makes a basket and the QB presses the ball into it. The QB owns the exchange completely; if the mesh feels wrong he keeps it and runs the Raccoon path. Playside reaches, Y arcs to the safety. From Doubles, Laser is a return motion; rep it, or call it from Doubles Lt for the natural cross.", read: "None. Speed to the edge." },
+  jet:     { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Rocket", Lt: "Laser" }, carrier: "H", signal: "Arm launches off the palm, then point", how: "H sprints off motion and NEVER slows: he makes a basket and the QB presses the ball into it. The QB owns the exchange completely; if the mesh feels wrong he keeps it and runs the Raccoon path. The edge is BLOCKED: Y takes the end man on the line, the outside man cracks the force, the RB leads to the alley. Three blockers on the three men who make the tackle. From Doubles, Laser is a return motion; call it from Doubles Lt or Empty Lt for the natural cross.", read: "None. Speed to the edge." },
   keep:    { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Raccoon", Lt: "Longhorn" }, carrier: "QB", signal: "Wash the paws, then point", how: "Identical picture to the jet. QB keeps behind the chase with the RB leading. Call it AFTER Rocket has scared them.", read: "Pre-called. The defense pays for chasing Rocket." },
   counter: { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Renegade", Lt: "Lizard" }, carrier: "RB", signal: "Cross the forearms, then point", how: "Backside guard kicks, backside tackle wraps, RB jabs away then hits behind them. Week 6 install, once they fear Rhino.", read: "None. Patience, then burst." },
   stretch: { fam: "Run",    dirs: ["Rt", "Lt"], words: { Rt: "Ram", Lt: "Leopard" }, carrier: "RB", signal: "Head-butt the horns, then point", how: "The answer when they attack our down blocks downhill. Everybody reaches and RUNS, H's jet motion becomes the lead block, RB takes the wide give and cuts when he sees grass. Downhill linebackers seal themselves.", read: "None. Race them to the edge." },
@@ -857,8 +880,8 @@ const playCarrier = (p) => {
 const ASSIGNMENTS = {
   power:   { OL: "Playside blocks down. Backside guard pulls and leads through the hole. Backside tackle steps DOWN first and walls the man over the pulled guard, then hinges on any chaser.", QB: "Open playside, hand it deep, fake the keep after.", RB: "Downhill off Y's hip. Follow the pulling guard.", H: "Jet motion full speed. Sell it like you have the ball.", Y: "Block down hard. You are the edge of the wall.", XZ: "Block the man over you." },
   trap:    { OL: "Playside guard and tackle KICK OUT. Center and backside tackle block down. Backside guard pulls and traps the first man past center.", QB: "Quick handoff, then fake a rollout.", RB: "One step, hit the A gap NOW. It will be open.", H: "Stay wide, block your man.", Y: "Playside: kick out with the tackle. Backside: climb to the linebacker.", XZ: "Block the man over you." },
-  jet:     { OL: "Everybody stretch playside and run.", QB: "YOU own the ball. Press it into H's basket as he crosses. If the mesh feels wrong, keep it and run the Raccoon path. Never chase him with the ball.", RB: "Fake the power away. Sell it.", H: "Make a basket, NEVER slow down, squeeze when you feel it. Your only job is speed.", Y: "Arc release, go find the safety.", XZ: "Playside walls off inside: get in the way, stay high, no kill shots. Backside blocks his man." },
-  keep:    { OL: "Stretch playside just like Rocket.", QB: "Fake the flip, tuck it, follow the RB around the edge. Score or get down: never take the second hit.", RB: "Lead through the edge, block the first color you see.", H: "Motion full speed, fake it, keep sprinting.", Y: "Arc to the safety.", XZ: "Block the man over you." },
+  jet:     { OL: "Everybody stretch playside and run.", QB: "YOU own the ball. Press it into H's basket as he crosses. If the mesh feels wrong, keep it and run the Raccoon path. Never chase him with the ball.", RB: "LEAD to the play side and block the first color in the alley. The backer who has been making the tackle is yours.", H: "Make a basket, NEVER slow down, squeeze when you feel it. Your only job is speed.", Y: "The END MAN on the line is YOURS, every sweep. Flexed out: crack down on him. Tight: hook him and run him upfield. Backside: cut off the chase. Nobody outruns an unblocked end.", XZ: "Playside walls off inside: get in the way, stay high, no kill shots. Backside blocks his man." },
+  keep:    { OL: "Stretch playside just like Rocket.", QB: "Fake the flip, tuck it, follow the RB around the edge. Score or get down: never take the second hit.", RB: "Lead to the alley, block the first color you see.", H: "Motion full speed, fake it, keep sprinting.", Y: "The END MAN is yours, same as the sweep: crack him from a flex, hook him from tight.", XZ: "Block the man over you." },
   stretch: { OL: "Stretch playside and RUN. Cover him up, stay on your feet, do not win a wrestling match.", QB: "Open playside, hand it WIDE to the RB, fake the keep after.", RB: "Take it flat, race to the numbers, one cut upfield the moment you see grass. No grass at the numbers? Plant and slam it NORTH inside: their whole defense just overran you.", H: "Jet motion full speed, but this one is not yours: turn up at the edge and lead. Block the first color outside Y.", Y: "Reach the end and run him where he wants to go. The RB cuts off your butt.", XZ: "Playside stalks the corner. Backside sprints his man deep and away." },
   counter: { OL: "Playside blocks down and seals anyone chasing the pullers. Backside guard kicks, backside tackle wraps and leads. Center walls the backside A gap behind them.", QB: "Open away first, then hand it back.", RB: "Jab step away, be patient, then hit it behind the wrappers.", H: "No motion on the counter. Stay wide and block the man over you; the RB's jab step is the decoy.", Y: "Block down hard.", XZ: "Block the man over you." },
   sneak:   { OL: "Fire out low. One yard war.", QB: "Snap and surge behind the center. Two hands on the ball.", RB: "Push the pile.", H: "Get big, wall off.", Y: "Get big, wall off.", XZ: "Block the man over you." },
@@ -1141,6 +1164,19 @@ function safariSeedPlaysV13() {
     note(mk(100, "I Lt", "power", "Lt", false, 5, ["Heron"]), "I Lion Heron: the fullback leak, left."),
   ];
 }
+/* v19 (Sept 9, Greg's ask): the shock sweeps. Empty with Y flexed to crack the
+   end, five men wide, the jet and the keep behind it. Empty Lt gives Laser and
+   Longhorn a natural cross. */
+function safariSeedPlaysV14() {
+  const mk = mkSeedPlay;
+  const note = (p, n) => ({ ...p, note: n });
+  return [
+    note(mk(101, "Empty", "jet", "Rt", false, 6, []), "The shock sweep. Five wide, Y flexed and cracking DOWN on the end, Z cracking the force, H at full speed off a short motion. Three snaps at Turbo, then back to Doubles."),
+    note(mk(102, "Empty Lt", "jet", "Lt", false, 6, []), "Empty Laser from the mirror: H crosses naturally from the right, Y cracks the end on the left, Z cracks the force."),
+    note(mk(103, "Empty", "keep", "Rt", false, 6, []), "Empty Raccoon: identical picture to Empty Rocket. When the end starts flying to the jet, QB keeps behind him."),
+    note(mk(104, "Empty Lt", "keep", "Lt", false, 6, []), "Empty Longhorn: the back door, left."),
+  ];
+}
 /* the two original Nasty powers never had notes; Super Heavy gives them one */
 const SUPER_HEAVY_NOTES = {
   "Nasty Rt · Rhino": "Power into the strong side: Y and the Z wing wall the edge, H jets from the backside to sell Rocket. Same picture as Nasty Rt Rocket, Raccoon, and Owl.",
@@ -1308,7 +1344,7 @@ const RAW_SEED = {
   ],
   practice: { date: "", start: "17:30", title: "Practice Plan", items: [] },
   savedPlans: [],
-  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7(), ...safariSeedPlaysV8(), ...safariSeedPlaysV9(), ...safariSeedPlaysV10(), ...safariSeedPlaysV11(), ...safariSeedPlaysV12(), ...safariSeedPlaysV13()],
+  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7(), ...safariSeedPlaysV8(), ...safariSeedPlaysV9(), ...safariSeedPlaysV10(), ...safariSeedPlaysV11(), ...safariSeedPlaysV12(), ...safariSeedPlaysV13(), ...safariSeedPlaysV14()],
   callLog: [],
   gameLabel: "",
   script: [],
@@ -1460,7 +1496,7 @@ function generatePractice(data, totalMins = 75) {
 SEED.packages = seedPackages();
 applyKillPairs(SEED.plays);
 SEED.plays.forEach((p) => { if (!p.note && CHAIN_NOTES[p.name]) p.note = CHAIN_NOTES[p.name]; });
-SEED.safariVersion = 18; /* SEED.plays already carries every seeded batch */
+SEED.safariVersion = 19; /* SEED.plays already carries every seeded batch */
 SEED.savedPlans = [
   { id: uid(), name: "Day 1 · Helmets (Routes + Formations)", savedAt: "library", plan: day1Plan(SEED.drills) },
   { id: uid(), name: "Week 2 · Jet Series Install (Rocket, Raccoon, Owl)", savedAt: "library", plan: week2Plan(SEED.drills) },
@@ -1734,6 +1770,13 @@ function normalizeData(parsed) {
     let n18 = 0;
     plays = [...plays, ...safariSeedPlaysV13().filter((p) => !haveV18.has(p.name)).map((p) => ({ ...p, id: uid(), num: base18 + (++n18) }))];
   }
+  // v19 (Sept 9): the Empty sweeps and keeps.
+  if (!(parsed.safariVersion >= 19)) {
+    const haveV19 = new Set(plays.map((p) => p.name));
+    const base19 = plays.reduce((m, p) => Math.max(m, Number(p.num) || 0), 0);
+    let n19 = 0;
+    plays = [...plays, ...safariSeedPlaysV14().filter((p) => !haveV19.has(p.name)).map((p) => ({ ...p, id: uid(), num: base19 + (++n19) }))];
+  }
   // Concept play names are derived, so vocabulary updates flow through automatically.
   plays = plays.map((p) =>
     p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
@@ -1762,7 +1805,7 @@ function normalizeData(parsed) {
     gameLabel: parsed.gameLabel || "",
     script: parsed.script || [],
     scriptPos: parsed.scriptPos || 0,
-    safariVersion: 18,
+    safariVersion: 19,
     defense: normDefense(parsed.defense),
     csKeys: typeof parsed.csKeys === "string" ? parsed.csKeys : "",
     seasonWeek: parsed.seasonWeek || 1,
@@ -3155,7 +3198,9 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
   const [showLater, setShowLater] = useState(false);
   const visible = showLater ? plays : plays.filter((p) => !p.week || p.week <= seasonWeek);
   const hiddenCount = plays.length - visible.length;
-  const emptyOK = (k) => LINE_CALLS[k] === "QUICK" || k === "blank";
+  /* Empty: nobody is home to protect a dropback, so the quick game only, plus
+     the jets and keeps, which need no protection (Greg, Sept 9) */
+  const emptyOK = (k) => LINE_CALLS[k] === "QUICK" || k === "jet" || k === "keep" || k === "blank";
   const [sel, setSel] = useState(null);
   const [b, setB] = useState({ formation: "Doubles", concept: "power", dir: "Rt", tags: [] });
   const [legacy, setLegacy] = useState({ name: "", formation: "", type: "Run", note: "" });
@@ -3299,13 +3344,13 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
         <div className="builder">
           <b className="form-title">Build a play</b>
           <div className="builder-row">
-            <select value={b.formation} onChange={(e) => { const f = e.target.value; setB({ ...b, formation: f, concept: f === "Empty" && !emptyOK(b.concept) ? "sparrow" : b.concept }); }}>
+            <select value={b.formation} onChange={(e) => { const f = e.target.value; setB({ ...b, formation: f, concept: /^Empty/.test(f) && !emptyOK(b.concept) ? "sparrow" : b.concept }); }}>
               {PLAY_FORM_NAMES.map((f) => <option key={f}>{f}</option>)}
             </select>
             <select value={b.concept} onChange={(e) => setB({ ...b, concept: e.target.value })}>
               {Object.entries(famGroups).map(([fam, keys]) => (
                 <optgroup key={fam} label={fam}>
-                  {keys.filter((k) => b.formation !== "Empty" || emptyOK(k)).map((k) => <option key={k} value={k}>{CONCEPTS[k].dirs[0] ? `${CONCEPTS[k].words.Rt} / ${CONCEPTS[k].words.Lt}` : CONCEPTS[k].words[""]}</option>)}
+                  {keys.filter((k) => !/^Empty/.test(b.formation) || emptyOK(k)).map((k) => <option key={k} value={k}>{CONCEPTS[k].dirs[0] ? `${CONCEPTS[k].words.Rt} / ${CONCEPTS[k].words.Lt}` : CONCEPTS[k].words[""]}</option>)}
                 </optgroup>
               ))}
             </select>
@@ -3328,7 +3373,7 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
               {LINE_CALLS[b.concept] && <span className="line-chip" style={{ margin: "0 4px" }}>{LINE_CALLS[b.concept]}</span>}
               {LINE_CALLS[b.concept] ? " " : "· "}{callWord(b.concept, needsDir ? b.dir : "", bTags)}
               {b.concept === "blank" && <span className="hint" style={{ margin: "0 0 0 8px" }}>(pick the line call on the play card)</span>}
-              {b.formation === "Empty" && <span className="hint" style={{ margin: "0 0 0 8px" }}>Empty = QUICK family only. Nobody home to protect the QB.</span>}
+              {/^Empty/.test(b.formation) && <span className="hint" style={{ margin: "0 0 0 8px" }}>Empty = the QUICK family plus jets and keeps. Nobody home to protect a dropback. Y is flexed to crack the end.</span>}
             </div>
           </div>
         </div>
@@ -3418,7 +3463,7 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
                     <span className="pc-word">{callWord(selected.concept, selected.dir, selected.tags || [])}</span>
                     <span className={"pc-badge" + (selected.core ? " core" : "")}>{selected.core ? "CORE · one-word call" : `BAND · call "${selected.num}"`}</span>
                     {selected.custom && <span className="pc-badge">CUSTOMIZED</span>}
-                    {selected.formation === "Empty" && lineCallFor(selected) !== "QUICK" && <span className="pc-badge" style={{ background: "var(--red)", color: "#fff" }}>EMPTY = QUICK ONLY</span>}
+                    {/^Empty/.test(selected.formation) && !emptyOK(selected.concept) && <span className="pc-badge" style={{ background: "var(--red)", color: "#fff" }}>EMPTY = QUICK, JET, OR KEEP ONLY</span>}
                   </div>
                   {selected.concept === "blank" && (
                     <input className="cell" placeholder="Name this play" value={selected.name} onChange={(e) => setPlay(selected.id, { name: e.target.value })} />
@@ -3448,7 +3493,7 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
                   )}
                   <div className="new-look">
                     <select value={lookForm} onChange={(e) => setLookForm(e.target.value)} aria-label="Formation for this look">
-                      {PLAY_FORM_NAMES.filter((f) => f !== selected.formation && (f !== "Empty" || emptyOK(selected.concept))).map((f) => <option key={f}>{f}</option>)}
+                      {PLAY_FORM_NAMES.filter((f) => f !== selected.formation && (!/^Empty/.test(f) || emptyOK(selected.concept))).map((f) => <option key={f}>{f}</option>)}
                     </select>
                     <button className="btn small" onClick={addLook}>Add This Look #{nextNum}</button>
                     <span className="hint" style={{ margin: 0 }}>Same play, new costume. Kids learn nothing new.</span>
@@ -4128,6 +4173,30 @@ const CALL_SHEET_RECIPE = {
    opponent keys that print under the header, and the game label. Loading one
    replaces the sheet and points the wristband at exactly these plays. */
 const GAME_PLANS = [
+  {
+    key: "red",
+    name: "Vestavia Red (5-3, Mike blitz) · Tue Sept 15",
+    gameLabel: "vs Vestavia Red",
+    keys: [
+      "RED 5-3, THE MIKE BLITZES EVERY SNAP: the middle of the field is empty the moment the ball moves. Owl, Rocket Owl, Laser Owl and Robin's RB live in the hole he leaves. Lynx and Rabbit hit before he arrives.",
+      "THEY GET UPFIELD FAST: no pullers except the trap. Ram and Leopard reach and RUN past the penetration. Rolo and Lifesaver let the rush in and throw over it. Rhino and Lion are SETUP calls only, two a half, to arm Owl and Heron.",
+      "SWEEPS ARE BLOCKED NOW: Y takes the END MAN on the line on every sweep (flexed: crack down on him; tight: hook him). Outside man cracks the force. RB LEADS to the alley, no more fake. Three blockers on the three men who have been making the tackle.",
+      "PROTECTION VS THE BLITZ: QUICK passes are out in two seconds, the Mike is late. Raven and Lark move the QB away from him with the RB leading. Eagle is max protect. On Owl and Heron the RB runs his Rhino path INTO the blitzer.",
+      "EMPTY IS THE SHOCK, NOT THE HOME: Y flexed out to crack the end. Three snaps at Turbo (Empty Rocket, Empty Robin, Empty Laffy), then back to Doubles. Empty Lt for Laser and Longhorn.",
+      "TEMPO WINS THIS: a defense that blitzes every snap runs out of legs. No huddle, Turbo the quick game, make the Mike blitz forty times. Rewind and Loop when the ends chase the jet. Rainbow after Ram scores. No Moose: the nose and the Mike are stacked on the center.",
+    ],
+    sheet: {
+      /* make the Mike wrong six times: reach past him, throw behind him, sweep with the edge blocked, trap him, sprint away from him, seam behind him */
+      openers: ["Doubles · Ram", "Doubles · Robin", "Doubles · Rocket", "Doubles · Lynx", "Doubles · Raven", "Doubles · Rocket Owl"],
+      run: ["Doubles · Ram", "Doubles · Leopard", "Doubles · Rocket", "Doubles Lt · Laser", "Doubles · Raccoon", "Doubles · Longhorn", "Doubles · Rabbit", "Doubles · Lynx", "Empty · Rocket", "Empty Lt · Laser", "Empty · Raccoon", "Empty Lt · Longhorn", "Nasty Lt · Lion", "Nasty Rt · Rhino", "Doubles · Rhino", "Doubles · Lion"],
+      pass: ["Doubles · Robin", "Doubles · Sparrow", "Doubles · Raven", "Doubles · Lark", "Doubles · Owl", "Doubles · Rocket Owl", "Doubles · Laser Owl", "Doubles · Rhino Heron", "Doubles · Lion Heron", "Doubles · Eagle", "Empty · Robin", "Empty · Sparrow"],
+      third_short: ["Doubles · Lynx", "Doubles · Rabbit", "Nasty Lt · Lion", "Nasty Rt · Rhino", "Doubles · Ram", "Doubles · Robin"],
+      third_long: ["Doubles · Raven", "Doubles · Lark", "Doubles · Rolo", "Doubles · Lifesaver", "Doubles · Eagle", "Empty · Robin"],
+      redzone: ["Doubles · Rocket Owl", "Doubles · Rhino Heron", "Doubles · Robin", "Nasty Lt · Lion", "Doubles · Reese's", "Doubles · Laffy", "Doubles · Lynx", "Doubles · Lark"],
+      goalline: ["Nasty Lt · Lion", "Nasty Rt · Rhino", "Doubles · Lion Heron", "Doubles · Lynx", "Doubles · Rabbit", "Doubles · Owl"],
+      special: ["Doubles · Rewind", "Doubles · Loop", "Doubles · Rainbow"],
+    },
+  },
   {
     key: "thompson",
     name: "Thompson (4-4) · Tue Sept 8",
