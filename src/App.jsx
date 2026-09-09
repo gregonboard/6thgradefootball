@@ -355,10 +355,13 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const PLAY_FORMS = {
   "Doubles": { X: [6, 23], H: [18, 25], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [88, 25], QB: [50, 30], RB: [43, 30] },
   "Trips":   { X: [6, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [76, 26], Z: [90, 25], QB: [50, 30], RB: [43, 30] },
-  /* Empty (Sept 9 ruling): Y is FLEXED a few yards off the tackle, still on the
-     line, so he can crack DOWN on the end man on sweeps instead of hooking him.
-     Empty Lt mirrors it so Laser gets a natural cross, like Doubles Lt. */
-  "Empty":   { X: [6, 23], H: [15, 25], RB: [24, 26], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [76, 23], Z: [90, 25], QB: [50, 30] },
+  /* Empty (Sept 9 rulings): Y is FLEXED a few yards off the tackle, still on the
+     line, so he can crack DOWN on the end man on sweeps instead of hooking him,
+     and the RB stands up as a slot on the Y and Z side (Greg: "why put him with
+     H and X?"), so every Empty sweep has three blockers at the point of attack:
+     Y on the end, RB on the force, Z on the corner. H is alone with X on the
+     other side and jets toward the strength. Empty Lt mirrors it. */
+  "Empty":   { X: [6, 23], H: [15, 25], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [76, 23], RB: [83, 26], Z: [90, 25], QB: [50, 30] },
   "Tank":    { X: [8, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [73, 26], Z: [86, 25], QB: [50, 25.7], RB: [50, 33] },
   "Bunch":   { X: [6, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], H: [72, 27], Z: [77, 25], QB: [50, 30], RB: [43, 30] },
   "I":       { X: [8, 23], LT: [38, 23], LG: [44, 23], C: [50, 23], RG: [56, 23], RT: [62, 23], Y: [68, 23], Z: [84, 25], QB: [50, 26.5], H: [50, 31], RB: [50, 35] },
@@ -462,8 +465,10 @@ function genPlayElements(conceptKey, spots, dir, tags = [], formation) {
   };
   const rbLeadsEdge = () => {
     if (!has("RB")) return;
-    if (rbInBackfield) add("RB", "block", [at("RB"), [50 + s * 10, 29], [edge + s * 4, 22]]);
-    else add("RB", "block", [at("RB"), [at("RB")[0], at("RB")[1] - 4]]);
+    const [rx, ry] = at("RB");
+    if (rbInBackfield) add("RB", "block", [[rx, ry], [50 + s * 10, 29], [edge + s * 4, 22]]);
+    else if ((rx - 50) * s > 0) add("RB", "block", [[rx, ry], [rx - s * 4, ry - 5]]); /* slot on the play side: crack the force, like the outside man */
+    else add("RB", "block", [[rx, ry], [rx, ry - 4]]);
   };
   const throwTo = (L, i = 1) => { if (has("QB") && el[L]) { const r = el[L].find((e) => e.kind === "route" || e.kind === "carry"); if (r) add("QB", "throw", [at("QB"), r.pts[Math.min(i, r.pts.length - 1)]]); } };
 
@@ -1171,8 +1176,8 @@ function safariSeedPlaysV14() {
   const mk = mkSeedPlay;
   const note = (p, n) => ({ ...p, note: n });
   return [
-    note(mk(101, "Empty", "jet", "Rt", false, 6, []), "The shock sweep. Five wide, Y flexed and cracking DOWN on the end, Z cracking the force, H at full speed off a short motion. Three snaps at Turbo, then back to Doubles."),
-    note(mk(102, "Empty Lt", "jet", "Lt", false, 6, []), "Empty Laser from the mirror: H crosses naturally from the right, Y cracks the end on the left, Z cracks the force."),
+    note(mk(101, "Empty", "jet", "Rt", false, 6, []), "The shock sweep. Five wide, Y flexed and cracking DOWN on the end, the RB standing up as a slot beside him to crack the force, Z on the corner, H at full speed off a short motion. Three blockers at the point of attack. Three snaps at Turbo, then back to Doubles."),
+    note(mk(102, "Empty Lt", "jet", "Lt", false, 6, []), "Empty Laser from the mirror: H crosses naturally from the right into Y, RB, and Z on the left: end, force, corner, all blocked."),
     note(mk(103, "Empty", "keep", "Rt", false, 6, []), "Empty Raccoon: identical picture to Empty Rocket. When the end starts flying to the jet, QB keeps behind him."),
     note(mk(104, "Empty Lt", "keep", "Lt", false, 6, []), "Empty Longhorn: the back door, left."),
   ];

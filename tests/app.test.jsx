@@ -1440,12 +1440,19 @@ describe("Sept 9: the sweep is blocked, Empty flexes Y, the Red plan", () => {
     /* Doubles Lt Laser: Y is backside, cuts off pursuit */
     const lz = genPlayElements("jet", formSpots("Doubles Lt"), "Lt", [], "Doubles Lt");
     expect(kinds(lz, "Y")).toEqual(["block"]);
-    /* Empty Rocket: Y is flexed, so he CRACKS DOWN (first step inside); the slot RB just blocks his man */
+    /* Empty Rocket: Y is flexed, so he CRACKS DOWN (first step inside); the RB stands
+       up as a slot on the Y and Z side and cracks the force, so the edge has THREE blockers */
     const em = genPlayElements("jet", formSpots("Empty"), "Rt", [], "Empty");
     const ye = em.Y.find((e) => e.kind === "block").pts;
     expect(ye[1][0]).toBeLessThan(ye[0][0]);
+    expect(formSpots("Empty").RB[0]).toBeGreaterThan(formSpots("Empty").Y[0]);
     expect(kinds(em, "RB")).toEqual(["block"]);
-    expect(em.RB[0].pts[1][0]).toBe(em.RB[0].pts[0][0]);
+    expect(em.RB[0].pts[1][0]).toBeLessThan(em.RB[0].pts[0][0]);
+    expect(["Y", "RB", "Z"].every((L) => (em[L] || []).some((e) => e.kind === "block"))).toBe(true);
+    /* Empty Lt Laser: the same three blockers on the left */
+    const emL = genPlayElements("jet", formSpots("Empty Lt"), "Lt", [], "Empty Lt");
+    expect(formSpots("Empty Lt").RB[0]).toBeLessThan(50);
+    expect(emL.RB[0].pts[1][0]).toBeGreaterThan(emL.RB[0].pts[0][0]);
     expect(kinds(em, "H")).toEqual(["motion", "carry"]);
     /* Empty Lt Laser: natural cross from the right, Y cracks on the left */
     const el = genPlayElements("jet", formSpots("Empty Lt"), "Lt", [], "Empty Lt");
