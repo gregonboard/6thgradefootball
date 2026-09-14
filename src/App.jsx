@@ -4925,27 +4925,16 @@ function buildTeamScript(data) {
   const cs = data.callSheet || {};
   /* a play can sit in more than one box; it keeps the first box that holds it */
   const labelFor = (pid) => (SITUATIONS.find((s) => (cs[s.key] || []).includes(pid)) || {}).label || "";
-  const seen = new Set();
-  const rows = [];
-  const push = (pid) => {
-    if (seen.has(pid)) return;
-    const p = (data.plays || []).find((x) => x.id === pid);
-    if (!p) return;
-    seen.add(pid);
-    rows.push({ play: p, situation: labelFor(pid) });
-  };
-  /* the opening script runs first, in the order it gets called */
-  for (const pid of cs.openers || []) push(pid);
-  /* then the whole rest of the sheet in ONE ascending number run (Greg, Sept
-     14), so the team stays in a formation for a stretch of reps instead of
-     resetting every snap, and the number you call is the number on the band */
-  [...new Set(SITUATIONS.flatMap((s) => cs[s.key] || []))]
-    .filter((pid) => !seen.has(pid))
-    .map((pid) => ({ pid, p: (data.plays || []).find((x) => x.id === pid) }))
-    .filter((r) => r.p)
-    .sort((a, b) => (Number(a.p.num) || 0) - (Number(b.p.num) || 0))
-    .forEach((r) => push(r.pid));
-  return rows;
+  /* The script is PURELY numerical (Greg, Sept 14): every play on the sheet,
+     openers included, in one ascending run 1..N. The coach reads straight
+     down and calls the big number; the QB finds it on his band without
+     hunting, and with Number by Formation the team holds a formation for a
+     stretch of reps instead of resetting every snap. */
+  return [...new Set(SITUATIONS.flatMap((s) => cs[s.key] || []))]
+    .map((pid) => ({ pid, play: (data.plays || []).find((x) => x.id === pid) }))
+    .filter((r) => r.play)
+    .sort((a, b) => (Number(a.play.num) || 0) - (Number(b.play.num) || 0))
+    .map((r) => ({ play: r.play, situation: labelFor(r.pid) }));
 }
 function TeamScriptPrint({ data }) {
   const rows = buildTeamScript(data);

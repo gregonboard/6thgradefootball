@@ -1665,31 +1665,33 @@ describe("band order on the sheet and the script (Greg, Sept 14)", () => {
     expect(out.length).toBe(d.callSheet.run.length);
   });
 
-  it("the team script runs the openers first, then the whole sheet in one ascending number run", () => {
+  it("the team script is purely numerical: every play, openers included, in one ascending run", () => {
     const d = scrambled();
     const rows = buildTeamScript(d);
-    /* openers lead, in the order the coach set them */
-    expect(rows.slice(0, 3).map((r) => r.play.id)).toEqual(d.callSheet.openers);
-    expect(rows.slice(0, 3).map((r) => r.situation)).toEqual(["Openers (First 6)", "Openers (First 6)", "Openers (First 6)"]);
-    /* everything after them climbs, with no regrouping by situation */
-    const rest = rows.slice(3).map((r) => r.play.num);
-    expect(rest).toEqual([...rest].sort((a, z) => a - z));
+    /* no openers block on the front: the WHOLE script climbs, first row to last */
+    const nums = rows.map((r) => r.play.num);
+    expect(nums).toEqual([...nums].sort((a, z) => a - z));
     /* every play on the sheet appears exactly once */
     const onSheet = [...new Set(Object.values(d.callSheet).flat())];
     expect(rows.length).toBe(onSheet.length);
     expect(new Set(rows.map((r) => r.play.id)).size).toBe(rows.length);
-    /* a play in two boxes keeps the first box that holds it */
+    /* an opener is no longer pinned to the front, it sits at its number */
+    const openerNums = d.callSheet.openers.map((id) => d.plays.find((p) => p.id === id).num);
+    expect(rows[0].play.num).toBe(Math.min(...nums));
+    expect(openerNums).not.toEqual(nums.slice(0, openerNums.length));
+    /* a play in two boxes still keeps the first box that holds it */
     const dup = rows.find((r) => r.play.name === "Doubles · Rhino");
     expect(dup.situation).toBe("Openers (First 6)");
+    /* and every row carries its situation label */
+    expect(rows.every((r) => r.situation)).toBe(true);
   });
 
-  it("the printed script reads down in band order", () => {
+  it("the printed script reads down in one ascending number run", () => {
     const d = scrambled();
     const { container } = render(<TeamScriptPrint data={d} />);
     const nums = [...container.querySelectorAll(".ts-num")].map((n) => Number(n.textContent));
     expect(nums.length).toBe([...new Set(Object.values(d.callSheet).flat())].length);
-    const rest = nums.slice(3);
-    expect(rest).toEqual([...rest].sort((a, z) => a - z));
+    expect(nums).toEqual([...nums].sort((a, z) => a - z));
   });
 
   it("the printed call sheet prints each box in number order", () => {
