@@ -1614,3 +1614,91 @@ describe("LAUNCH: the jet sweep pass (Greg, Sept 9)", () => {
     expect(numberByFormation(renum).map((p) => p.num)).toEqual(renum.map((p) => p.num));
   });
 });
+
+/* ============================================================
+   Sept 14: the call sheet and the team script read in band order
+   ============================================================ */
+import { orderedSituation, buildTeamScript, TeamScriptPrint, CallSheetPrint as CSPrint, numberByFormation as numByForm } from "../src/App.jsx";
+
+describe("band order on the sheet and the script (Greg, Sept 14)", () => {
+  /* a sheet whose boxes are deliberately stored OUT of number order */
+  const scrambled = () => {
+    const d = normalizeData({ seasonWeek: 9 });
+    d.plays = numByForm(d.plays);
+    const byName = Object.fromEntries(d.plays.map((p) => [p.name, p]));
+    const id = (n) => byName[n].id;
+    d.callSheet = {
+      openers: ["Doubles · Owl", "Doubles · Rhino", "Doubles · Robin"].map(id),
+      run: ["Nasty Rt · Rhino", "Doubles · Rhino", "Empty · Rocket", "Doubles · Lion"].map(id),
+      pass: ["Tank Rt · Owl", "Doubles · Sparrow"].map(id),
+      third_short: [],
+      third_long: [],
+      redzone: [],
+      goalline: [],
+      special: [],
+    };
+    return d;
+  };
+
+  it("every box but Openers sorts by number; Openers keeps the script order", () => {
+    const d = scrambled();
+    const num = (id) => d.plays.find((p) => p.id === id).num;
+    for (const key of ["run", "pass"]) {
+      const nums = orderedSituation(d, key).map(num);
+      expect(nums, key).toEqual([...nums].sort((a, z) => a - z));
+    }
+    /* the opening script is a sequence, not a lookup: it comes back untouched */
+    expect(orderedSituation(d, "openers")).toEqual(d.callSheet.openers);
+    const onums = orderedSituation(d, "openers").map(num);
+    expect(onums).not.toEqual([...onums].sort((a, z) => a - z));
+    /* ordering never adds, drops, or duplicates a play */
+    for (const key of ["openers", "run", "pass"]) {
+      expect([...orderedSituation(d, key)].sort()).toEqual([...d.callSheet[key]].sort());
+    }
+  });
+
+  it("an id with no play behind it sorts last instead of breaking the box", () => {
+    const d = scrambled();
+    d.callSheet.run = [...d.callSheet.run, "ghost-id"];
+    const out = orderedSituation(d, "run");
+    expect(out[out.length - 1]).toBe("ghost-id");
+    expect(out.length).toBe(d.callSheet.run.length);
+  });
+
+  it("the team script runs the openers first, then the whole sheet in one ascending number run", () => {
+    const d = scrambled();
+    const rows = buildTeamScript(d);
+    /* openers lead, in the order the coach set them */
+    expect(rows.slice(0, 3).map((r) => r.play.id)).toEqual(d.callSheet.openers);
+    expect(rows.slice(0, 3).map((r) => r.situation)).toEqual(["Openers (First 6)", "Openers (First 6)", "Openers (First 6)"]);
+    /* everything after them climbs, with no regrouping by situation */
+    const rest = rows.slice(3).map((r) => r.play.num);
+    expect(rest).toEqual([...rest].sort((a, z) => a - z));
+    /* every play on the sheet appears exactly once */
+    const onSheet = [...new Set(Object.values(d.callSheet).flat())];
+    expect(rows.length).toBe(onSheet.length);
+    expect(new Set(rows.map((r) => r.play.id)).size).toBe(rows.length);
+    /* a play in two boxes keeps the first box that holds it */
+    const dup = rows.find((r) => r.play.name === "Doubles · Rhino");
+    expect(dup.situation).toBe("Openers (First 6)");
+  });
+
+  it("the printed script reads down in band order", () => {
+    const d = scrambled();
+    const { container } = render(<TeamScriptPrint data={d} />);
+    const nums = [...container.querySelectorAll(".ts-num")].map((n) => Number(n.textContent));
+    expect(nums.length).toBe([...new Set(Object.values(d.callSheet).flat())].length);
+    const rest = nums.slice(3);
+    expect(rest).toEqual([...rest].sort((a, z) => a - z));
+  });
+
+  it("the printed call sheet prints each box in number order", () => {
+    const d = scrambled();
+    const { container } = render(<CSPrint data={d} />);
+    const boxes = [...container.querySelectorAll(".p-cs-grid")][0].querySelectorAll(".p-cs-box");
+    const runBox = [...boxes].find((b) => b.querySelector(".p-cs-label").textContent === "Base Runs");
+    const nums = [...runBox.querySelectorAll(".p-cs-num")].map((n) => Number(n.textContent));
+    expect(nums).toEqual([...nums].sort((a, z) => a - z));
+    expect(nums.length).toBe(4);
+  });
+});

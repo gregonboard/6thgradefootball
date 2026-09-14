@@ -4349,6 +4349,21 @@ function sheetByPersonnel(data) {
   })).filter((g) => g.boxes.length);
 }
 
+/* Every box reads in BAND ORDER (Greg, Sept 14). Now that numbers run by
+   formation, a number-sorted box keeps the offense in one formation for a run
+   of calls and the QB finds the number on his band without hunting for it.
+   OPENERS is the one exception: that box IS the opening script, the six calls
+   in the order they get called, so it keeps the order the coach set. */
+function orderedSituation(data, key) {
+  const ids = (data.callSheet || {})[key] || [];
+  if (key === "openers") return [...ids];
+  const numOf = (id) => {
+    const p = (data.plays || []).find((x) => x.id === id);
+    return p ? (Number(p.num) || 0) : Infinity; /* an id with no play sorts last, never disturbs the run */
+  };
+  return [...ids].sort((a, b) => numOf(a) - numOf(b));
+}
+
 /* ---- top-down prep (Greg, Sept 2): load everything installed, cross off what
    you will not call, and the boxes format themselves. A play lands in every
    situation the recipe names it for, else in its natural bucket by type. ---- */
@@ -4496,7 +4511,7 @@ function CallSheetTab({ data, up, onPrint, onPrintScript }) {
           <div key={s.key} className="cs-box">
             <div className="cs-label">{s.label}</div>
             <div className="cs-plays">
-              {(cs[s.key] || []).map((pid) => {
+              {orderedSituation(data, s.key).map((pid) => {
                 const p = plays.find((x) => x.id === pid);
                 if (!p) return null;
                 return (
@@ -4908,17 +4923,28 @@ function PracticePrint({ data }) {
    each play. Openers first, then base, then situational; each play once. */
 function buildTeamScript(data) {
   const cs = data.callSheet || {};
+  /* a play can sit in more than one box; it keeps the first box that holds it */
+  const labelFor = (pid) => (SITUATIONS.find((s) => (cs[s.key] || []).includes(pid)) || {}).label || "";
   const seen = new Set();
   const rows = [];
-  for (const s of SITUATIONS) {
-    for (const pid of cs[s.key] || []) {
-      if (seen.has(pid)) continue;
-      const p = data.plays.find((x) => x.id === pid);
-      if (!p) continue;
-      seen.add(pid);
-      rows.push({ play: p, situation: s.label });
-    }
-  }
+  const push = (pid) => {
+    if (seen.has(pid)) return;
+    const p = (data.plays || []).find((x) => x.id === pid);
+    if (!p) return;
+    seen.add(pid);
+    rows.push({ play: p, situation: labelFor(pid) });
+  };
+  /* the opening script runs first, in the order it gets called */
+  for (const pid of cs.openers || []) push(pid);
+  /* then the whole rest of the sheet in ONE ascending number run (Greg, Sept
+     14), so the team stays in a formation for a stretch of reps instead of
+     resetting every snap, and the number you call is the number on the band */
+  [...new Set(SITUATIONS.flatMap((s) => cs[s.key] || []))]
+    .filter((pid) => !seen.has(pid))
+    .map((pid) => ({ pid, p: (data.plays || []).find((x) => x.id === pid) }))
+    .filter((r) => r.p)
+    .sort((a, b) => (Number(a.p.num) || 0) - (Number(b.p.num) || 0))
+    .forEach((r) => push(r.pid));
   return rows;
 }
 function TeamScriptPrint({ data }) {
@@ -4951,7 +4977,7 @@ function CallSheetPrint({ data }) {
   const box = (s) => (
     <div key={s.key} className={"p-cs-box" + ((cs[s.key] || []).length <= 20 ? " keep" : "")}>
       <div className="p-cs-label">{s.label}</div>
-      {(cs[s.key] || []).map((pid) => {
+      {orderedSituation(data, s.key).map((pid) => {
         const p = data.plays.find((x) => x.id === pid);
         if (!p) return null;
         return (
@@ -5752,4 +5778,4 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
   );
 }
 
-export { normalizeData, practiceGroupsFor, pgForPos, slotsFor, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, buildCallSheet, genDef, DEF_FRONTS, DEF_COVERAGES, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots, store, GAME_PLANS, applyGamePlan, sheetByPersonnel, personnelOf, OFF_SCHEMES, CallSheetPrint, WristPrint, PlayDiagram, Styles, situationsFor, addPlayToSheet, removePlayFromSheet, loadInstalledOntoSheet, CallSheetTab, playCarrier, numberByFormation };
+export { normalizeData, practiceGroupsFor, pgForPos, slotsFor, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, buildCallSheet, genDef, DEF_FRONTS, DEF_COVERAGES, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots, store, GAME_PLANS, applyGamePlan, sheetByPersonnel, personnelOf, OFF_SCHEMES, CallSheetPrint, WristPrint, PlayDiagram, Styles, situationsFor, addPlayToSheet, removePlayFromSheet, loadInstalledOntoSheet, CallSheetTab, playCarrier, numberByFormation, orderedSituation, buildTeamScript, TeamScriptPrint };
