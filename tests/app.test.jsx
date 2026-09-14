@@ -5,7 +5,7 @@ import App, {
   buildCallSheet,
   normalizeData, practiceGroupsFor, pgForPos, slotsFor, CONCEPTS, callWord,
   LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, genDef, DEF_FRONTS, DEF_COVERAGES, SEED, seedPackages, day1Plan, applyKillPairs,
-  installedForms, resolvePlayPos, FORM_WEEKS, formSpots, store,
+  installedForms, resolvePlayPos, FORM_WEEKS, formSpots, store, numberByFormation,
 } from "../src/App.jsx";
 
 /* ---------- unit: vocabulary and doctrine ---------- */
@@ -694,6 +694,27 @@ describe("app end-to-end", () => {
     expect(screen.queryByText("CALL IT")).toBeNull();
     const last = screen.getByText("Last:", { exact: false });
     expect(last.textContent).toContain("Owl");
+  });
+
+  it("the Play Lab button renumbers the book by formation", async () => {
+    await load();
+    setWeek(9);
+    fireEvent.click(screen.getByText("Play Lab"));
+    const btn = screen.getByText("Number by Formation");
+    const confirm = window.confirm;
+    window.confirm = () => true;
+    fireEvent.click(btn);
+    window.confirm = confirm;
+    await waitFor(() => {
+      const rows = [...document.querySelectorAll("tbody tr")].map((tr) => tr.textContent);
+      expect(rows.length).toBeGreaterThan(3);
+    });
+    const forms = [...document.querySelectorAll(".play-name-cell")].map((el) => el.textContent.trim());
+    const seen = [];
+    for (const t of forms) {
+      const f = t.split("\u00b7")[0].trim();
+      if (seen[seen.length - 1] !== f) { expect(seen).not.toContain(f); seen.push(f); }
+    }
   });
 
   it("hides later installs in the Play Lab at week 1 and gates the kill tool to week 4", async () => {
@@ -1567,5 +1588,29 @@ describe("LAUNCH: the jet sweep pass (Greg, Sept 9)", () => {
     const v19 = normalizeData({ safariVersion: 19, plays: SEED.plays.filter((p) => !/Launch/.test(p.name)) });
     expect(v19.plays.filter((p) => /Launch/.test(p.name)).length).toBe(2);
     expect(normalizeData(JSON.parse(JSON.stringify(v19))).plays.length).toBe(v19.plays.length);
+  });
+  it("numbers run formation by formation", () => {
+    const d = normalizeData({ seasonWeek: 9 });
+    const renum = numberByFormation(d.plays);
+    expect(renum.length).toBe(d.plays.length);
+    /* every number used once, 1..N, no gaps */
+    const nums = renum.map((p) => p.num).sort((a, z) => a - z);
+    expect(nums).toEqual(renum.map((_, i) => i + 1));
+    /* reading the book in band order, a formation never comes back */
+    const order = [...renum].sort((a, z) => a.num - z.num).map((p) => p.formation);
+    const seen = [];
+    for (const f of order) if (seen[seen.length - 1] !== f) {
+      expect(seen).not.toContain(f);
+      seen.push(f);
+    }
+    /* and the formations themselves are in playbook order */
+    const idx = seen.map((f) => ["Doubles", "Doubles Lt", "Trips Rt", "Trips Lt", "Bunch Rt", "Bunch Lt", "Stack", "Nasty Rt", "Nasty Lt", "Empty", "Empty Lt", "Tank Rt", "Tank Lt", "I Rt", "I Lt"].indexOf(f));
+    expect(idx).toEqual([...idx].sort((a, z) => a - z));
+    /* inside a formation: runs, passes, screens, then specials */
+    const doubles = [...renum].filter((p) => p.formation === "Doubles").sort((a, z) => a.num - z.num).map((p) => p.type);
+    const rank = { Run: 0, Pass: 1, Screen: 2, Special: 3 };
+    expect(doubles.map((t) => rank[t])).toEqual([...doubles.map((t) => rank[t])].sort((a, z) => a - z));
+    /* deterministic: same book in, same numbers out */
+    expect(numberByFormation(renum).map((p) => p.num)).toEqual(renum.map((p) => p.num));
   });
 });

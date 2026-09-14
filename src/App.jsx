@@ -1009,6 +1009,34 @@ const jobKeyFor = (label) => (["LT", "LG", "C", "RG", "RT"].includes(label) ? "O
 /* the card color: a play-action tag (Owl, Heron) behind a run word is a Pass */
 const PASS_TAGS = ["Owl", "Heron"];
 const playTypeFor = (concept, tags = []) => (tags.includes("Launch") ? "Special" : tags.some((t) => PASS_TAGS.includes(t)) ? "Pass" : CONCEPTS[concept] ? CONCEPTS[concept].fam : "Run");
+
+/* Sept 14 (Greg's ask): band numbers run in formation order, so a wristband
+   reads Doubles first, then Doubles Lt, and so on down PLAY_FORM_NAMES. Within
+   a formation the order is runs, passes, screens, then the once-a-game
+   specials, and ties keep their old order, so the same book always renumbers
+   the same way. */
+const NUM_TYPE_ORDER = { Run: 0, Pass: 1, Screen: 2, Special: 3 };
+function numberByFormation(plays) {
+  const formIdx = (f) => {
+    const i = PLAY_FORM_NAMES.indexOf(f);
+    return i < 0 ? PLAY_FORM_NAMES.length : i;
+  };
+  const typeIdx = (p) => {
+    const t = p.type || playTypeFor(p.concept, p.tags || []);
+    return NUM_TYPE_ORDER[t] == null ? 3 : NUM_TYPE_ORDER[t];
+  };
+  const ordered = [...plays].sort((a, z) =>
+    formIdx(a.formation) - formIdx(z.formation) ||
+    String(a.formation || "").localeCompare(String(z.formation || "")) ||
+    typeIdx(a) - typeIdx(z) ||
+    (Number(a.num) || 0) - (Number(z.num) || 0) ||
+    String(a.name || "").localeCompare(String(z.name || ""))
+  );
+  const numById = {};
+  ordered.forEach((p, i) => { numById[p.id] = i + 1; });
+  return plays.map((p) => ({ ...p, num: numById[p.id] }));
+}
+
 /* ---- seeded Safari playbook ---- */
 function mkSeedPlay(num, formation, concept, dir, core, week, tags) {
   return {
@@ -3313,6 +3341,10 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
     setPlay(selected.id, { custom: { ...custom, els } });
     setEd({ ...ed, drawing: false });
   };
+  const renumberByFormation = () => {
+    if (!window.confirm("Renumber every play so the formations run in order (Doubles, Doubles Lt, Trips Rt...)? Reprint wristbands and the call sheet after.")) return;
+    up({ plays: numberByFormation(plays) });
+  };
   const shuffleNums = () => {
     if (!window.confirm("Shuffle every play number randomly? The old numbers become meaningless to anyone who scouted you. Reprint wristbands after.")) return;
     const nums = plays.map((_, i) => i + 1);
@@ -3394,6 +3426,7 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
             <button className="btn" onClick={() => setTeach(true)}>Teach Mode</button>
             <button className="btn ghost" onClick={onPrintSystem} title="The whole offense on one page, for new coaches">System Sheet</button>
             <button className="btn ghost" onClick={onPrintJobs}>Job Cards</button>
+            <button className="btn ghost" onClick={renumberByFormation} title="Renumber every play so the band reads formation by formation, in order">Number by Formation</button>
             <button className="btn ghost" onClick={shuffleNums} title="Re-encrypt: reassign every play number randomly, then reprint bands">Shuffle #s</button>
             <button className="btn ghost" onClick={onPrintBook}>Print Play Cards</button>
             <button className="btn ghost" onClick={onPrintSignals}>Print Signal Chart</button>
@@ -5719,4 +5752,4 @@ select.cell.def { color: var(--def-blue); font-weight: 600; }
   );
 }
 
-export { normalizeData, practiceGroupsFor, pgForPos, slotsFor, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, buildCallSheet, genDef, DEF_FRONTS, DEF_COVERAGES, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots, store, GAME_PLANS, applyGamePlan, sheetByPersonnel, personnelOf, OFF_SCHEMES, CallSheetPrint, WristPrint, PlayDiagram, Styles, situationsFor, addPlayToSheet, removePlayFromSheet, loadInstalledOntoSheet, CallSheetTab, playCarrier };
+export { normalizeData, practiceGroupsFor, pgForPos, slotsFor, CONCEPTS, callWord, LINE_CALLS, ASSIGNMENTS, jobsFor, genPlayElements, generatePractice, drillMatchesBucket, buildCallSheet, genDef, DEF_FRONTS, DEF_COVERAGES, SEED, seedPackages, day1Plan, applyKillPairs, installedForms, resolvePlayPos, FORM_WEEKS, formSpots, store, GAME_PLANS, applyGamePlan, sheetByPersonnel, personnelOf, OFF_SCHEMES, CallSheetPrint, WristPrint, PlayDiagram, Styles, situationsFor, addPlayToSheet, removePlayFromSheet, loadInstalledOntoSheet, CallSheetTab, playCarrier, numberByFormation };
