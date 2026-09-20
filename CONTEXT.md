@@ -85,7 +85,7 @@ Doubles (home base, 2x2 with Y attached), Doubles Lt, Trips Rt/Lt, Bunch Rt/Lt (
 
 ### Tags (composable modifiers; each new tag combination is a new picture)
 - Jet = H motion across on any play
-- Orbit = RB orbit loop behind the QB
+- Orbit (motion word, called FIRST: "Orbit Rocket", "Orbit Lion") = H loops DEEP behind the QB instead of running the flat jet. Same man, same start, same destination, so every other card is unchanged and only ONE man is in motion. The Aug 17 cut killed the old Orbit because it moved the RB while H was already jetting (two men in motion at the snap is a flag); rebuilt on H Sept 20 (v21) with Doubles Orbit Rocket and Doubles Orbit Lion seeded. Checking Orbit in the builder turns Jet off.
 - Zip = Z snaps down inside pre-snap
 - Now = bubble attached (Rhino Now IS the RPO: QB reads the man over the slot; legal on Trap and Counter too)
 - Peek (week 5+) = Owl alive behind any HAMMER run call; QB throws the Y seam only if the backers bite. The line never knows.

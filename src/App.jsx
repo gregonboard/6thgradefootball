@@ -733,13 +733,23 @@ function genPlayElements(conceptKey, spots, dir, tags = [], formation) {
       { kind: "fake", pts: toRight ? [[56, 29], [80, 27]] : [[44, 29], [20, 27]] },
     ];
   }
-  if (tags.includes("Orbit") && has("RB")) {
-    const [rx, ry] = at("RB");
-    const m = rx <= 50 ? 1 : -1;
-    el["RB"] = [
-      { kind: "motion", pts: [[rx, ry], [50, ry + 4], [50 + m * 10, ry + 3], [50 + m * 16, ry - 1]] },
-      { kind: "fake", pts: [[50 + m * 16, ry - 1], [50 + m * 27, ry - 4]] },
-    ];
+  /* ORBIT (back Sept 20, Greg's ask): H loops DEEP behind the QB instead of
+     running the flat jet across his face. Same man, same start, same
+     destination, so whatever he does when he arrives (carry the sweep, sell the
+     fake, lead) is untouched: only the path moves. ONE man is in motion, which
+     is exactly what the old RB orbit could not say when it was cut Aug 17. */
+  if (tags.includes("Orbit") && has("H") && !hIsFB) {
+    const cur = el["H"] || [];
+    const mi = cur.findIndex((e) => e.kind === "motion");
+    if (mi >= 0) {
+      const pts = cur[mi].pts;
+      const [hx, hy] = pts[0];
+      const end = pts[pts.length - 1];
+      const m = end[0] >= hx ? 1 : -1;
+      el["H"] = cur.map((e, i) =>
+        i === mi ? { ...e, pts: [[hx, hy], [hx + m * 3.5, hy + 4], [50 - m * 9, 34.5], [end[0] - m * 4, 33.5], end] } : e
+      );
+    }
   }
   if (tags.includes("Zip") && has("Z")) {
     const [zx, zy] = at("Z");
@@ -882,9 +892,17 @@ const lineListenText = (p) => {
 };
 
 
+/* motion words are called first (Orbit Rocket), the way a coach says it; every
+   other tag is a modifier that follows the play word (Rhino Now, Rocket Launch) */
+const MOTION_TAGS = ["Orbit"];
+/* two motions at the snap is a flag: checking one turns the other off */
+const EXCLUSIVE_TAGS = { Jet: "Orbit", Orbit: "Jet" };
 const callWord = (c, dir, tags = []) => {
   const base = CONCEPTS[c] ? CONCEPTS[c].words[dir || ""] || CONCEPTS[c].words.Rt : "";
-  return tags.length ? `${base} ${tags.join(" ")}` : base;
+  if (!tags.length) return base;
+  const pre = tags.filter((t) => MOTION_TAGS.includes(t));
+  const post = tags.filter((t) => !MOTION_TAGS.includes(t));
+  return [...pre, base, ...post].filter(Boolean).join(" ");
 };
 /* the outside receiver on a side of THIS formation (X and Z swap sides in a
    Lt look), so the highlighted carrier matches what the diagram draws */
@@ -986,6 +1004,14 @@ const LAUNCH_JOBS = {
   XZ: "Called side: stalk the corner two counts like you are blocking the sweep, then sprint past him deep. Backside: block your man like always.",
 };
 const launchTagJobs = (base) => ({ ...base, ...LAUNCH_JOBS });
+/* ORBIT: the motion word. H takes the long way around, nobody else changes. */
+const orbitTagJobs = (play, base) => ({
+  ...base,
+  QB: "ORBIT: H is coming from BEHIND you and gets there a count later than the jet. Wait for him, do not rush it. " + base.QB,
+  H: play.concept === "jet"
+    ? "ORBIT, not the flat jet: loop DEEP behind the QB, come out the far side at full speed, make your basket there. The ball is yours a count later than Rocket. NEVER slow down."
+    : "ORBIT, not the flat jet: loop DEEP behind the QB and come out the far side at full speed. Same sell as every jet, a picture they have not seen.",
+});
 const jobsFor = (play) => {
   let base = ASSIGNMENTS[play.concept];
   if (!base) return base;
@@ -994,6 +1020,7 @@ const jobsFor = (play) => {
   const heron = tags.includes("Heron") && play.concept === "power";
   if (heron) base = heronTagJobs(base);
   if (tags.includes("Launch") && play.concept === "jet") base = launchTagJobs(base);
+  if (tags.includes("Orbit")) base = orbitTagJobs(play, base);
   if (FORM_GROUP[play.formation] === "Super Heavy") return superHeavyJobs(play, base, heron);
   if (!/^I (Rt|Lt)$/.test(play.formation || "")) return base;
   return {
@@ -1238,6 +1265,17 @@ function safariSeedPlaysV13() {
    Longhorn a natural cross. */
 /* v20 (Sept 9, Greg: "H on Speed is my backup QB, he can launch it"): the jet
    sweep pass, as a tag on the jet. Laser from Doubles Lt for the natural cross. */
+/* v21 (Sept 20, Greg's ask): ORBIT is back, this time as a motion word on H.
+   He loops behind the QB instead of running the flat jet, so only one man is
+   moving at the snap and the flag that killed the Aug 17 Orbit plays is gone. */
+function safariSeedPlaysV16() {
+  const mk = mkSeedPlay;
+  const note = (p, n) => ({ ...p, note: n });
+  return [
+    note(mk(107, "Doubles", "jet", "Rt", false, 5, ["Orbit"]), "The same sweep, a picture they have never seen. H loops DEEP behind the QB instead of running flat across his face, so the end and the backers who have been jumping jet motion all night see nothing until he is already outside them. The ball gets there a count later: QB waits for him and presses it into the basket like every Rocket. Call it after two Rockets have them flying."),
+    note(mk(108, "Doubles", "power", "Lt", false, 5, ["Orbit"]), "Lion with the orbit. H takes the long way around behind the QB, which drags the backside end's eyes with him, and the hammer hits left while they are still turning their heads. Blocking is every Lion: only H's path changed."),
+  ];
+}
 function safariSeedPlaysV15() {
   const mk = mkSeedPlay;
   const note = (p, n) => ({ ...p, note: n });
@@ -1423,7 +1461,7 @@ const RAW_SEED = {
   ],
   practice: { date: "", start: "17:30", title: "Practice Plan", items: [] },
   savedPlans: [],
-  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7(), ...safariSeedPlaysV8(), ...safariSeedPlaysV9(), ...safariSeedPlaysV10(), ...safariSeedPlaysV11(), ...safariSeedPlaysV12(), ...safariSeedPlaysV13(), ...safariSeedPlaysV14(), ...safariSeedPlaysV15()],
+  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7(), ...safariSeedPlaysV8(), ...safariSeedPlaysV9(), ...safariSeedPlaysV10(), ...safariSeedPlaysV11(), ...safariSeedPlaysV12(), ...safariSeedPlaysV13(), ...safariSeedPlaysV14(), ...safariSeedPlaysV15(), ...safariSeedPlaysV16()],
   callLog: [],
   gameLabel: "",
   script: [],
@@ -1575,7 +1613,7 @@ function generatePractice(data, totalMins = 75) {
 SEED.packages = seedPackages();
 applyKillPairs(SEED.plays);
 SEED.plays.forEach((p) => { if (!p.note && CHAIN_NOTES[p.name]) p.note = CHAIN_NOTES[p.name]; });
-SEED.safariVersion = 20; /* SEED.plays already carries every seeded batch */
+SEED.safariVersion = 21; /* SEED.plays already carries every seeded batch */
 SEED.savedPlans = [
   { id: uid(), name: "Day 1 · Helmets (Routes + Formations)", savedAt: "library", plan: day1Plan(SEED.drills) },
   { id: uid(), name: "Week 2 · Jet Series Install (Rocket, Raccoon, Owl)", savedAt: "library", plan: week2Plan(SEED.drills) },
@@ -1863,6 +1901,13 @@ function normalizeData(parsed) {
     let n20 = 0;
     plays = [...plays, ...safariSeedPlaysV15().filter((p) => !haveV20.has(p.name)).map((p) => ({ ...p, id: uid(), num: base20 + (++n20) }))];
   }
+  // v21 (Sept 20): ORBIT returns as a motion word, H's deep loop behind the QB.
+  if (!(parsed.safariVersion >= 21)) {
+    const haveV21 = new Set(plays.map((p) => p.name));
+    const base21 = plays.reduce((m, p) => Math.max(m, Number(p.num) || 0), 0);
+    let n21 = 0;
+    plays = [...plays, ...safariSeedPlaysV16().filter((p) => !haveV21.has(p.name)).map((p) => ({ ...p, id: uid(), num: base21 + (++n21) }))];
+  }
   // Concept play names are derived, so vocabulary updates flow through automatically.
   plays = plays.map((p) =>
     p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
@@ -1891,7 +1936,7 @@ function normalizeData(parsed) {
     gameLabel: parsed.gameLabel || "",
     script: parsed.script || [],
     scriptPos: parsed.scriptPos || 0,
-    safariVersion: 20,
+    safariVersion: 21,
     defense: normDefense(parsed.defense),
     csKeys: typeof parsed.csKeys === "string" ? parsed.csKeys : "",
     seasonWeek: parsed.seasonWeek || 1,
@@ -3361,7 +3406,7 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
   const concept = CONCEPTS[b.concept];
   const needsDir = concept && concept.dirs.includes("Rt");
   const bTags = b.tags || [];
-  const toggleTag = (t) => setB({ ...b, tags: bTags.includes(t) ? bTags.filter((x) => x !== t) : [...bTags, t] });
+  const toggleTag = (t) => setB({ ...b, tags: bTags.includes(t) ? bTags.filter((x) => x !== t) : [...bTags.filter((x) => x !== EXCLUSIVE_TAGS[t]), t] });
   const buildName = `${b.formation} · ${callWord(b.concept, needsDir ? b.dir : "", bTags)}`;
 
   const addBuilt = () => {
@@ -3450,7 +3495,7 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
                 <option value="Rt">Rt</option><option value="Lt">Lt</option>
               </select>
             )}
-            {["Jet", "Now", "Wheel", "Max", ...(seasonWeek >= 5 ? ["Owl"] : []), ...(seasonWeek >= 5 && b.concept === "power" ? ["Heron"] : []), ...(seasonWeek >= 5 && b.concept === "jet" ? ["Launch"] : [])].map((t) => (
+            {["Jet", "Orbit", "Now", "Wheel", "Max", ...(seasonWeek >= 5 ? ["Owl"] : []), ...(seasonWeek >= 5 && b.concept === "power" ? ["Heron"] : []), ...(seasonWeek >= 5 && b.concept === "jet" ? ["Launch"] : [])].map((t) => (
               <label key={t} className={"tag-check" + (bTags.includes(t) ? " on" : "")}>
                 <input type="checkbox" checked={bTags.includes(t)} onChange={() => toggleTag(t)} />{t}
               </label>

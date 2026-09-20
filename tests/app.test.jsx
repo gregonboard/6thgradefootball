@@ -57,7 +57,7 @@ describe("vocabulary", () => {
     for (const want of ["Doubles · Raven", "Trips Rt · Raven", "Doubles · Hawk", "Empty · Robin", "Empty · Reese's", "Empty · Laffy"]) {
       expect(names, want + " is seeded").toContain(want);
     }
-    expect(SEED.plays.length).toBe(97);
+    expect(SEED.plays.length).toBe(99);
   });
   it("never installs a formation before its first play", () => {
     for (const f of Object.keys(FORM_WEEKS)) {
@@ -283,7 +283,7 @@ describe("seeds", () => {
     for (const want of ["Bunch Rt · Rocket", "Nasty Rt · Ram", "Tank Rt · Ram", "Trips Rt · Rhino", "Tank Lt · Leopard"]) {
       expect(names, want + " is seeded").toContain(want);
     }
-    expect(SEED.plays.length).toBe(97); // 71 after the Aug 17 cuts + the 14 Nasty looks (v15) // the v13 weaponized layer (5)
+    expect(SEED.plays.length).toBe(99); // 71 after the Aug 17 cuts + the 14 Nasty looks (v15) // the v13 weaponized layer (5) + the two Orbits (v21)
   });
   it("renames the jet drill in place so saved plans keep their links", () => {
     const old = { players: [], drills: [{ id: "d-keep", name: "Jet Touch Pass Timing", cat: "Group", group: "Skill (QB/RB/WR/TE)", mins: 12, notes: "old" }], libVersion: 4, safariVersion: 6, day1Seeded: true, week2Seeded: true, savedPlans: [], plays: SEED.plays.map((p) => ({ ...p })) };
@@ -332,15 +332,15 @@ describe("seeds", () => {
     const names = v3.plays.map((p) => p.name);
     expect(names).toContain("Tank Rt · Owl");
     expect(names.filter((n) => n === "Tank Rt · Owl").length).toBe(1);
-    expect(v3.plays.length).toBe(97); // everything a fresh install gets, no dupes
-    expect(v3.safariVersion).toBe(20);
+    expect(v3.plays.length).toBe(99); // everything a fresh install gets, no dupes
+    expect(v3.safariVersion).toBe(21);
     expect(v3.packages.map((p) => p.name)).toContain("CHEETAH");
     const rocket = v3.plays.find((p) => p.name === "Doubles · Rocket");
     const reeses = v3.plays.find((p) => p.name === "Doubles · Reese's");
     expect(rocket.killId).toBe(reeses.id);
     // running it again must change nothing (Greg's live data reloads every session)
     const again = normalizeData(JSON.parse(JSON.stringify(v3)));
-    expect(again.plays.length).toBe(97);
+    expect(again.plays.length).toBe(99);
     expect(again.packages.length).toBe(v3.packages.length);
   });
   it("v13: cuts the Orbit/Zip/Rhino-Peek plays, seeds the weaponized layer, fixes stale notes", () => {
@@ -530,7 +530,7 @@ describe("normalizeData migration", () => {
     expect(keepLt.name).toContain("Longhorn"); // derived names propagate the rename
     expect(d.savedPlans.some((s) => /day 1/i.test(s.name))).toBe(true);
     expect(d.players[0].name).toBe("Old Kid"); // user data untouched
-    expect(d.safariVersion).toBe(20);
+    expect(d.safariVersion).toBe(21);
   });
   it("does not double-seed on a second load", () => {
     const once = normalizeData({ safariVersion: 2, plays: SEED.plays.map((p) => ({ ...p })) });
@@ -1156,7 +1156,7 @@ describe("super heavy (Sept 1)", () => {
     for (const n of ["Nasty Rt · Lion", "Nasty Lt · Rhino", "Nasty Rt · Rabbit", "Nasty Lt · Lynx", "Nasty Rt · Renegade", "Nasty Lt · Lizard", "Nasty Rt · Owl", "Nasty Lt · Owl", "Nasty Rt · Lion Owl", "Nasty Rt · Laffy", "Nasty Lt · Reese's", "Nasty Rt · Rhino Now", "Nasty Lt · Lion Now", "Nasty Rt · Rewind"]) {
       expect(names.filter((x) => x === n).length, n).toBe(1);
     }
-    expect(v14.safariVersion).toBe(20);
+    expect(v14.safariVersion).toBe(21);
     expect(v14.plays.find((p) => p.name === "Nasty Rt · Rhino").note).toMatch(/Super Heavy|Y and the Z wing/);
     /* numbers append after the highest existing one, unique */
     const nums = v14.plays.map((p) => p.num);
@@ -1351,7 +1351,7 @@ describe("Sept 3 sweep, engine", () => {
     const d = normalizeData({ safariVersion: 15, plays: SEED.plays.map((p) => (p.name === "Nasty Rt · Rocket" ? { ...p, note: "Condensed splits pull the defense inside, jet outruns everything to the open edge." } : p)) });
     expect(d.plays.find((p) => p.name === "Nasty Rt · Rocket").note).toMatch(/Super Heavy jet right/);
     expect(d.plays.some((p) => /ondensed splits/.test(p.note || ""))).toBe(false);
-    expect(d.safariVersion).toBe(20);
+    expect(d.safariVersion).toBe(21);
   });
 });
 
@@ -1702,5 +1702,54 @@ describe("band order on the sheet and the script (Greg, Sept 14)", () => {
     const nums = [...runBox.querySelectorAll(".p-cs-num")].map((n) => Number(n.textContent));
     expect(nums).toEqual([...nums].sort((a, z) => a - z));
     expect(nums.length).toBe(4);
+  });
+});
+
+/* ---------- Orbit: the motion word (Sept 20) ---------- */
+describe("orbit motion", () => {
+  it("names it the way a coach calls it: the motion word comes first", () => {
+    expect(callWord("jet", "Rt", ["Orbit"])).toBe("Orbit Rocket");
+    expect(callWord("power", "Lt", ["Orbit"])).toBe("Orbit Lion");
+    // every other tag still follows the play word
+    expect(callWord("power", "Rt", ["Now"])).toBe("Rhino Now");
+    expect(callWord("jet", "Rt", ["Orbit", "Owl"])).toBe("Orbit Rocket Owl");
+  });
+
+  it("moves H behind the QB and leaves exactly one man in motion", () => {
+    const spots = formSpots("Doubles");
+    const plain = genPlayElements("jet", spots, "Rt", [], "Doubles");
+    const orbit = genPlayElements("jet", spots, "Rt", ["Orbit"], "Doubles");
+    const motionOf = (el) => Object.entries(el).filter(([, es]) => es.some((e) => e.kind === "motion"));
+    // the Aug 17 flag: never two men moving at the snap
+    expect(motionOf(orbit).length).toBe(1);
+    expect(motionOf(orbit)[0][0]).toBe("H");
+    // the RB is untouched (the old Orbit moved him, which was the second man)
+    expect(orbit.RB).toEqual(plain.RB);
+    const path = orbit.H.find((e) => e.kind === "motion").pts;
+    const deepest = Math.max(...path.map(([, y]) => y));
+    expect(deepest, "H loops behind the QB at y=30").toBeGreaterThan(spots.QB[1]);
+    // same start and same destination, so the carry still connects
+    expect(path[0]).toEqual(spots.H);
+    expect(path[path.length - 1]).toEqual(plain.H.find((e) => e.kind === "motion").pts.slice(-1)[0]);
+    expect(orbit.H.find((e) => e.kind === "carry")).toEqual(plain.H.find((e) => e.kind === "carry"));
+  });
+
+  it("only H's card changes: the line still blocks the same play", () => {
+    const play = { formation: "Doubles", concept: "power", dir: "Lt", tags: ["Orbit"] };
+    const jobs = jobsFor(play);
+    expect(jobs.OL).toBe(ASSIGNMENTS.power.OL);
+    expect(jobs.RB).toBe(ASSIGNMENTS.power.RB);
+    expect(jobs.H).toMatch(/ORBIT, not the flat jet/);
+    expect(jobs.QB).toMatch(/BEHIND you/);
+  });
+
+  it("v21 seeds the two Orbits once on a v20 program", () => {
+    const v20 = { players: [], safariVersion: 20, day1Seeded: true, week2Seeded: true, savedPlans: [], plays: SEED.plays.filter((p) => !(p.tags || []).includes("Orbit")).map((p) => ({ ...p })) };
+    const d = normalizeData(v20);
+    const names = d.plays.map((p) => p.name);
+    for (const want of ["Doubles · Orbit Rocket", "Doubles · Orbit Lion"]) {
+      expect(names.filter((n) => n === want).length, want + " seeded once").toBe(1);
+    }
+    expect(normalizeData(JSON.parse(JSON.stringify(d))).plays.length).toBe(d.plays.length);
   });
 });
