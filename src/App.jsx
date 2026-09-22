@@ -675,7 +675,14 @@ function genPlayElements(conceptKey, spots, dir, tags = [], formation) {
          Heavy the H wing stays in instead: seven blocking, the end is his */
       if (has("H") && superHeavy) add("H", "block", [at("H"), [at("H")[0] + (at("H")[0] <= 50 ? -2 : 2), at("H")[1] - 4]]);
       else if (has("H")) { const hx = at("H")[0], hy = at("H")[1]; const m = hx <= 50 ? -1 : 1; add("H", "route", [[hx, hy], [hx + m * 4, hy + 3], [hx + m * 9, hy + 1]]); if (has("QB")) add("QB", "throw", [at("QB"), [hx + m * 8, hy + 2]]); }
-      if (has("RB")) add("RB", "block", [at("RB"), [at("RB")[0], at("RB")[1] - 3]]);
+      /* EMPTY EAGLE (Greg, Sept 22): there is nobody home to protect, so the
+         RB cannot block: he is a slot. He sits at 5 over the ball as the second
+         hot answer beside H's bubble, which is how five-man protection survives
+         a shot play. In every other formation he stays in and blocks. */
+      if (has("RB")) {
+        if (rbInBackfield) add("RB", "block", [at("RB"), [at("RB")[0], at("RB")[1] - 3]]);
+        else { const [rx, ry] = at("RB"); const m = rx <= 50 ? 1 : -1; add("RB", "route", [[rx, ry], [rx + m * 7, ry - 5], [rx + m * 18, ry - 6]]); }
+      }
       if (has("QB")) add("QB", "fake", [at("QB"), [at("QB")[0], at("QB")[1] + 3]]);
       /* the GO is Z's job by rule, wherever he aligns; from Super Heavy Z is a
          wing clearing the corner, so the drawn shot is X's post */
@@ -1009,6 +1016,15 @@ const LAUNCH_JOBS = {
   XZ: "Called side: stalk the corner two counts like you are blocking the sweep, then sprint past him deep. Backside: block your man like always.",
 };
 const launchTagJobs = (base) => ({ ...base, ...LAUNCH_JOBS });
+/* EMPTY EAGLE breaks the Empty rule on purpose (Greg, Sept 22). Five men
+   protect and nobody can help them, so the honest coaching is not "give him
+   time", it is "the ball is out on time or it goes to a hot". */
+const EMPTY_EAGLE_JOBS = {
+  OL: "FIVE of you and nothing else. Nobody is helping, so do not chase: set inside, stay square, and drive him PAST the QB. Three seconds and the ball is gone.",
+  QB: "ONE count on the shot, then the ball is out. Blitz or anybody coming free: throw H's bubble NOW, that is why he is there. Nothing there at all: throw it away past everybody. Never hold this one.",
+  RB: "You are a SLOT, not a blocker: nobody is home. Push to 5, settle over the ball, show your numbers. You are the second hot behind H.",
+};
+const emptyEagleJobs = (base) => ({ ...base, ...EMPTY_EAGLE_JOBS });
 /* ORBIT: the motion word. H takes the long way around, nobody else changes. */
 const orbitTagJobs = (play, base) => ({
   ...base,
@@ -1026,6 +1042,7 @@ const jobsFor = (play) => {
   if (heron) base = heronTagJobs(base);
   if (tags.includes("Launch") && play.concept === "jet") base = launchTagJobs(base);
   if (tags.includes("Orbit")) base = orbitTagJobs(play, base);
+  if (play.concept === "eagle" && /^Empty/.test(play.formation || "")) base = emptyEagleJobs(base);
   if (FORM_GROUP[play.formation] === "Super Heavy") return superHeavyJobs(play, base, heron);
   if (!/^I (Rt|Lt)$/.test(play.formation || "")) return base;
   return {
@@ -1273,6 +1290,14 @@ function safariSeedPlaysV13() {
 /* v21 (Sept 20, Greg's ask): ORBIT is back, this time as a motion word on H.
    He loops behind the QB instead of running the flat jet, so only one man is
    moving at the snap and the flag that killed the Aug 17 Orbit plays is gone. */
+/* v22 (Sept 22, Greg's ask): Empty Eagle, on purpose against the Empty rule. */
+function safariSeedPlaysV17() {
+  const mk = mkSeedPlay;
+  const note = (p, n) => ({ ...p, note: n });
+  return [
+    note(mk(109, "Empty", "eagle", "", false, 6, []), "The shot from Empty, and it breaks the Empty rule on purpose: five men protect and nobody is home to help them. That is the trade. Five out means their safety has to choose, and Z runs by him while X takes the post. The QB gets ONE count: shot, or H's bubble, or throw it away. Best after the Empty jets and quick game have them playing the flats. Never call it backed up, and never call it twice in a row."),
+  ];
+}
 function safariSeedPlaysV16() {
   const mk = mkSeedPlay;
   const note = (p, n) => ({ ...p, note: n });
@@ -1466,7 +1491,7 @@ const RAW_SEED = {
   ],
   practice: { date: "", start: "17:30", title: "Practice Plan", items: [] },
   savedPlans: [],
-  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7(), ...safariSeedPlaysV8(), ...safariSeedPlaysV9(), ...safariSeedPlaysV10(), ...safariSeedPlaysV11(), ...safariSeedPlaysV12(), ...safariSeedPlaysV13(), ...safariSeedPlaysV14(), ...safariSeedPlaysV15(), ...safariSeedPlaysV16()],
+  plays: [...safariSeedPlays(), ...safariSeedPlaysV2(), ...safariSeedPlaysV3(), ...safariSeedPlaysV4(), ...safariSeedPlaysV5(), ...safariSeedPlaysV6(), ...safariSeedPlaysV7(), ...safariSeedPlaysV8(), ...safariSeedPlaysV9(), ...safariSeedPlaysV10(), ...safariSeedPlaysV11(), ...safariSeedPlaysV12(), ...safariSeedPlaysV13(), ...safariSeedPlaysV14(), ...safariSeedPlaysV15(), ...safariSeedPlaysV16(), ...safariSeedPlaysV17()],
   callLog: [],
   gameLabel: "",
   script: [],
@@ -1618,7 +1643,7 @@ function generatePractice(data, totalMins = 75) {
 SEED.packages = seedPackages();
 applyKillPairs(SEED.plays);
 SEED.plays.forEach((p) => { if (!p.note && CHAIN_NOTES[p.name]) p.note = CHAIN_NOTES[p.name]; });
-SEED.safariVersion = 21; /* SEED.plays already carries every seeded batch */
+SEED.safariVersion = 22; /* SEED.plays already carries every seeded batch */
 SEED.savedPlans = [
   { id: uid(), name: "Day 1 · Helmets (Routes + Formations)", savedAt: "library", plan: day1Plan(SEED.drills) },
   { id: uid(), name: "Week 2 · Jet Series Install (Rocket, Raccoon, Owl)", savedAt: "library", plan: week2Plan(SEED.drills) },
@@ -1913,6 +1938,13 @@ function normalizeData(parsed) {
     let n21 = 0;
     plays = [...plays, ...safariSeedPlaysV16().filter((p) => !haveV21.has(p.name)).map((p) => ({ ...p, id: uid(), num: base21 + (++n21) }))];
   }
+  // v22 (Sept 22): Empty Eagle, the shot from Empty that breaks the Empty rule.
+  if (!(parsed.safariVersion >= 22)) {
+    const haveV22 = new Set(plays.map((p) => p.name));
+    const base22 = plays.reduce((m, p) => Math.max(m, Number(p.num) || 0), 0);
+    let n22 = 0;
+    plays = [...plays, ...safariSeedPlaysV17().filter((p) => !haveV22.has(p.name)).map((p) => ({ ...p, id: uid(), num: base22 + (++n22) }))];
+  }
   // Concept play names are derived, so vocabulary updates flow through automatically.
   plays = plays.map((p) =>
     p.concept && CONCEPTS[p.concept] && p.concept !== "blank"
@@ -1941,7 +1973,7 @@ function normalizeData(parsed) {
     gameLabel: parsed.gameLabel || "",
     script: parsed.script || [],
     scriptPos: parsed.scriptPos || 0,
-    safariVersion: 21,
+    safariVersion: 22,
     defense: normDefense(parsed.defense),
     csKeys: typeof parsed.csKeys === "string" ? parsed.csKeys : "",
     seasonWeek: parsed.seasonWeek || 1,
@@ -3336,7 +3368,10 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
   const hiddenCount = plays.length - visible.length;
   /* Empty: nobody is home to protect a dropback, so the quick game only, plus
      the jets and keeps, which need no protection (Greg, Sept 9) */
-  const emptyOK = (k) => LINE_CALLS[k] === "QUICK" || k === "jet" || k === "keep" || k === "blank";
+  /* Empty is the QUICK family plus jets and keeps, because nobody is home to
+     protect a dropback. EAGLE is the one exception Greg asked for (Sept 22):
+     it is allowed, and the card carries a caution badge instead of a ban. */
+  const emptyOK = (k) => LINE_CALLS[k] === "QUICK" || k === "jet" || k === "keep" || k === "blank" || k === "eagle";
   const [sel, setSel] = useState(null);
   const [b, setB] = useState({ formation: "Doubles", concept: "power", dir: "Rt", tags: [] });
   const [legacy, setLegacy] = useState({ name: "", formation: "", type: "Run", note: "" });
@@ -3514,7 +3549,7 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
               {LINE_CALLS[b.concept] && <span className="line-chip" style={{ margin: "0 4px" }}>{LINE_CALLS[b.concept]}</span>}
               {LINE_CALLS[b.concept] ? " " : "· "}{callWord(b.concept, needsDir ? b.dir : "", bTags)}
               {b.concept === "blank" && <span className="hint" style={{ margin: "0 0 0 8px" }}>(pick the line call on the play card)</span>}
-              {/^Empty/.test(b.formation) && <span className="hint" style={{ margin: "0 0 0 8px" }}>Empty = the QUICK family plus jets and keeps. Nobody home to protect a dropback. Y is flexed to crack the end.</span>}
+              {/^Empty/.test(b.formation) && <span className="hint" style={{ margin: "0 0 0 8px" }}>Empty = the QUICK family plus jets and keeps. Nobody home to protect a dropback, so EAGLE is the one shot allowed here and the ball comes out on one count. Y is flexed to crack the end.</span>}
             </div>
           </div>
         </div>
@@ -3605,6 +3640,7 @@ function PlaybookTab({ data, up, onPrintSignals, onPrintBook, onPrintJobs, onPri
                     <span className={"pc-badge" + (selected.core ? " core" : "")}>{selected.core ? "CORE · one-word call" : `BAND · call "${selected.num}"`}</span>
                     {selected.custom && <span className="pc-badge">CUSTOMIZED</span>}
                     {/^Empty/.test(selected.formation) && !emptyOK(selected.concept) && <span className="pc-badge" style={{ background: "var(--red)", color: "#fff" }}>EMPTY = QUICK, JET, OR KEEP ONLY</span>}
+                    {/^Empty/.test(selected.formation) && selected.concept === "eagle" && <span className="pc-badge" style={{ background: "var(--gold, #B7791F)", color: "#fff" }}>FIVE PROTECT · BALL OUT ON ONE COUNT</span>}
                   </div>
                   {selected.concept === "blank" && (
                     <input className="cell" placeholder="Name this play" value={selected.name} onChange={(e) => setPlay(selected.id, { name: e.target.value })} />

@@ -57,7 +57,7 @@ describe("vocabulary", () => {
     for (const want of ["Doubles · Raven", "Trips Rt · Raven", "Doubles · Hawk", "Empty · Robin", "Empty · Reese's", "Empty · Laffy"]) {
       expect(names, want + " is seeded").toContain(want);
     }
-    expect(SEED.plays.length).toBe(99);
+    expect(SEED.plays.length).toBe(100);
   });
   it("never installs a formation before its first play", () => {
     for (const f of Object.keys(FORM_WEEKS)) {
@@ -283,7 +283,7 @@ describe("seeds", () => {
     for (const want of ["Bunch Rt · Rocket", "Nasty Rt · Ram", "Tank Rt · Ram", "Trips Rt · Rhino", "Tank Lt · Leopard"]) {
       expect(names, want + " is seeded").toContain(want);
     }
-    expect(SEED.plays.length).toBe(99); // 71 after the Aug 17 cuts + the 14 Nasty looks (v15) // the v13 weaponized layer (5) + the two Orbits (v21)
+    expect(SEED.plays.length).toBe(100); // 71 after the Aug 17 cuts + the 14 Nasty looks (v15) // the v13 weaponized layer (5) + the two Orbits (v21) + Empty Eagle (v22)
   });
   it("renames the jet drill in place so saved plans keep their links", () => {
     const old = { players: [], drills: [{ id: "d-keep", name: "Jet Touch Pass Timing", cat: "Group", group: "Skill (QB/RB/WR/TE)", mins: 12, notes: "old" }], libVersion: 4, safariVersion: 6, day1Seeded: true, week2Seeded: true, savedPlans: [], plays: SEED.plays.map((p) => ({ ...p })) };
@@ -332,15 +332,15 @@ describe("seeds", () => {
     const names = v3.plays.map((p) => p.name);
     expect(names).toContain("Tank Rt · Owl");
     expect(names.filter((n) => n === "Tank Rt · Owl").length).toBe(1);
-    expect(v3.plays.length).toBe(99); // everything a fresh install gets, no dupes
-    expect(v3.safariVersion).toBe(21);
+    expect(v3.plays.length).toBe(100); // everything a fresh install gets, no dupes
+    expect(v3.safariVersion).toBe(22);
     expect(v3.packages.map((p) => p.name)).toContain("CHEETAH");
     const rocket = v3.plays.find((p) => p.name === "Doubles · Rocket");
     const reeses = v3.plays.find((p) => p.name === "Doubles · Reese's");
     expect(rocket.killId).toBe(reeses.id);
     // running it again must change nothing (Greg's live data reloads every session)
     const again = normalizeData(JSON.parse(JSON.stringify(v3)));
-    expect(again.plays.length).toBe(99);
+    expect(again.plays.length).toBe(100);
     expect(again.packages.length).toBe(v3.packages.length);
   });
   it("v13: cuts the Orbit/Zip/Rhino-Peek plays, seeds the weaponized layer, fixes stale notes", () => {
@@ -530,7 +530,7 @@ describe("normalizeData migration", () => {
     expect(keepLt.name).toContain("Longhorn"); // derived names propagate the rename
     expect(d.savedPlans.some((s) => /day 1/i.test(s.name))).toBe(true);
     expect(d.players[0].name).toBe("Old Kid"); // user data untouched
-    expect(d.safariVersion).toBe(21);
+    expect(d.safariVersion).toBe(22);
   });
   it("does not double-seed on a second load", () => {
     const once = normalizeData({ safariVersion: 2, plays: SEED.plays.map((p) => ({ ...p })) });
@@ -752,7 +752,9 @@ describe("app end-to-end", () => {
     const conceptSel = await screen.findByDisplayValue("Sparrow"); // auto-switched off Rhino
     const opts = within(conceptSel).getAllByRole("option").map((o) => o.textContent);
     expect(opts.some((t) => /Rhino/.test(t))).toBe(false);
-    expect(opts.some((t) => /Hawk|Eagle|Falcon/.test(t))).toBe(false);
+    expect(opts.some((t) => /Hawk|Falcon/.test(t))).toBe(false);
+    // Eagle is the one dropback Greg allowed from Empty on purpose (Sept 22)
+    expect(opts.some((t) => /Eagle/.test(t))).toBe(true);
     expect(opts.some((t) => /Reese's/.test(t))).toBe(true);
     expect(opts.some((t) => /Rocket \/ Laser/.test(t))).toBe(true);
     expect(opts.some((t) => /Raccoon \/ Longhorn/.test(t))).toBe(true);
@@ -1156,7 +1158,7 @@ describe("super heavy (Sept 1)", () => {
     for (const n of ["Nasty Rt · Lion", "Nasty Lt · Rhino", "Nasty Rt · Rabbit", "Nasty Lt · Lynx", "Nasty Rt · Renegade", "Nasty Lt · Lizard", "Nasty Rt · Owl", "Nasty Lt · Owl", "Nasty Rt · Lion Owl", "Nasty Rt · Laffy", "Nasty Lt · Reese's", "Nasty Rt · Rhino Now", "Nasty Lt · Lion Now", "Nasty Rt · Rewind"]) {
       expect(names.filter((x) => x === n).length, n).toBe(1);
     }
-    expect(v14.safariVersion).toBe(21);
+    expect(v14.safariVersion).toBe(22);
     expect(v14.plays.find((p) => p.name === "Nasty Rt · Rhino").note).toMatch(/Super Heavy|Y and the Z wing/);
     /* numbers append after the highest existing one, unique */
     const nums = v14.plays.map((p) => p.num);
@@ -1353,7 +1355,7 @@ describe("Sept 3 sweep, engine", () => {
     const d = normalizeData({ safariVersion: 15, plays: SEED.plays.map((p) => (p.name === "Nasty Rt · Rocket" ? { ...p, note: "Condensed splits pull the defense inside, jet outruns everything to the open edge." } : p)) });
     expect(d.plays.find((p) => p.name === "Nasty Rt · Rocket").note).toMatch(/Super Heavy jet right/);
     expect(d.plays.some((p) => /ondensed splits/.test(p.note || ""))).toBe(false);
-    expect(d.safariVersion).toBe(21);
+    expect(d.safariVersion).toBe(22);
   });
 });
 
@@ -1752,6 +1754,38 @@ describe("orbit motion", () => {
     for (const want of ["Doubles · Orbit Rocket", "Doubles · Orbit Lion"]) {
       expect(names.filter((n) => n === want).length, want + " seeded once").toBe(1);
     }
+    expect(normalizeData(JSON.parse(JSON.stringify(d))).plays.length).toBe(d.plays.length);
+  });
+});
+
+/* ---------- Empty Eagle: the rule Greg broke on purpose (Sept 22) ---------- */
+describe("empty eagle", () => {
+  it("routes the RB instead of blocking him, because nobody is home", () => {
+    const empty = genPlayElements("eagle", formSpots("Empty"), "", [], "Empty");
+    const doubles = genPlayElements("eagle", formSpots("Doubles"), "", [], "Doubles");
+    // in Doubles the RB stays in and protects
+    expect(doubles.RB.map((e) => e.kind)).toEqual(["block"]);
+    // from Empty he is a slot, so he runs: a blocking slot would be a lie on the card
+    expect(empty.RB.some((e) => e.kind === "block")).toBe(false);
+    expect(empty.RB.some((e) => e.kind === "route")).toBe(true);
+    // the shot itself is unchanged: X post, Z go, Y drag, H bubble
+    expect(empty.Z.some((e) => e.kind === "route")).toBe(true);
+    expect(empty.X.some((e) => e.kind === "route")).toBe(true);
+  });
+
+  it("tells the truth on the cards: five protect, ball out on one count", () => {
+    const jobs = jobsFor({ formation: "Empty", concept: "eagle", dir: "", tags: [] });
+    expect(jobs.OL).toMatch(/FIVE of you/);
+    expect(jobs.QB).toMatch(/ONE count/);
+    expect(jobs.RB).toMatch(/SLOT, not a blocker/);
+    // every other formation keeps the normal Eagle cards
+    expect(jobsFor({ formation: "Doubles", concept: "eagle", dir: "", tags: [] })).toEqual(ASSIGNMENTS.eagle);
+  });
+
+  it("v22 seeds Empty Eagle once on a v21 program", () => {
+    const v21 = { players: [], safariVersion: 21, day1Seeded: true, week2Seeded: true, savedPlans: [], plays: SEED.plays.filter((p) => p.name !== "Empty · Eagle").map((p) => ({ ...p })) };
+    const d = normalizeData(v21);
+    expect(d.plays.filter((p) => p.name === "Empty · Eagle").length).toBe(1);
     expect(normalizeData(JSON.parse(JSON.stringify(d))).plays.length).toBe(d.plays.length);
   });
 });
