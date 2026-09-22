@@ -1261,11 +1261,13 @@ describe("call sheet top-down prep", () => {
     expect(cs.run.length).toBe(1);
     cs = removePlayFromSheet(cs, rhino.id);
     expect(Object.values(cs).flat()).toEqual([]);
-    /* openers full: the seventh opener still lands somewhere */
+    /* Priority is uncapped (Sept 22): a seventh must-run call is allowed in,
+       and it still lands in its natural box too */
     const full = { openers: ["a", "b", "c", "d", "e", "f"] };
     const owl = d.plays.find((p) => p.name === "Doubles · Owl");
     const cs2 = addPlayToSheet(full, owl);
-    expect(cs2.openers.length).toBe(6);
+    expect(cs2.openers.length).toBe(7);
+    expect(cs2.openers).toContain(owl.id);
     expect(cs2.pass).toContain(owl.id);
   });
   it("Load everything installed covers every installed play once, and adds to a partial sheet without touching picks", () => {
@@ -1301,7 +1303,7 @@ describe("call sheet top-down prep", () => {
     fireEvent.click(box);
     await waitFor(() => expect(box.checked).toBe(false));
     expect([...document.querySelectorAll(".cs-chip")].some((c) => /^1\s*HAMMER · Rhino/.test(c.textContent))).toBe(false);
-    expect(box.closest(".check-row").textContent).toMatch(/would land: Openers · Runs · Red zone · Goal line/);
+    expect(box.closest(".check-row").textContent).toMatch(/would land: Priority · Runs · Red zone · Goal line/);
     /* the header count dropped by one */
     expect(screen.getByText(/Plays on this sheet/).textContent).toMatch(/\d+ of \d+/);
     /* check it back: it returns to its situations */
@@ -1640,14 +1642,14 @@ describe("band order on the sheet and the script (Greg, Sept 14)", () => {
     return d;
   };
 
-  it("every box but Openers sorts by number; Openers keeps the script order", () => {
+  it("every box but Priority sorts by number; Priority keeps the coach's order", () => {
     const d = scrambled();
     const num = (id) => d.plays.find((p) => p.id === id).num;
     for (const key of ["run", "pass"]) {
       const nums = orderedSituation(d, key).map(num);
       expect(nums, key).toEqual([...nums].sort((a, z) => a - z));
     }
-    /* the opening script is a sequence, not a lookup: it comes back untouched */
+    /* Priority is the coach's own order, not a lookup: it comes back untouched */
     expect(orderedSituation(d, "openers")).toEqual(d.callSheet.openers);
     const onums = orderedSituation(d, "openers").map(num);
     expect(onums).not.toEqual([...onums].sort((a, z) => a - z));
@@ -1675,13 +1677,13 @@ describe("band order on the sheet and the script (Greg, Sept 14)", () => {
     const onSheet = [...new Set(Object.values(d.callSheet).flat())];
     expect(rows.length).toBe(onSheet.length);
     expect(new Set(rows.map((r) => r.play.id)).size).toBe(rows.length);
-    /* an opener is no longer pinned to the front, it sits at its number */
+    /* a priority call is not pinned to the front, it sits at its number */
     const openerNums = d.callSheet.openers.map((id) => d.plays.find((p) => p.id === id).num);
     expect(rows[0].play.num).toBe(Math.min(...nums));
     expect(openerNums).not.toEqual(nums.slice(0, openerNums.length));
     /* a play in two boxes still keeps the first box that holds it */
     const dup = rows.find((r) => r.play.name === "Doubles · Rhino");
-    expect(dup.situation).toBe("Openers (First 6)");
+    expect(dup.situation).toBe("Priority (must run)");
     /* and every row carries its situation label */
     expect(rows.every((r) => r.situation)).toBe(true);
   });

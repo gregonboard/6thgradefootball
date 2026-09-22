@@ -332,7 +332,12 @@ const PLAY_TYPES = ["Run", "Pass", "Screen", "Special"];
 const TYPE_COLORS = { Run: "#C32032", Pass: "#23356F", Screen: "#0F6B4F", Special: "#B7791F" };
 
 const SITUATIONS = [
-  { key: "openers", label: "Openers (First 6)" },
+  /* the box Greg calls PRIORITY (Sept 22): the calls that have to get run this
+     game, however many that is. It used to be a hard six because it doubled as
+     the opening script; the Caller has owned the real opening script for a while
+     (data.script), so this box is free to be the must-run list. The stored key
+     stays "openers" so every sheet already saved keeps its plays. */
+  { key: "openers", label: "Priority (must run)" },
   { key: "run", label: "Base Runs" },
   { key: "pass", label: "Base Passes" },
   { key: "third_short", label: "3rd & Short" },
@@ -4397,8 +4402,8 @@ function sheetByPersonnel(data) {
 /* Every box reads in BAND ORDER (Greg, Sept 14). Now that numbers run by
    formation, a number-sorted box keeps the offense in one formation for a run
    of calls and the QB finds the number on his band without hunting for it.
-   OPENERS is the one exception: that box IS the opening script, the six calls
-   in the order they get called, so it keeps the order the coach set. */
+   PRIORITY is the one exception: the coach ordered that box himself, top to
+   bottom, so it keeps his order instead of sorting by number. */
 function orderedSituation(data, key) {
   const ids = (data.callSheet || {})[key] || [];
   if (key === "openers") return [...ids];
@@ -4412,7 +4417,7 @@ function orderedSituation(data, key) {
 /* ---- top-down prep (Greg, Sept 2): load everything installed, cross off what
    you will not call, and the boxes format themselves. A play lands in every
    situation the recipe names it for, else in its natural bucket by type. ---- */
-const SITUATION_SHORT = { openers: "Openers", run: "Runs", pass: "Passes", third_short: "3rd short", third_long: "3rd long", redzone: "Red zone", goalline: "Goal line", special: "Special" };
+const SITUATION_SHORT = { openers: "Priority", run: "Runs", pass: "Passes", third_short: "3rd short", third_long: "3rd long", redzone: "Red zone", goalline: "Goal line", special: "Special" };
 const bucketForPlay = (p) => (p.concept === "sneak" ? "third_short" : p.type === "Run" ? "run" : p.type === "Pass" ? "pass" : "special");
 function situationsFor(play) {
   const keys = Object.entries(CALL_SHEET_RECIPE).filter(([, names]) => names.includes(play.name)).map(([k]) => k);
@@ -4423,10 +4428,9 @@ function addPlayToSheet(cs, play) {
   for (const key of situationsFor(play)) {
     const cur = out[key] || [];
     if (cur.includes(play.id)) continue;
-    if (key === "openers" && cur.length >= 6) continue; /* openers is literally the first six */
     out[key] = [...cur, play.id];
   }
-  /* named only for a full openers box: never let a play fall off the sheet */
+  /* belt and braces: never let a play fall off the sheet */
   if (!Object.values(out).some((ids) => (ids || []).includes(play.id))) {
     const b = bucketForPlay(play);
     out[b] = [...(out[b] || []), play.id];
@@ -4456,9 +4460,8 @@ function buildCallSheet(data) {
   const FALLBACK = ["Doubles · Rhino", "Doubles · Lion", "Doubles · Sparrow", "Doubles · Owl"];
   for (const [key, names] of Object.entries(CALL_SHEET_RECIPE)) {
     if ((cs[key] || []).length > 0) continue; /* the coach's picks always win */
-    /* openers is literally the first 6; the rest hold as many as fit */
+    /* every box holds as many as the recipe names; the coach adds more by hand */
     let picks = names.map((n) => idByName[n]).filter(Boolean);
-    if (key === "openers") picks = picks.slice(0, 6);
     if (!picks.length) picks = FALLBACK.map((n) => idByName[n]).filter(Boolean).slice(0, 3);
     cs[key] = picks;
   }
@@ -4491,7 +4494,6 @@ function CallSheetTab({ data, up, onPrint, onPrintScript }) {
     if (!playId) return;
     const cur = cs[key] || [];
     if (cur.includes(playId)) return;
-    if (key === "openers" && cur.length >= 6) { window.alert("Openers is the first six. Take one off before adding another."); return; }
     up({ callSheet: { ...cs, [key]: [...cur, playId] } });
   };
   const removeFrom = (key, playId) =>
@@ -4965,13 +4967,13 @@ function PracticePrint({ data }) {
 
 /* Team-period practice script: the call sheet flattened into a numbered,
    read-it-aloud sequence so coaches run the script without the HC calling
-   each play. Openers first, then base, then situational; each play once. */
+   each play. Priority first, then base, then situational; each play once. */
 function buildTeamScript(data) {
   const cs = data.callSheet || {};
   /* a play can sit in more than one box; it keeps the first box that holds it */
   const labelFor = (pid) => (SITUATIONS.find((s) => (cs[s.key] || []).includes(pid)) || {}).label || "";
   /* The script is PURELY numerical (Greg, Sept 14): every play on the sheet,
-     openers included, in one ascending run 1..N. The coach reads straight
+     priority included, in one ascending run 1..N. The coach reads straight
      down and calls the big number; the QB finds it on his band without
      hunting, and with Number by Formation the team holds a formation for a
      stretch of reps instead of resetting every snap. */
